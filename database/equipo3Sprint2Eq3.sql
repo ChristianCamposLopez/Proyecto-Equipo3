@@ -1,9 +1,9 @@
 -- =============================================
 -- PROYECTO: SISTEMA DE PEDIDOS PARA RESTAURANTES
 -- EQUIPO: No. 3
--- DESCRIPCIÓN: Script Único de Persistencia (Sprint 2)
--- Autores: Ivan Eleuterio / Mario Ramirez / Irving Zurita 
--- Fecha: 06/febrero/2026                     
+-- DESCRIPCIÓN: Script Único de Persistencia (Sprint 3)
+-- Autores: @
+-- Fecha: 24/febrero/2026                     
 -- =============================================
 
 -- 1. LIMPIEZA DE TABLAS (Evitar conflictos de duplicidad)

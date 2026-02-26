@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # 1. Contenedor del Sistema de Pedidos (Frontend y Backend)
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # Estas variables coinciden con las de config/db.ts
+      - DB_HOST=db  # Importante: apúnta al nombre del servicio de abajo
+      - DB_USER=postgres
+      - DB_PASSWORD=password_secreto
+      - DB_NAME=restaurante_bd
+      - DB_PORT=5432
+    depends_on:
+      - db
+
+  # 2. Contenedor de la Base de Datos (Persistencia - Sprint 2)
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password_secreto
+      - POSTGRES_DB=restaurante_bd
+    volumes:
+      # Esto asegura que los platos, pedidos y usuarios no se borren si apagan Docker
+      - pg_data:/var/lib/postgresql/data
+      # Autocarga de las tablas del Sprint 2
+      - ./bd/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  pg_data:

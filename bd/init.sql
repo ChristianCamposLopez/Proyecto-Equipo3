@@ -21,6 +21,8 @@ DROP TABLE IF EXISTS restaurants CASCADE;
 DROP TABLE IF EXISTS user_roles CASCADE;
 DROP TABLE IF EXISTS roles CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS promotions CASCADE;
+DROP TABLE IF EXISTS review CASCADE;
 
 -- 2. INFRAESTRUCTURA DE USUARIOS Y ROLES (Seguridad)
 CREATE TABLE users (
@@ -131,6 +133,29 @@ CREATE TABLE payments (
     payment_method VARCHAR(50), -- 'CARD', 'CASH'
     status VARCHAR(50) DEFAULT 'PENDING', -- 'SUCCESS', 'FAILED'
     transaction_id VARCHAR(100), -- ID de pasarela externa
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+-- TABLAS PARA US022 (Promociones)
+CREATE TABLE promotions (
+    id SERIAL PRIMARY KEY,
+    restaurant_id INT REFERENCES restaurants(id),
+    code VARCHAR(50) UNIQUE NOT NULL,
+    discount_percentage DECIMAL(5,2) NOT NULL,
+    start_date TIMESTAMP,
+    end_date TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- TABLAS PARA US018 (Calificación de experiencia)
+CREATE TABLE reviews (
+    id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(id),
+    customer_id INT REFERENCES users(id),
+    restaurant_id INT REFERENCES restaurants(id),
+    rating INT CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
 

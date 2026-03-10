@@ -55,6 +55,7 @@ CREATE TABLE restaurants (
     name VARCHAR(100) NOT NULL,
     latitude DECIMAL(10,8),
     longitude DECIMAL(11,8),
+    tax_id VARCHAR(50),
     is_active BOOLEAN DEFAULT TRUE
 );
 

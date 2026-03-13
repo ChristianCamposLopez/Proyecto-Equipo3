@@ -73,7 +73,10 @@ CREATE TABLE products (
     category_id INT REFERENCES categories(id),
     name VARCHAR(100) NOT NULL,
     base_price DECIMAL(10,2) NOT NULL, -- Mario: Validación > 0
-    is_available BOOLEAN DEFAULT TRUE -- Mario: Control de Stock
+    is_available BOOLEAN DEFAULT TRUE, -- Mario: Control de Stock
+    -- columnas añadidas para US009: gestión de imágenes
+    image_url VARCHAR(500),
+    image_uploaded_at TIMESTAMP
 );
 
 -- Complejidad del Menú (Opciones y Extras)
@@ -134,6 +137,15 @@ CREATE TABLE payments (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- 6.1 REEMBOLSOS (US026)
+CREATE TABLE refunds (
+    id SERIAL PRIMARY KEY,
+    payment_id INT REFERENCES payments(id),
+    amount DECIMAL(10,2),
+    reason VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- =============================================
 -- 7. SEMBRADO DE PRUEBA (SEEDING)
 -- =============================================
@@ -153,3 +165,30 @@ VALUES (1, 'Hamburguesas', 'Especialidades al carbón');
 
 INSERT INTO products (category_id, name, base_price) 
 VALUES (1, 'Hamburguesa Clásica', 85.00);
+
+-- Más categorías y productos de ejemplo
+INSERT INTO categories (restaurant_id, name, descripcion) 
+VALUES (1, 'Tacos', 'Tacos al pastor y más');
+
+INSERT INTO categories (restaurant_id, name, descripcion)
+VALUES (1, 'Bebidas', 'Refrescos, aguas y cervezas');
+
+INSERT INTO products (category_id, name, base_price)
+VALUES
+  (2, 'Taco al Pastor', 35.00),
+  (2, 'Taco de Carne Asada', 40.00),
+  (3, 'Agua de Jamaica', 20.00),
+  (3, 'Cerveza', 40.00);
+
+-- Pedidos de prueba para dashboard
+INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
+VALUES
+  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'COMPLETED', 160.00, NOW() - INTERVAL '2 days'),
+  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'COMPLETED', 125.00, NOW() - INTERVAL '1 day'),
+  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'CANCELLED', 85.00, NOW());
+
+INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at)
+VALUES
+  (1, 'CARD', 'SUCCESS', 'TXN1001', NOW() - INTERVAL '2 days'),
+  (2, 'CASH', 'SUCCESS', NULL, NOW() - INTERVAL '1 day'),
+  (3, 'CARD', 'FAILED', 'TXN1003', NOW());

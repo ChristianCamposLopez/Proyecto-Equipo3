@@ -283,7 +283,11 @@ const styles = `
   /* Footer */
   .db-footer {
     margin-top: 32px;
-    padding-top: 16px;
+    padding-top: 1jest.mock('@/config/db', () => ({
+  db: { query: jest.fn() },jest.mock('@/config/db', () => ({
+  db: { query: jest.fn() },
+}));
+}));6px;
     border-top: 1px solid #D8D0C0;
     font-size: 10px;
     letter-spacing: 0.12em;

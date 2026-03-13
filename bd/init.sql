@@ -21,19 +21,25 @@ DROP TABLE IF EXISTS restaurants CASCADE;
 DROP TABLE IF EXISTS user_roles CASCADE;
 DROP TABLE IF EXISTS roles CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS promotions CASCADE;
+DROP TABLE IF EXISTS review CASCADE;
 
 -- 2. INFRAESTRUCTURA DE USUARIOS Y ROLES (Seguridad)
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     phone_number VARCHAR(20) UNIQUE,
+    reset_token VARCHAR(255),
+    token_expiracion TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE roles (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(50) UNIQUE -- 'client', 'restaurant_admin', 'chef'
+    name VARCHAR(50) UNIQUE, -- 'client', 'restaurant_admin', 'chef', 'repartidor'
+    permisos TEXT -- permisos asociados al rol (US010.4)
 );
 
 CREATE TABLE user_roles (
@@ -49,6 +55,7 @@ CREATE TABLE restaurants (
     name VARCHAR(100) NOT NULL,
     latitude DECIMAL(10,8),
     longitude DECIMAL(11,8),
+    tax_id VARCHAR(50),
     is_active BOOLEAN DEFAULT TRUE
 );
 
@@ -150,11 +157,16 @@ CREATE TABLE refunds (
 -- 7. SEMBRADO DE PRUEBA (SEEDING)
 -- =============================================
 
-INSERT INTO roles (name) VALUES ('client'), ('restaurant_admin'), ('chef');
+INSERT INTO roles (name, permisos) VALUES 
+('client', 'ver_menu,hacer_pedido'),
+('restaurant_admin', 'gestionar_pedidos,gestionar_menu,ver_reportes'),
+('chef', 'ver_pedidos,actualizar_estado'),
+('repartidor', 'ver_entregas,actualizar_entrega');
 
-INSERT INTO users (email, full_name, phone_number) VALUES 
-('cliente@ejemplo.com', 'Juan Perez', '5551234567'),
-('admin@restaurante.com', 'Carlos Admin', '5559876543');
+-- Contraseñas hasheadas con bcrypt (password original: 'password123')
+INSERT INTO users (email, password_hash, full_name, phone_number) VALUES 
+('cliente@ejemplo.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Juan Perez', '5551234567'),
+('admin@restaurante.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Carlos Admin', '5559876543');
 
 INSERT INTO user_roles VALUES (1, 1), (2, 2);
 

@@ -4,6 +4,8 @@ services:
   # 1. Contenedor del Sistema de Pedidos (Frontend y Backend)
   web:
     build: .
+    # Permisos inteligentes: solo a la raíz y package.json para evitar lentitud
+    command: sh -c "chmod 777 . package.json && npm run dev"
     ports:
       - "3000:3000"
     environment:
@@ -15,6 +17,10 @@ services:
       - DB_PORT=5432
       # Clave secreta para JWT (US010.2)
       - JWT_SECRET=clave_jwt_restaurante_eq3_2026
+    volumes:
+      - .:/app:z
+      - /app/node_modules
+      - /app/.next
     depends_on:
       db:
         condition: service_healthy

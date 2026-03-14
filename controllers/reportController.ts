@@ -1,9 +1,6 @@
-import { ReportDAO } from "../models/daos/ReportDAO"
+// controllers/reportController.ts
+import { ReportService } from "@/services/ReportService"
 
 export const getDailySales = async () => {
-
-    const data = await ReportDAO.getDailySales()
-
-    return data
-
+    return ReportService.getDailySales()
 }

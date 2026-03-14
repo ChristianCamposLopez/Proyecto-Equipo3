@@ -1,0 +1,41 @@
+{
+  "name": "sistema-restaurante-eq3",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "jest",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration",
+    "test:black-box": "jest tests/black-box",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "canvas": "^2.11.2",
+    "formidable": "^3.5.3",
+    "next": "16.1.6",
+    "pg": "^8.19.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/dotenv": "^6.1.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20",
+    "@types/pg": "^8.16.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.3.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "jest": "^29.7.0",
+    "jest-environment-node": "^29",
+    "tailwindcss": "^4",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5"
+  }
+}

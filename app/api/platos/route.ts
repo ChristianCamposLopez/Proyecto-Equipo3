@@ -1,5 +1,52 @@
-import { NextResponse } from 'next/server';
+// app/api/platos/route.ts
 import { db } from '../../../config/db';
+import { NextRequest, NextResponse } from 'next/server';
+import { ProductService } from '../../../lib/product.service';
+
+const productService = new ProductService();
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    const {
+      name,
+      base_price,
+      stock,
+      category_id,
+      descripcion
+    } = body;
+
+    // Validaciones básicas
+    if (!name || !base_price || stock === undefined || !category_id) {
+      return NextResponse.json(
+        { error: 'Faltan campos obligatorios' },
+        { status: 400 }
+      );
+    }
+
+    const product = await productService.createProduct({
+      name,
+      base_price: Number(base_price),
+      stock: Number(stock),
+      category_id: Number(category_id),
+      descripcion: descripcion || null
+    });
+
+    return NextResponse.json({
+      message: 'Plato creado exitosamente',
+      product
+    });
+
+  } catch (err: any) {
+    console.error('POST create product error', err);
+
+    return NextResponse.json(
+      { error: err.message || 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -59,3 +106,14 @@ export async function GET(request: Request) {
 
   }
 }
+
+/*
+Ya está diseñado para:
+
+✅ Listar productos
+✅ Filtrar por restaurante
+✅ Incluir imagen
+✅ Manejar activos/inactivos
+
+👉 Es un endpoint de catálogo de productos, no de disponibilidad.
+ */

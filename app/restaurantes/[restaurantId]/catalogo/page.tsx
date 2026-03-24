@@ -63,6 +63,16 @@ const styles = `
     line-height: 1.6;
   }
 
+  /* Section title */
+  .menu-section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 48px 48px 24px;
+    letter-spacing: -0.01em;
+    color: #F2EDE4;
+  }
+
   /* Grid */
   .menu-grid {
     display: grid;
@@ -70,6 +80,7 @@ const styles = `
     gap: 1px;
     background: #1E1C19;
     padding: 0;
+    margin: 0 0 24px 0;
     animation: fadeUp 0.6s 0.2s ease both;
   }
 
@@ -94,6 +105,7 @@ const styles = `
     aspect-ratio: 4/3;
     overflow: hidden;
     background: #1A1714;
+    min-height: 200px; /* Altura mínima asegurada */
   }
 
   .card-img {
@@ -103,24 +115,35 @@ const styles = `
     transition: transform 0.5s ease;
   }
 
+  /* Estilos mejorados para el placeholder de imagen */
   .card-no-img {
     width: 100%;
     height: 100%;
+    min-height: 200px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    color: #3A3630;
+    gap: 12px;
+    background: linear-gradient(135deg, #1A1714 0%, #131110 100%);
+    color: #4A4540;
   }
 
-  .card-no-img svg { opacity: 0.4; }
+  .card-no-img svg { 
+    width: 48px;
+    height: 48px;
+    stroke: #5A5550;
+    stroke-width: 1.2;
+    opacity: 0.6;
+  }
 
   .card-no-img span {
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    opacity: 0.4;
+    opacity: 0.5;
+    color: #8A8580;
+    font-weight: 300;
   }
 
   .card-badge {
@@ -134,19 +157,7 @@ const styles = `
     letter-spacing: 0.1em;
     text-transform: uppercase;
     padding: 4px 10px;
-  }
-
-  .card-unavailable {
-    position: absolute;
-    inset: 0;
-    background: #11101099;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: #7A7268;
+    z-index: 10;
   }
 
   .card-body {
@@ -255,11 +266,19 @@ const styles = `
 
   @media (max-width: 600px) {
     .menu-hero { padding: 48px 24px 32px; }
+    .menu-section-title { margin: 32px 24px 16px; font-size: 24px; }
     .menu-footer { padding: 20px 24px; flex-direction: column; gap: 8px; }
   }
 `;
 
 type Product = {
+  id: number;
+  name: string;
+  base_price: string;
+  image_display: string;
+};
+
+type Recommendation = {
   id: number;
   name: string;
   base_price: string;
@@ -274,6 +293,8 @@ export default function CatalogoPage({
   const [products, setProducts] = useState<Product[]>([]);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(true);
 
   useEffect(() => {
     async function load() {
@@ -289,12 +310,26 @@ export default function CatalogoPage({
       } finally {
         setLoading(false);
       }
+
+      try {
+        const recRes = await fetch(`/api/recommendations?restaurantId=${restaurantId}`);
+        const recData = await recRes.json();
+        setRecommendations(recData.recommendations || []);
+      } catch (error) {
+        console.error("Error fetching recommendations:", error);
+      } finally {
+        setLoadingRecommendations(false);
+      }
     }
 
     load();
   }, [params]);
 
-  // Mientras no tenemos restaurantId mostramos el mismo spinner (la carga ya cubre ese estado)
+  // Función para verificar si hay una imagen válida
+  const hasValidImage = (imageUrl: string) => {
+    return imageUrl && imageUrl.trim() !== "" && imageUrl !== "null" && imageUrl !== "undefined";
+  };
+
   if (!restaurantId || loading) {
     return (
       <>
@@ -308,8 +343,6 @@ export default function CatalogoPage({
       </>
     );
   }
-
-  const showEmpty = products.length === 0;
 
   return (
     <>
@@ -325,7 +358,84 @@ export default function CatalogoPage({
           </p>
         </header>
 
-        {showEmpty ? (
+        {/* Sección de recomendaciones - CORREGIDA */}
+        {!loadingRecommendations && recommendations.length > 0 && (
+          <section className="menu-recommendations">
+            <h2 className="menu-section-title" style={{ color: '#C17A3A' }}>
+              Recomendado para ti 🔥
+            </h2>
+
+            <div className="menu-grid">
+              {recommendations.map((p, i) => (
+                <Link
+                  key={`rec-${p.id}`}
+                  href={`/restaurantes/${restaurantId}/catalogo/${p.id}`}
+                  className="product-card card-enter"
+                  style={{ animationDelay: `${i * 0.05}s`, border: '1px solid rgba(193, 122, 58, 0.3)' }}
+                >
+                  <div className="card-img-wrap">
+                    {/* CORRECCIÓN: Verificación explícita para mostrar el placeholder */}
+                    {hasValidImage(p.image_display) ? (
+                      <img 
+                        className="card-img" 
+                        src={p.image_display} 
+                        alt={p.name}
+                        onError={(e) => {
+                          // Si la imagen falla al cargar, reemplazar con placeholder
+                          const target = e.currentTarget;
+                          const parent = target.parentElement;
+                          if (parent) {
+                            // Ocultar la imagen
+                            target.style.display = 'none';
+                            // Crear y mostrar el placeholder
+                            const placeholder = document.createElement('div');
+                            placeholder.className = 'card-no-img';
+                            placeholder.style.width = '100%';
+                            placeholder.style.height = '100%';
+                            placeholder.style.display = 'flex';
+                            placeholder.innerHTML = `
+                              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                                <rect x="3" y="3" width="18" height="18" rx="1"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <path d="M21 15l-5-5L5 21"/>
+                              </svg>
+                              <span>Sin imagen</span>
+                            `;
+                            parent.appendChild(placeholder);
+                          }
+                        }}
+                      />
+                    ) : (
+                      // Placeholder directo cuando no hay URL de imagen
+                      <div className="card-no-img" style={{ width: '100%', height: '100%', display: 'flex' }}>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                          <rect x="3" y="3" width="18" height="18" rx="1"/>
+                          <circle cx="8.5" cy="8.5" r="1.5"/>
+                          <path d="M21 15l-5-5L5 21"/>
+                        </svg>
+                        <span>Sin imagen</span>
+                      </div>
+                    )}
+                    <div className="card-badge" style={{ backgroundColor: '#C17A3A' }}>Recomendado</div>
+                  </div>
+
+                  <div className="card-body">
+                    <h2 className="card-name">{p.name}</h2>
+                    <div className="card-price">
+                      ${p.base_price}
+                      <span>MXN</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <hr style={{ border: '0', borderTop: '1px solid rgba(255,255,255,0.05)', margin: '0 48px 24px 48px' }} />
+          </section>
+        )}
+
+        {/* GRID PRINCIPAL */}
+        <h2 className="menu-section-title">Menú Principal</h2>
+        {products.length === 0 ? (
           <div className="menu-empty">No hay platillos disponibles</div>
         ) : (
           <div className="menu-grid">
@@ -337,11 +447,36 @@ export default function CatalogoPage({
                 style={{ animationDelay: `${i * 0.05}s` }}
               >
                 <div className="card-img-wrap">
-                  {p.image_display ? (
-                    <img className="card-img" src={p.image_display} alt={p.name} />
+                  {hasValidImage(p.image_display) ? (
+                    <img 
+                      className="card-img" 
+                      src={p.image_display} 
+                      alt={p.name}
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        const parent = target.parentElement;
+                        if (parent) {
+                          target.style.display = 'none';
+                          const placeholder = document.createElement('div');
+                          placeholder.className = 'card-no-img';
+                          placeholder.style.width = '100%';
+                          placeholder.style.height = '100%';
+                          placeholder.style.display = 'flex';
+                          placeholder.innerHTML = `
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                              <rect x="3" y="3" width="18" height="18" rx="1"/>
+                              <circle cx="8.5" cy="8.5" r="1.5"/>
+                              <path d="M21 15l-5-5L5 21"/>
+                            </svg>
+                            <span>Sin imagen</span>
+                          `;
+                          parent.appendChild(placeholder);
+                        }
+                      }}
+                    />
                   ) : (
-                    <div className="card-no-img">
-                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                    <div className="card-no-img" style={{ width: '100%', height: '100%', display: 'flex' }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
                         <rect x="3" y="3" width="18" height="18" rx="1"/>
                         <circle cx="8.5" cy="8.5" r="1.5"/>
                         <path d="M21 15l-5-5L5 21"/>
@@ -349,15 +484,10 @@ export default function CatalogoPage({
                       <span>Sin imagen</span>
                     </div>
                   )}
-                  {p.image_display && (
-                    <div className="card-badge">Plato</div>
-                  )}
-                  {/* Si tu API incluye disponibilidad, puedes agregar: 
-                      {!p.is_available && <div className="card-unavailable">No disponible</div>} 
-                  */}
+                  {hasValidImage(p.image_display) && <div className="card-badge">Plato</div>}
                 </div>
                 <div className="card-body">
-                  {!p.image_display && <span className="card-category">Plato</span>}
+                  {!hasValidImage(p.image_display) && <span className="card-category">Plato</span>}
                   <h2 className="card-name">{p.name}</h2>
                   <div className="card-price">
                     ${p.base_price}

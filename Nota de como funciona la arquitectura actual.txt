@@ -1,0 +1,10 @@
+Para implementar el ranking de platos más vendidos (US019.1) siguiendo la arquitectura de tu proyecto, te recomiendo crear los siguientes archivos:
+
+app/api/ranking/route.ts – endpoint que recibe los parámetros y devuelve el ranking.
+
+lib/ranking.service.ts – contiene la lógica de negocio.
+
+lib/repositories/ranking.repository.ts – ejecuta la consulta a la base de datos.
+
+Además, deberás asegurarte de que el usuario autenticado tenga acceso al restaurante correspondiente (en tu ejemplo usaremos un restaurantId obtenido de la sesión o de los parámetros).
+

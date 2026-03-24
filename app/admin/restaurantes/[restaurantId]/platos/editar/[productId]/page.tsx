@@ -1,3 +1,4 @@
+// app/admin/restaurantes/[restaurantId]/platos/editar/[productId]/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -312,6 +313,13 @@ type ProductImage = {
   is_primary: boolean;
 };
 
+type Availability = {
+  id: number;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+};
+
 export default function EditarPlato() {
   const params = useParams();
   const productId = Number(params.productId);
@@ -320,12 +328,46 @@ export default function EditarPlato() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const [name, setName] = useState('');
+  const [descripcion, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
+  const [availability, setAvailability] = useState<Availability[]>([]);
+  const [newSchedule, setNewSchedule] = useState({
+    day_of_week: 1,
+    start_time: '',
+    end_time: ''
+  });
+  const [editingSchedule, setEditingSchedule] = useState<Availability | null>(null);
+
+  const daysMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const formatDay = (d: number) => daysMap[d] ?? 'Desconocido';
 
   /* ===============================
-     Cargar imágenes
+     Cargar imágenes y datos del producto
   =============================== */
+
+  const loadProduct = async () => {
+    try {
+      const res = await fetch(`/api/platos/${productId}`);
+      const data = await res.json();
+
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+
+      const product = data.product;
+
+      setName(product.name || '');
+      setDescription(product.descripcion || '');
+      setPrice(product.base_price?.toString() || '');
+      setStock(product.stock?.toString() || '');
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const loadImages = async () => {
     try {
@@ -337,10 +379,23 @@ export default function EditarPlato() {
     }
   };
 
-  useEffect(() => {
-    loadImages();
-  }, []);
+  const loadAvailability = async () => {
+    try {
+      const res = await fetch(`/api/platos/${productId}/availability`);
+      const data = await res.json();
+      setAvailability(data.availability || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
+  useEffect(() => {
+    if (!productId) return;
+
+    loadImages();
+    loadProduct();
+    loadAvailability();
+  }, [productId]);
   /* ===============================
      SUBIR IMAGEN
   =============================== */
@@ -500,6 +555,92 @@ export default function EditarPlato() {
   };
 
   /* ===============================
+     ACTUALIZAR NOMBRE
+  =============================== */
+
+  const updateName = async () => {
+    const res = await fetch(`/api/platos/${productId}/nombre`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+
+    const j = await res.json();
+
+    if (j.error) alert(j.error);
+    else alert('Nombre actualizado');
+  };
+
+  /* ===============================
+     ACTUALIZAR DESCRIPCIÓN
+  =============================== */
+
+  const updateDescription = async () => {
+    const res = await fetch(`/api/platos/${productId}/descripcion`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ descripcion }),
+    });
+
+    const j = await res.json();
+
+    if (j.error) alert(j.error);
+    else alert('Descripción actualizada');
+  };
+
+  const createSchedule = async () => {
+    if (!newSchedule.start_time || !newSchedule.end_time) return alert("Completa las horas");
+    try {
+      const res = await fetch(`/api/platos/${productId}/availability`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dayOfWeek: newSchedule.day_of_week,
+          startTime: newSchedule.start_time,
+          endTime: newSchedule.end_time
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAvailability(prev => [...prev, data.availability]);
+      setNewSchedule({ day_of_week: 1, start_time: '', end_time: '' });
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const updateSchedule = async () => {
+    if (!editingSchedule) return;
+    try {
+      const res = await fetch(`/api/platos/${productId}/availability/${editingSchedule.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dayOfWeek: editingSchedule.day_of_week,
+          startTime: editingSchedule.start_time,
+          endTime: editingSchedule.end_time
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAvailability(prev => prev.map(a => (a.id === editingSchedule.id ? data.availability : a)));
+      setEditingSchedule(null);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const deleteSchedule = async (id: number) => {
+    if(!confirm("¿Eliminar este horario?")) return;
+    try {
+      const res = await fetch(`/api/platos/${productId}/availability/${id}`, { method: 'DELETE' });
+      if (res.ok) setAvailability(prev => prev.filter(a => a.id !== id));
+    } catch (err: any) {
+      alert("Error al eliminar");
+    }
+  };
+
+  /* ===============================
      UI
   =============================== */
 
@@ -566,6 +707,180 @@ export default function EditarPlato() {
               <button onClick={updateStock} className="edit-btn primary">
                 Actualizar stock
               </button>
+            </div>
+
+            <div className="form-row">
+              <input
+                type="text"
+                placeholder="Nombre del plato"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="edit-input"
+              />
+              <button onClick={updateName} className="edit-btn primary">
+                Actualizar nombre
+              </button>
+            </div>
+
+            <div className="form-row">
+              <input
+                type="text"
+                placeholder="Descripción"
+                value={descripcion}
+                onChange={(e) => setDescription(e.target.value)}
+                className="edit-input"
+              />
+              <button onClick={updateDescription} className="edit-btn primary">
+                Actualizar descripción
+              </button>
+            </div>
+          </section>
+
+          <section className="edit-section">
+            <h2 className="edit-section-title">
+              Horarios <span>de disponibilidad</span>
+            </h2>
+            {editingSchedule && (
+              <div className="edit-section" style={{ marginTop: '20px' }}>
+                <h3>Editar Horario</h3>
+
+                <div className="form-row">
+                  <select
+                    value={editingSchedule.day_of_week}
+                    onChange={(e) =>
+                      setEditingSchedule({
+                        ...editingSchedule,
+                        day_of_week: Number(e.target.value)
+                      })
+                    }
+                    className="edit-input"
+                  >
+                    {daysMap.map((day, index) => (
+                      <option key={index} value={index}>
+                        {day}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="time"
+                    value={editingSchedule.start_time}
+                    onChange={(e) =>
+                      setEditingSchedule({
+                        ...editingSchedule,
+                        start_time: e.target.value
+                      })
+                    }
+                    className="edit-input"
+                  />
+
+                  <input
+                    type="time"
+                    value={editingSchedule.end_time}
+                    onChange={(e) =>
+                      setEditingSchedule({
+                        ...editingSchedule,
+                        end_time: e.target.value
+                      })
+                    }
+                    className="edit-input"
+                  />
+
+                  <button onClick={updateSchedule} className="edit-btn primary">
+                    Guardar cambios
+                  </button>
+
+                  <button
+                    onClick={() => setEditingSchedule(null)}
+                    className="edit-btn warning"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* FORM CREAR */}
+            <div className="form-row">
+              <select
+                value={newSchedule.day_of_week}
+                onChange={(e) =>
+                  setNewSchedule({ ...newSchedule, day_of_week: Number(e.target.value) })
+                }
+                className="edit-input"
+              >
+                {daysMap.map((day, index) => (
+                  <option key={index} value={index}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="time"
+                value={newSchedule.start_time}
+                onChange={(e) =>
+                  setNewSchedule({ ...newSchedule, start_time: e.target.value })
+                }
+                className="edit-input"
+              />
+
+              <input
+                type="time"
+                value={newSchedule.end_time}
+                onChange={(e) =>
+                  setNewSchedule({ ...newSchedule, end_time: e.target.value })
+                }
+                className="edit-input"
+              />
+
+              <button onClick={createSchedule} className="edit-btn primary">
+                Agregar horario
+              </button>
+            </div>
+
+            {/* LISTA DE HORARIOS */}
+            <div style={{ marginTop: '20px' }}>
+              {availability.length === 0 ? (
+                <p className="empty-message">
+                  Sin horarios → Disponible todo el día
+                </p>
+              ) : (
+                <table style={{ width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th>Día</th>
+                      <th>Inicio</th>
+                      <th>Fin</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {availability.map((a) => (
+                      <tr key={a.id}>
+                        <td>{formatDay(a.day_of_week)}</td>
+                        <td>{a.start_time}</td>
+                        <td>{a.end_time}</td>
+                        <td>
+                          <button
+                            onClick={() => setEditingSchedule(a)}
+                            className="edit-btn primary"
+                          >
+                            Editar
+                          </button>
+
+                          <button
+                            onClick={() => deleteSchedule(a.id)}
+                            className="edit-btn danger"
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </section>
 

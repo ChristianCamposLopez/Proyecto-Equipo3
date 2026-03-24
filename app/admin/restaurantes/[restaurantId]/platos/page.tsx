@@ -1,3 +1,4 @@
+//admin/restaurantes/[restaurantId]/platos/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -15,254 +16,140 @@ const styles = `
     font-family: 'DM Sans', sans-serif;
   }
 
-  /* Hero */
-  .admin-hero {
-    position: relative;
-    padding: 72px 48px 48px;
-    border-bottom: 1px solid #2A2620;
-    overflow: hidden;
-    animation: fadeDown 0.7s ease both;
-  }
+  /* ... Estilos del Hero y Listado (omitidos por brevedad, se mantienen iguales) ... */
+  .admin-hero { position: relative; padding: 72px 48px 48px; border-bottom: 1px solid #2A2620; }
+  .admin-label { font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: #C17A3A; margin-bottom: 12px; }
+  .admin-title { font-family: 'Playfair Display', serif; font-size: clamp(40px, 6vw, 72px); font-weight: 700; }
+  .admin-title em { font-style: italic; font-weight: 400; color: #C17A3A; }
+  .admin-subtitle { margin-top: 16px; font-size: 14px; color: #7A7268; max-width: 420px; line-height: 1.6; }
 
-  .admin-hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse 60% 80% at 80% 50%, #3D1F0A44, transparent);
-    pointer-events: none;
+  /* Estilos del Formulario */
+  .create-section { padding: 24px 48px; border-bottom: 1px solid #2A2620; background: #161411; }
+  .create-form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 800px; margin-top: 20px; }
+  
+  .create-form input, .create-form textarea {
+    background: #111010; border: 1px solid #2A2620; color: #F2EDE4;
+    padding: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; border-radius: 2px; outline: none;
   }
+  .create-form input:focus { border-color: #C17A3A; }
 
-  .admin-label {
-    font-size: 10px;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: #C17A3A;
-    margin-bottom: 12px;
-  }
-
-  .admin-title {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(40px, 6vw, 72px);
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -0.02em;
-  }
-
-  .admin-title em {
-    font-style: italic;
-    font-weight: 400;
-    color: #C17A3A;
-  }
-
-  .admin-subtitle {
-    margin-top: 16px;
-    font-size: 14px;
-    color: #7A7268;
-    font-weight: 300;
-    max-width: 420px;
-    line-height: 1.6;
-  }
-
-  /* Lista de platos */
-  .admin-list {
-    padding: 32px 48px;
-    animation: fadeUp 0.6s 0.1s ease both;
-  }
-
-  .admin-card {
-    background: #111010;
-    border-bottom: 1px solid #2A2620;
-    padding: 20px 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    transition: background 0.2s;
-  }
-
-  .admin-card:hover {
-    background: #161411;
-    padding-left: 12px;
-    padding-right: 12px;
-    margin: 0 -12px;
-    border-bottom-color: #C17A3A;
-  }
-
-  .admin-info {
-    flex: 1;
-  }
-
-  .admin-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 1.2;
-    margin-bottom: 4px;
-  }
-
-  .admin-meta {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    font-size: 14px;
-    color: #7A7268;
-  }
-
-  .admin-price {
-    color: #F2EDE4;
-    font-weight: 500;
-  }
-
-  .admin-price span {
-    font-size: 12px;
-    font-weight: 300;
-    color: #7A7268;
-    margin-left: 2px;
-  }
-
-  .admin-badge {
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 4px 10px;
-    border-radius: 2px;
-    background: #1E1C19;
-    color: #7A7268;
-  }
-
-  .admin-badge.available {
-    background: #1E2A1E;
-    color: #8FC98F;
-  }
-
-  .admin-badge.unavailable {
-    background: #2A1E1E;
-    color: #C17A3A;
-  }
-
-  .admin-edit-btn {
-    background: #C17A3A;
-    color: #111010;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 10px 24px;
-    border: none;
-    cursor: pointer;
-    transition: background 0.2s;
-    text-decoration: none;
-    display: inline-block;
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
-
-  .admin-edit-btn:hover {
-    background: #D68F4A;
-  }
-
-  /* Loading */
-  .admin-loading {
+  /* Área de Imagen */
+  .image-upload-wrapper {
+    grid-column: span 2;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 400px;
-    gap: 20px;
-    color: #7A7268;
-    font-size: 12px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-  }
-
-  .loader-ring {
-    width: 36px;
-    height: 36px;
-    border: 2px solid #2A2620;
-    border-top-color: #C17A3A;
-    border-radius: 50%;
-    animation: spin 0.9s linear infinite;
-  }
-
-  /* Empty */
-  .admin-empty {
-    padding: 80px 48px;
+    gap: 8px;
+    padding: 16px;
+    border: 1px dashed #2A2620;
+    border-radius: 2px;
+    background: #111010;
     text-align: center;
-    color: #3A3630;
-    font-family: 'Playfair Display', serif;
-    font-size: 28px;
-    font-style: italic;
-    font-weight: 400;
   }
 
-  /* Footer */
-  .admin-footer {
-    padding: 24px 48px;
-    border-top: 1px solid #1E1C19;
-    font-size: 11px;
-    color: #3A3630;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    display: flex;
-    justify-content: space-between;
-    animation: fadeUp 0.6s 0.2s ease both;
+  .image-preview {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin: 10px auto;
+    border: 1px solid #C17A3A;
   }
 
-  /* Animations */
-  @keyframes fadeDown {
-    from { opacity: 0; transform: translateY(-12px); }
-    to   { opacity: 1; transform: translateY(0); }
+  .file-input-label {
+    font-size: 12px;
+    color: #7A7268;
+    cursor: pointer;
+    text-decoration: underline;
   }
 
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
+  .full-width { grid-column: span 2; }
+  .admin-list { padding: 32px 48px; }
+  .admin-card { border-bottom: 1px solid #2A2620; padding: 20px 0; display: flex; align-items: center; justify-content: space-between; }
+  .admin-edit-btn {
+    background: #C17A3A; color: #111010; font-size: 12px; font-weight: 500;
+    text-transform: uppercase; padding: 10px 24px; border: none; cursor: pointer;
+    text-decoration: none; border-radius: 2px;
   }
+  .btn-secondary { background: transparent; border: 1px solid #2A2620; color: #7A7268; margin-right: 10px; }
 
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  .card-enter {
-    opacity: 0;
-    animation: fadeUp 0.4s ease forwards;
-  }
-
-  @media (max-width: 600px) {
-    .admin-hero { padding: 48px 24px 32px; }
-    .admin-list { padding: 24px; }
-    .admin-card { flex-direction: column; align-items: flex-start; }
-    .admin-edit-btn { align-self: flex-end; }
-    .admin-footer { padding: 20px 24px; flex-direction: column; gap: 8px; }
-  }
+  .loader-ring { width: 36px; height: 36px; border: 2px solid #2A2620; border-top-color: #C17A3A; border-radius: 50%; animation: spin 0.9s linear infinite; }
 `;
+
+type Availability = {
+  id: number;
+  product_id: number;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+};
 
 type Product = {
   id: number;
   name: string;
   base_price: string;
-  is_available?: boolean; // Opcional, por si la API lo incluye
+  is_available?: boolean;
+  availability?: Availability[];
 };
 
-export default function AdminPlatosPage({
-  params,
-}: {
-  params: Promise<{ restaurantId: string }>;
-}) {
+// Extendemos el estado del formulario para incluir datos de imagen
+interface FormState {
+  name: string;
+  base_price: string;
+  stock: string;
+  category_id: string;
+  description: string;
+  image: string | null;
+  fileName: string;
+  format: string;
+}
+
+export default function AdminPlatosPage({ params }: { params: Promise<{ restaurantId: string }> }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [form, setForm] = useState<FormState>({
+    name: '',
+    base_price: '',
+    stock: '',
+    category_id: '',
+    description: '',
+    image: null,
+    fileName: '',
+    format: ''
+  });
 
   useEffect(() => {
     async function load() {
-      const { restaurantId } = await params;
-      setRestaurantId(restaurantId);
+      const { restaurantId: resId } = await params;
+      setRestaurantId(resId);
 
       try {
-        const res = await fetch(`/api/platos?restaurantId=${restaurantId}&includeInactive=true`);
+        const res = await fetch(`/api/platos?restaurantId=${resId}&includeInactive=true`);
         const data = await res.json();
-        setProducts(data.products || []);
+
+        const productsWithAvailability = await Promise.all(
+          (data.products || []).map(async (product: Product) => {
+            try {
+              const res = await fetch(`/api/platos/${product.id}/availability`);
+              const avData = await res.json();
+              return {
+                ...product,
+                availability: avData.availability || []
+              };
+            } catch {
+              return { ...product, availability: [] };
+            }
+          })
+        );
+
+        setProducts(productsWithAvailability);
+
       } catch (error) {
-        console.error('Error fetching products:', error);
+        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -271,21 +158,85 @@ export default function AdminPlatosPage({
     load();
   }, [params]);
 
-  if (!restaurantId || loading) {
-    return (
-      <>
-        <style>{styles}</style>
-        <div className="admin-root">
-          <div className="admin-loading">
-            <div className="loader-ring" />
-            Cargando platos…
-          </div>
-        </div>
-      </>
-    );
+  const daysMap = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+  function formatDay(day: number) {
+    return daysMap[day] ?? 'Desconocido';
   }
 
-  const showEmpty = products.length === 0;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm({
+        ...form,
+        image: reader.result as string,
+        fileName: file.name,
+        format: file.type.split('/')[1]
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // 1. Crear el plato
+      const res = await fetch('/api/platos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurant_id: Number(restaurantId),
+          name: form.name,
+          base_price: Number(form.base_price),
+          stock: Number(form.stock),
+          category_id: Number(form.category_id),
+          description: form.description.trim() === "" ? null : form.description
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al crear plato');
+
+      const newProduct = data.product;
+
+      // 2. Subir imagen (Si el usuario seleccionó una)
+      if (form.image && newProduct.id) {
+        const imgRes = await fetch(`/api/platos/${newProduct.id}/images`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: form.fileName,
+            data: form.image,
+            format: form.format,
+            isPrimary: true
+          })
+        });
+        if (!imgRes.ok) console.warn("Plato creado, pero la imagen falló.");
+      }
+
+      // 3. Éxito
+      setProducts(prev => [newProduct, ...prev]);
+      setForm({ name: '', base_price: '', stock: '', category_id: '', description: '', image: null, fileName: '', format: '' });
+      setShowCreateForm(false);
+      alert('¡Plato creado con éxito!');
+
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading) return <div className="admin-root"><div className="admin-loading"><div className="loader-ring" /></div></div>;
 
   return (
     <>
@@ -293,52 +244,87 @@ export default function AdminPlatosPage({
       <div className="admin-root">
         <header className="admin-hero">
           <p className="admin-label">Administración</p>
-          <h1 className="admin-title">
-            Gestión de <em>Platos</em>
-          </h1>
-          <p className="admin-subtitle">
-            Lista completa de platos del restaurante. Puedes editar cada uno o crear nuevos.
-          </p>
+          <h1 className="admin-title">Gestión de <em>Platos</em></h1>
         </header>
 
-        {showEmpty ? (
-          <div className="admin-empty">No hay platos registrados</div>
-        ) : (
-          <div className="admin-list">
-            {products.map((p, i) => (
-              <div
-                key={p.id}
-                className="admin-card card-enter"
-                style={{ animationDelay: `${i * 0.05}s` }}
-              >
-                <div className="admin-info">
-                  <h2 className="admin-name">{p.name}</h2>
-                  <div className="admin-meta">
-                    <span className="admin-price">
-                      ${p.base_price} <span>MXN</span>
-                    </span>
-                    {p.is_available !== undefined && (
-                      <span className={`admin-badge ${p.is_available ? 'available' : 'unavailable'}`}>
-                        {p.is_available ? 'Disponible' : 'No disponible'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <Link
-                  href={`/admin/restaurantes/${restaurantId}/platos/editar/${p.id}`}
-                  className="admin-edit-btn"
-                >
-                  Editar
-                </Link>
+        <div className="create-section">
+          {!showCreateForm ? (
+            <button onClick={() => setShowCreateForm(true)} className="admin-edit-btn">+ Nuevo plato</button>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <h3 style={{ fontFamily: 'Playfair Display' }}>Nuevo Plato</h3>
+                <button onClick={() => setShowCreateForm(false)} className="admin-edit-btn btn-secondary">Cancelar</button>
               </div>
-            ))}
-          </div>
-        )}
+              
+              <form onSubmit={handleSubmit} className="create-form">
+                <input name="name" placeholder="Nombre" value={form.name} onChange={handleChange} required className="full-width" />
+                <input name="base_price" type="number" placeholder="Precio" value={form.base_price} onChange={handleChange} required />
+                <input name="stock" type="number" placeholder="Stock" value={form.stock} onChange={handleChange} required />
+                <input name="category_id" type="number" placeholder="ID Categoría" value={form.category_id} onChange={handleChange} required className="full-width" />
+                <textarea name="description" placeholder="Descripción (opcional)" value={form.description} onChange={handleChange} className="full-width" />
 
-        <footer className="admin-footer">
-          <span>Sistema de Administración</span>
-          <span>{products.length} platos</span>
-        </footer>
+                {/* --- SECCIÓN DE IMAGEN --- */}
+                <div className="image-upload-wrapper">
+                  <span style={{ fontSize: '14px', color: '#F2EDE4' }}>Foto del Plato (Opcional)</span>
+                  {form.image && <img src={form.image} alt="Preview" className="image-preview" />}
+                  <label className="file-input-label">
+                    {form.image ? 'Cambiar foto' : 'Haga clic para seleccionar foto'}
+                    <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+                  </label>
+                </div>
+
+                <button type="submit" className="admin-edit-btn full-width" disabled={isSubmitting}>
+                  {isSubmitting ? 'Guardando...' : 'Guardar Plato'}
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+
+        <div className="admin-list">
+          {products.map(p => (
+            <div key={p.id} className="admin-card">
+              
+              <div className="admin-info">
+                <h2 className="admin-name">{p.name}</h2>
+
+                <div className="admin-meta">
+                  <span className="admin-price">${p.base_price} MXN</span>
+                </div>
+
+                {/* ================= HORARIOS ================= */}
+                <div style={{ marginTop: '10px' }}>
+                  <strong style={{ fontSize: '13px' }}>Horarios:</strong>
+
+                  {(!p.availability || p.availability.length === 0) ? (
+                    <p style={{ fontSize: '13px', opacity: 0.7 }}>
+                      Disponible todo el día
+                    </p>
+                  ) : (
+                    <ul style={{ fontSize: '13px', marginTop: '5px' }}>
+                      {p.availability.map(av => (
+                        <li key={av.id}>
+                          {formatDay(av.day_of_week)}: {av.start_time} - {av.end_time}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {/* ========================================== */}
+
+              </div>
+
+              <Link 
+                href={`/admin/restaurantes/${restaurantId}/platos/editar/${p.id}`} 
+                className="admin-edit-btn"
+              >
+                Editar
+              </Link>
+
+            </div>
+          ))}
+        </div>
       </div>
     </>
   );

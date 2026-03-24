@@ -1,3 +1,4 @@
+//lib/repositories/product.repository.ts
 import { db } from '../../config/db';
 
 export interface Product {
@@ -8,6 +9,17 @@ export interface Product {
   is_available: boolean;
   is_active: boolean;
   stock: number;
+  deleted_at: Date | null;
+  descripcion: string | null;
+}
+
+export interface ProductAvailability {
+  id: number;
+  product_id: number;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  created_at: Date;
 }
 
 export class ProductRepository {
@@ -67,4 +79,81 @@ export class ProductRepository {
     return (result.rowCount ?? 0) > 0;
 
   }
+
+  async createProduct(data: {
+    name: string;
+    base_price: number;
+    stock: number;
+    category_id: number;
+    descripcion?: string | null;
+  }): Promise<Product> {
+
+    const query = `
+      INSERT INTO products 
+      (name, base_price, stock, category_id, descripcion, is_active, is_available)
+      VALUES ($1, $2, $3, $4, $5, TRUE, TRUE)
+      RETURNING *
+    `;
+
+    const values = [
+      data.name,
+      data.base_price,
+      data.stock,
+      data.category_id,
+      data.descripcion ?? null
+    ];
+
+    const result = await db.query(query, values);
+
+    return result.rows[0];
+  }
+
+  async findByName(name: string): Promise<Product | null> {
+    const query = `
+      SELECT *
+      FROM products
+      WHERE LOWER(name) = LOWER($1)
+    `;
+
+    const result = await db.query(query, [name]);
+    return result.rows[0] || null;
+  }
+
+  async updateProduct(
+    id: number,
+    data: { name?: string; descripcion?: string }
+  ) {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    let index = 1;
+
+    if (data.name !== undefined) {
+      fields.push(`name = $${index++}`);
+      values.push(data.name);
+    }
+
+    if (data.descripcion !== undefined) {
+      fields.push(`descripcion = $${index++}`);
+      values.push(data.descripcion);
+    }
+
+    if (fields.length === 0) {
+      throw new Error('No hay datos para actualizar');
+    }
+
+    values.push(id);
+
+    const query = `
+      UPDATE products
+      SET ${fields.join(', ')}
+      WHERE id = $${index}
+      RETURNING *
+    `;
+
+    const result = await db.query(query, values);
+
+    return result.rows[0];
+  }
+
 }

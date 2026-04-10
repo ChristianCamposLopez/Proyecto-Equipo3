@@ -206,6 +206,7 @@ CREATE TABLE orders (
     CONSTRAINT chk_order_status CHECK (status IN ('PENDING', 'COMPLETED', 'CANCELED', 'DELIVERED'))
 );
 
+/*
 CREATE TABLE customer_product_preferences (
     id SERIAL PRIMARY KEY,
 
@@ -236,8 +237,8 @@ CREATE TABLE customer_recommendations (
     created_at TIMESTAMP DEFAULT NOW(),
 
     UNIQUE (customer_id, product_id)
-);
-
+); 
+*/
 
 CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
@@ -326,15 +327,16 @@ ON orders(customer_id, status);
 CREATE INDEX idx_order_items_product 
 ON order_items(product_id);
 
+/*
 CREATE INDEX idx_preferences_customer 
 ON customer_product_preferences(customer_id);
 
 CREATE INDEX idx_recommendations_customer 
 ON customer_recommendations(customer_id);
 
-
+*/
 -- =============================================
--- 12. SEEDING
+-- 12. SEEDING (SOLO RESTAURANTE 1)
 -- =============================================
 
 INSERT INTO roles (name)
@@ -350,24 +352,21 @@ INSERT INTO user_roles VALUES
 (2,2);
 
 -- =============================================
--- 4. RESTAURANTES (Añadimos uno más)
+-- 4. RESTAURANTES (Solo La Parrilla Mixteca)
 -- =============================================
 INSERT INTO restaurants (owner_user_id, name) VALUES 
-(2, 'La Parrilla Mixteca'),
-(2, 'Sushi Garden'); -- Carlos Admin también es dueño de este
+(2, 'La Parrilla Mixteca');
 
 -- =============================================
--- 5. CATEGORÍAS
+-- 5. CATEGORÍAS (Solo para restaurante 1)
 -- =============================================
 INSERT INTO categories (restaurant_id, name, descripcion) VALUES
 (1, 'Hamburguesas', 'Especialidades al carbón'),
 (1, 'Bebidas', 'Refrescos y aguas naturales'),
-(1, 'Complementos', 'Papas y aros de cebolla'),
-(2, 'Rollos Especiales', 'Sushi de autor con ingredientes frescos'),
-(2, 'Entradas Japonesas', 'Edamames, gyozas y más');
+(1, 'Complementos', 'Papas y aros de cebolla');
 
 -- =============================================
--- 6. PRODUCTOS (PLATOS)
+-- 6. PRODUCTOS (PLATOS) solo para restaurante 1
 -- =============================================
 
 -- Productos para La Parrilla Mixteca (Restaurant_id 1, Categorías 1, 2, 3)
@@ -380,16 +379,8 @@ INSERT INTO products (category_id, name, base_price, stock) VALUES
 (3, 'Papas Gajo Sazonadas', 45.00, 20),
 (3, 'Aros de Cebolla (8 pzs)', 55.00, 12);
 
--- Productos para Sushi Garden (Restaurant_id 2, Categorías 4, 5)
-INSERT INTO products (category_id, name, base_price, stock) VALUES
-(4, 'Philadelphia Roll', 95.00, 20),
-(4, 'Dragon Roll Especial', 150.00, 10),
-(4, 'Acevichado Roll', 140.00, 15),
-(5, 'Gyozas de Cerdo (5 pzs)', 75.00, 30),
-(5, 'Edamames al vapor', 60.00, 25);
-
 -- =============================================
--- 13. DATOS DE PRUEBA PARA RANKING DE VENTAS
+-- 13. DATOS DE PRUEBA PARA RANKING DE VENTAS (solo restaurante 1)
 -- =============================================
 
 -- =============================================
@@ -494,7 +485,7 @@ INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase)
 (5, 3, 1, 135.00), -- Hamburguesa Doble Queso
 (5, 7, 2, 55.00);  -- Aros de Cebolla
 
--- Pedido 6 (order_id = 6) - CANCELADO, no debe aparecer en ranking
+-- Pedido 6 (order_id = 6) - CANCELADO
 INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
 (6, 1, 3, 85.00);  -- Hamburguesa Clásica
 
@@ -504,74 +495,7 @@ INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase)
 (7, 5, 5, 30.00);   -- Refrescos Variados
 
 -- =============================================
--- 13.3 PEDIDOS DE PRUEBA PARA SUSHI GARDEN (Restaurant_id 2)
--- =============================================
-
--- Pedido 8: 8 Philadelphia Rolls + 4 Dragon Rolls (Completado - hace 12 días)
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
-VALUES (
-  1, 2,
-  '{"street":"Av. Polanco 200","city":"Ciudad de México","zip":"11550"}',
-  'COMPLETED',
-  1360.00,
-  NOW() - INTERVAL '12 days'
-);
-
--- Pedido 9: 6 Acevichado Rolls + 10 Gyozas (Completado - hace 6 días)
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
-VALUES (
-  1, 2,
-  '{"street":"Calle Masaryk 500","city":"Ciudad de México","zip":"11550"}',
-  'COMPLETED',
-  990.00,
-  NOW() - INTERVAL '6 days'
-);
-
--- Pedido 10: 15 Edamames + 3 Dragon Rolls (Completado - hace 2 días)
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
-VALUES (
-  1, 2,
-  '{"street":"Av. Ejército Nacional 800","city":"Ciudad de México","zip":"11560"}',
-  'COMPLETED',
-  540.00,
-  NOW() - INTERVAL '2 days'
-);
-
--- Pedido 11: CANCELADO - 5 Philadelphia Rolls (No debe contar)
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
-VALUES (
-  1, 2,
-  '{"street":"Av. Polanco 200","city":"Ciudad de México","zip":"11550"}',
-  'CANCELED',
-  475.00,
-  NOW() - INTERVAL '1 day'
-);
-
--- =============================================
--- 13.4 ORDER_ITEMS PARA SUSHI GARDEN
--- =============================================
-
--- Pedido 8 (order_id = 8)
-INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
-(8, 8, 8, 95.00),   -- Philadelphia Roll
-(8, 9, 4, 150.00);  -- Dragon Roll Especial
-
--- Pedido 9 (order_id = 9)
-INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
-(9, 10, 6, 140.00), -- Acevichado Roll
-(9, 11, 10, 75.00); -- Gyozas de Cerdo
-
--- Pedido 10 (order_id = 10)
-INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
-(10, 12, 15, 60.00), -- Edamames al vapor
-(10, 9, 3, 150.00);  -- Dragon Roll Especial
-
--- Pedido 11 (order_id = 11) - CANCELADO
-INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
-(11, 8, 5, 95.00);   -- Philadelphia Roll
-
--- =============================================
--- 13.5 AGREGAR PAGOS DE PRUEBA
+-- 13.5 AGREGAR PAGOS DE PRUEBA (solo para pedidos del restaurante 1)
 -- =============================================
 
 INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at) VALUES
@@ -581,14 +505,10 @@ INSERT INTO payments (order_id, payment_method, status, transaction_id, created_
 (4, 'CARD', 'SUCCESS', 'TXN1003', NOW() - INTERVAL '5 days'),
 (5, 'CASH', 'SUCCESS', NULL, NOW() - INTERVAL '3 days'),
 (6, 'CARD', 'FAILED', 'TXN1004', NOW() - INTERVAL '2 days'),
-(7, 'CARD', 'SUCCESS', 'TXN1005', NOW()),
-(8, 'CARD', 'SUCCESS', 'TXN1006', NOW() - INTERVAL '12 days'),
-(9, 'CASH', 'SUCCESS', NULL, NOW() - INTERVAL '6 days'),
-(10, 'CARD', 'SUCCESS', 'TXN1007', NOW() - INTERVAL '2 days'),
-(11, 'CARD', 'FAILED', 'TXN1008', NOW() - INTERVAL '1 day');
+(7, 'CARD', 'SUCCESS', 'TXN1005', NOW());
 
 -- =============================================
--- 14. DISPONIBILIDAD DE PRODUCTOS (US020)
+-- 14. DISPONIBILIDAD DE PRODUCTOS (US020) solo para restaurante 1
 -- =============================================
 
 -- Disponibilidad para La Parrilla Mixteca (restaurant_id = 1)
@@ -628,38 +548,7 @@ VALUES
 ((SELECT id FROM products WHERE name = 'Papas Gajo Sazonadas' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 3, '18:00', '22:00'),
 ((SELECT id FROM products WHERE name = 'Papas Gajo Sazonadas' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 5, '18:00', '22:00');
 
--- =============================================
--- Disponibilidad para Sushi Garden (restaurant_id = 2)
--- =============================================
-
--- Philadelphia Roll (product_id = 8)
--- De lunes a jueves 13:00-22:00, viernes y sábado 13:00-00:00, domingo 13:00-20:00
-INSERT INTO product_availability (product_id, day_of_week, start_time, end_time)
-VALUES
-((SELECT id FROM products WHERE name = 'Philadelphia Roll' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 2)), 1, '13:00', '22:00'),
-((SELECT id FROM products WHERE name = 'Philadelphia Roll' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 2)), 2, '13:00', '22:00'),
-((SELECT id FROM products WHERE name = 'Philadelphia Roll' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 2)), 3, '13:00', '22:00'),
-((SELECT id FROM products WHERE name = 'Philadelphia Roll' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 2)), 4, '13:00', '22:00'),
-((SELECT id FROM products WHERE name = 'Philadelphia Roll' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 2)), 5, '13:00', '00:00'),
-((SELECT id FROM products WHERE name = 'Philadelphia Roll' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 2)), 6, '13:00', '00:00'),
-((SELECT id FROM products WHERE name = 'Philadelphia Roll' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 2)), 0, '13:00', '20:00');
-
--- Dragon Roll Especial (product_id = 9)
--- Solo los jueves, viernes y sábados de 19:00 a 23:00
-INSERT INTO product_availability (product_id, day_of_week, start_time, end_time)
-VALUES
-((SELECT id FROM products WHERE name = 'Dragon Roll Especial' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 2)), 4, '19:00', '23:00'),
-((SELECT id FROM products WHERE name = 'Dragon Roll Especial' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 2)), 5, '19:00', '23:00'),
-((SELECT id FROM products WHERE name = 'Dragon Roll Especial' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 2)), 6, '19:00', '23:00');
-
--- Gyozas de Cerdo (product_id = 11)
--- Todos los días de 12:00 a 21:00, excepto martes (cerrado)
-INSERT INTO product_availability (product_id, day_of_week, start_time, end_time)
-SELECT id, day, '12:00', '21:00'
-FROM products
-CROSS JOIN (VALUES (0),(1),(3),(4),(5),(6)) AS days(day)   -- excluimos martes (2)
-WHERE name = 'Gyozas de Cerdo (5 pzs)' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 2);
-
+/*
 -- =============================================
 -- GENERAR PREFERENCIAS DESDE HISTORIAL
 -- =============================================
@@ -716,3 +605,5 @@ SELECT
     ) AS rank,
     NOW()
 FROM customer_product_preferences;
+
+*/

@@ -313,7 +313,7 @@ export default function CatalogoPage({
       }
 
       try {
-        const recRes = await fetch(`/api/recommendations?restaurantId=${restaurantId}`);
+        const recRes = await fetch(`/api/recommendations?restaurantId=${restaurantId}`, { cache: 'no-store' });
         const recData = await recRes.json();
         setRecommendations(recData.recommendations || []);
       } catch (error) {

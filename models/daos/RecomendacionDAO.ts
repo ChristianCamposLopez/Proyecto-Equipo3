@@ -36,20 +36,23 @@ export class RecomendacionDAO {
             '/images/default-product.png'
           ) AS image_display,
 
-          cr.score
+          SUM(oi.quantity) AS score
 
-      FROM customer_recommendations cr
-      JOIN products p ON p.id = cr.product_id
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      JOIN products p ON p.id = oi.product_id
       JOIN categories c ON p.category_id = c.id
 
-      WHERE cr.customer_id = $1
+      WHERE o.customer_id = $1
         AND c.restaurant_id = $2
+        AND o.status = 'COMPLETED'
 
         AND p.is_active = TRUE
         AND p.deleted_at IS NULL
         AND p.stock > 0
 
-      ORDER BY cr.rank ASC
+      GROUP BY p.id
+      ORDER BY score DESC
       LIMIT 5;
       `,
       [userId, restaurantId]

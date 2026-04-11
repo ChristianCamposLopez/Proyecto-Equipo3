@@ -1,6 +1,7 @@
 "use client"
 // app/menu/page.tsx — US009.1: Cliente ve imágenes de platillos
 
+import React from 'react'
 import { useEffect, useState } from "react"
 
 const styles = `
@@ -175,6 +176,25 @@ const styles = `
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: #7A7268;
+    backdrop-filter: blur(2px);
+  }
+
+  .product-card.unavailable {
+    opacity: 0.65;
+    pointer-events: none;
+  }
+
+  .stock-status {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #C04040;
+    color: #F2EDE4;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 10px;
   }
 
   .card-body {
@@ -286,6 +306,212 @@ const styles = `
     .menu-filters { padding: 16px 24px; }
     .menu-footer { padding: 20px 24px; flex-direction: column; gap: 8px; }
   }
+
+  /* Add to cart button */
+  .add-to-cart-btn {
+    width: 100%;
+    padding: 12px;
+    background: #C17A3A;
+    color: #111010;
+    border: none;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 12px;
+  }
+
+  .add-to-cart-btn:hover:not(:disabled) {
+    background: #D18A4A;
+  }
+
+  .add-to-cart-btn:disabled {
+    background: #7A7268;
+    cursor: not-allowed;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .modal-content {
+    background: #111010;
+    border: 1px solid #2A2620;
+    border-radius: 4px;
+    padding: 32px;
+    max-width: 400px;
+    width: 90%;
+    animation: scaleIn 0.2s ease;
+  }
+
+  .modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .modal-category {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #C17A3A;
+    margin-bottom: 16px;
+  }
+
+  .modal-price {
+    font-size: 20px;
+    font-weight: 600;
+    color: #F2EDE4;
+    margin-bottom: 24px;
+  }
+
+  .quantity-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .quantity-label {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7A7268;
+  }
+
+  .quantity-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #2A2620;
+    border-radius: 2px;
+  }
+
+  .quantity-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: #C17A3A;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .quantity-btn:hover {
+    background: #1E1C19;
+  }
+
+  .quantity-display {
+    width: 40px;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .modal-buttons {
+    display: flex;
+    gap: 12px;
+  }
+
+  .modal-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .modal-btn.cancel {
+    background: #2A2620;
+    color: #7A7268;
+  }
+
+  .modal-btn.cancel:hover {
+    background: #3A3630;
+    color: #F2EDE4;
+  }
+
+  .modal-btn.confirm {
+    background: #C17A3A;
+    color: #111010;
+  }
+
+  .modal-btn.confirm:hover:not(:disabled) {
+    background: #D18A4A;
+  }
+
+  .modal-btn.confirm:disabled {
+    background: #7A7268;
+    cursor: not-allowed;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes scaleIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  /* Floating cart button */
+  .floating-cart {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 60px;
+    height: 60px;
+    background: #C17A3A;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 4px 12px rgba(193, 122, 58, 0.3);
+    transition: all 0.2s;
+    z-index: 100;
+  }
+
+  .floating-cart:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(193, 122, 58, 0.4);
+  }
+
+  .cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #dc2626;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
 `
 
 type Product = {
@@ -293,6 +519,7 @@ type Product = {
   name: string
   base_price: number
   is_available: boolean
+  stock_quantity: number
   image_url: string | null
   category_name: string
 }
@@ -302,11 +529,15 @@ type Category = { id: number; name: string }
 export default function MenuPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [quantity, setQuantity] = useState(1)
+  const [adding, setAdding] = useState(false)
+  const [cartCount, setCartCount] = useState(0)
 
   // valores de demostración si la BD está vacía
   const sampleProducts: Product[] = [
-    { id: 100, name: 'Ejemplo: Hamburguesa', base_price: 85, is_available: true, image_url: null, category_name: 'Hamburguesas' },
-    { id: 101, name: 'Ejemplo: Taco al Pastor', base_price: 35, is_available: true, image_url: null, category_name: 'Tacos' },
+    { id: 100, name: 'Ejemplo: Hamburguesa', base_price: 85, is_available: true, stock_quantity: 50, image_url: null, category_name: 'Hamburguesas' },
+    { id: 101, name: 'Ejemplo: Taco al Pastor', base_price: 35, is_available: true, stock_quantity: 30, image_url: null, category_name: 'Tacos' },
   ];
   const sampleCategories: Category[] = [
     { id: 1, name: 'Hamburguesas' },
@@ -331,7 +562,48 @@ export default function MenuPage() {
         setCategories(cats as Category[]);
       })
       .finally(() => setLoading(false));
+    
+    // Count cart items
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]')
+    setCartCount(cart.reduce((sum: number, item: any) => sum + item.quantity, 0))
   }, [])
+
+  const addToCart = async () => {
+    if (!selectedProduct) return
+
+    setAdding(true)
+    try {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]')
+      const existingItem = cart.find((item: any) => item.id === selectedProduct.id)
+
+      if (existingItem) {
+        existingItem.quantity += quantity
+      } else {
+        cart.push({
+          id: selectedProduct.id,
+          name: selectedProduct.name,
+          price: selectedProduct.base_price,
+          quantity,
+          category: selectedProduct.category_name
+        })
+      }
+
+      localStorage.setItem('cart', JSON.stringify(cart))
+      setCartCount(cart.reduce((sum: number, item: any) => sum + item.quantity, 0))
+      setSelectedProduct(null)
+      setQuantity(1)
+      alert(`${selectedProduct.name} agregado al carrito!`)
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al agregar al carrito')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const goToCart = () => {
+    window.location.href = '/carrito'
+  }
 
   const dataProducts = products.length ? products : sampleProducts
   const dataCategories = categories.length ? categories : sampleCategories
@@ -384,7 +656,7 @@ export default function MenuPage() {
             {filtered.map((p, i) => (
               <div
                 key={p.id}
-                className="product-card card-enter"
+                className={`product-card card-enter ${!p.is_available ? 'unavailable' : ''}`}
                 style={{ animationDelay: `${i * 0.05}s` }}
               >
                 <div className="card-img-wrap">
@@ -401,7 +673,12 @@ export default function MenuPage() {
                     </div>
                   )}
                   {p.image_url && <div className="card-badge">{p.category_name}</div>}
-                  {!p.is_available && <div className="card-unavailable">No disponible</div>}
+                  {!p.is_available && (
+                    <>
+                      <div className="stock-status">✕ Agotado</div>
+                      <div className="card-unavailable">No disponible</div>
+                    </>
+                  )}
                 </div>
                 <div className="card-body">
                   {!p.image_url && <span className="card-category">{p.category_name}</span>}
@@ -410,11 +687,72 @@ export default function MenuPage() {
                     ${Number(p.base_price).toFixed(2)}
                     <span>MXN</span>
                   </div>
+                  {p.is_available && (
+                    <button 
+                      className="add-to-cart-btn"
+                      onClick={() => {
+                        setSelectedProduct(p)
+                        setQuantity(1)
+                      }}
+                    >
+                      + Agregar al carrito
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        {selectedProduct && (
+          <div className="modal-overlay" onClick={() => setSelectedProduct(null)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <h2 className="modal-title">{selectedProduct.name}</h2>
+              <p className="modal-category">{selectedProduct.category_name}</p>
+              <div className="modal-price">${Number(selectedProduct.base_price).toFixed(2)} MXN</div>
+              
+              <div className="quantity-section">
+                <label className="quantity-label">Cantidad</label>
+                <div className="quantity-control">
+                  <button 
+                    className="quantity-btn"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  >−</button>
+                  <div className="quantity-display">{quantity}</div>
+                  <button 
+                    className="quantity-btn"
+                    onClick={() => setQuantity(quantity + 1)}
+                  >+</button>
+                </div>
+              </div>
+
+              <div className="modal-buttons">
+                <button 
+                  className="modal-btn cancel"
+                  onClick={() => setSelectedProduct(null)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="modal-btn confirm"
+                  onClick={addToCart}
+                  disabled={adding}
+                >
+                  {adding ? 'Agregando...' : 'Agregar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <button 
+          className="floating-cart"
+          onClick={() => window.location.href = '/carrito'}
+          title="Ver carrito"
+        >
+          🛒
+          {cartCount > 0 && <div className="cart-badge">{cartCount}</div>}
+        </button>
 
         <footer className="menu-footer">
           <span>Sistema de Pedidos</span>

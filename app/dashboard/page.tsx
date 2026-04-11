@@ -361,12 +361,20 @@ export default function Dashboard() {
           <div className="db-title-block">
             <p className="db-eyebrow">Reporte de rendimiento</p>
             <h1 className="db-title">Dashboard <em>Ventas</em></h1>
-            <a className="db-csv-btn" href="/api/reports/daily-sales/csv">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M6 1v7M3 6l3 3 3-3M1 10h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              Exportar CSV
-            </a>
+            <div style={{display: 'flex', gap: '8px', marginTop: '16px'}}>
+              <a className="db-csv-btn" href="/api/reports/daily-sales/csv">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 1v7M3 6l3 3 3-3M1 10h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                Exportar CSV
+              </a>
+              <a className="db-csv-btn" href="/api/reports/daily-sales-excel?restaurantId=1">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 1v7M3 6l3 3 3-3M1 10h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                Exportar Excel
+              </a>
+            </div>
           </div>
           <div className="db-date">
             <div>{today}</div>

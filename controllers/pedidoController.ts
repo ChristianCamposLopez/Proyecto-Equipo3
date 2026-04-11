@@ -1,3 +1,4 @@
+// controllers/pedidoController.ts
 import { PedidoDAO } from "../models/daos/PedidoDAO";
 
 export class PedidoController {

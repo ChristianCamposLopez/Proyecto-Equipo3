@@ -38,8 +38,8 @@ export class RecomendacionDAO {
 
           SUM(oi.quantity) AS score
 
-      FROM orders o
-      JOIN order_items oi ON oi.order_id = o.id
+      FROM pedido_historial o
+      JOIN pedido_items_historial oi ON oi.order_id = o.id
       JOIN products p ON p.id = oi.product_id
       JOIN categories c ON p.category_id = c.id
 

@@ -253,6 +253,33 @@ CREATE TABLE order_items (
     unit_price_at_purchase DECIMAL(10,2)
 );
 
+CREATE TABLE pedido_historial (
+    id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES users(id),
+    restaurant_id INT REFERENCES restaurants(id),
+
+    delivery_address_json JSONB,
+
+    status VARCHAR(50) DEFAULT 'PENDING',
+
+    total_amount DECIMAL(10,2),
+
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT chk_order_status CHECK (status IN ('PENDING', 'COMPLETED', 'CANCELED', 'DELIVERED'))
+);
+
+CREATE TABLE pedido_items_historial (
+    id SERIAL PRIMARY KEY,
+
+    order_id INT REFERENCES pedido_historial(id), -- 🔥 CAMBIO AQUÍ
+
+    product_id INT REFERENCES products(id),
+
+    quantity INT NOT NULL,
+    unit_price_at_purchase DECIMAL(10,2)
+);
+
 CREATE TABLE order_item_options (
     id SERIAL PRIMARY KEY,
 
@@ -269,15 +296,10 @@ CREATE TABLE order_item_options (
 
 CREATE TABLE payments (
     id SERIAL PRIMARY KEY,
-
-    order_id INT REFERENCES orders(id),
-
+    order_id INT REFERENCES pedido_historial(id), -- 🔥 CAMBIO POR QUE LA TABLA ORDER ES TEMPORAL SEGUN CHRISTIAN Y NO SE SI LOS PAGOS SE MANTIENEN DE FORMA PERMANENTE?
     payment_method VARCHAR(50),
-
     status VARCHAR(50) DEFAULT 'PENDING',
-
     transaction_id VARCHAR(100),
-
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -388,7 +410,7 @@ INSERT INTO products (category_id, name, base_price, stock) VALUES
 -- =============================================
 
 -- Pedido 1: 5 Hamburguesas Clásicas (Completado - hace 15 días)
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
+INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
 VALUES (
   1, 1, 
   '{"street":"Av. Reforma 123","city":"Ciudad de México","zip":"06500"}',
@@ -398,7 +420,7 @@ VALUES (
 );
 
 -- Pedido 2: 3 Hamburguesas BBQ Bacon + 2 Refrescos (Completado - hace 10 días)
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
+INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
 VALUES (
   1, 1,
   '{"street":"Av. Insurgentes 456","city":"Ciudad de México","zip":"06700"}',
@@ -408,7 +430,7 @@ VALUES (
 );
 
 -- Pedido 3: 2 Hamburguesas Doble Queso + 4 Papas Gajo (Completado - hace 8 días)
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
+INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
 VALUES (
   1, 1,
   '{"street":"Calle Durango 789","city":"Ciudad de México","zip":"06700"}',
@@ -418,7 +440,7 @@ VALUES (
 );
 
 -- Pedido 4: 4 Hamburguesas Clásicas + 6 Aguas de Jamaica (Completado - hace 5 días)
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
+INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
 VALUES (
   1, 1,
   '{"street":"Av. Universidad 1000","city":"Ciudad de México","zip":"04510"}',
@@ -428,7 +450,7 @@ VALUES (
 );
 
 -- Pedido 5: 1 Hamburguesa Doble Queso + 2 Aros de Cebolla (Completado - hace 3 días)
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
+INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
 VALUES (
   1, 1,
   '{"street":"Calle Coahuila 45","city":"Ciudad de México","zip":"06700"}',
@@ -438,7 +460,7 @@ VALUES (
 );
 
 -- Pedido 6: CANCELADO - 3 Hamburguesas Clásicas (No debe contar para el ranking)
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
+INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
 VALUES (
   1, 1,
   '{"street":"Av. Reforma 123","city":"Ciudad de México","zip":"06500"}',
@@ -448,7 +470,7 @@ VALUES (
 );
 
 -- Pedido 7: 10 Hamburguesas BBQ Bacon + 5 Refrescos (Completado - hoy)
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
+INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
 VALUES (
   1, 1,
   '{"street":"Av. Insurgentes 456","city":"Ciudad de México","zip":"06700"}',
@@ -462,35 +484,35 @@ VALUES (
 -- =============================================
 
 -- Pedido 1 (order_id = 1)
-INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
 (1, 1, 5, 85.00); -- Hamburguesa Clásica
 
 -- Pedido 2 (order_id = 2)
-INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
 (2, 2, 3, 110.00), -- Hamburguesa BBQ Bacon
 (2, 5, 2, 30.00);  -- Refrescos Variados
 
 -- Pedido 3 (order_id = 3)
-INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
 (3, 3, 2, 135.00), -- Hamburguesa Doble Queso
 (3, 6, 4, 45.00);  -- Papas Gajo Sazonadas
 
 -- Pedido 4 (order_id = 4)
-INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
 (4, 1, 4, 85.00),  -- Hamburguesa Clásica
 (4, 4, 6, 25.00);  -- Agua de Jamaica
 
 -- Pedido 5 (order_id = 5)
-INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
 (5, 3, 1, 135.00), -- Hamburguesa Doble Queso
 (5, 7, 2, 55.00);  -- Aros de Cebolla
 
 -- Pedido 6 (order_id = 6) - CANCELADO
-INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
 (6, 1, 3, 85.00);  -- Hamburguesa Clásica
 
 -- Pedido 7 (order_id = 7)
-INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase) VALUES
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
 (7, 2, 10, 110.00), -- Hamburguesa BBQ Bacon
 (7, 5, 5, 30.00);   -- Refrescos Variados
 
@@ -605,5 +627,14 @@ SELECT
     ) AS rank,
     NOW()
 FROM customer_product_preferences;
+
+-- Venta masiva para alterar el ranking dinámico
+
+INSERT INTO pedido_historial (customer_id, restaurant_id, status, total_amount, created_at)
+VALUES (1, 1, 'COMPLETED', 2750.00, NOW());
+
+
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+VALUES ((SELECT MAX(id) FROM pedido_historial), 7, 50, 55.00);
 
 */

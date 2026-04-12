@@ -117,6 +117,19 @@ const styles = `
 
   .product-card:hover .card-img { transform: scale(1.04); }
 
+  .product-card.is-unavailable {
+    cursor: not-allowed;
+    opacity: 0.72;
+  }
+
+  .product-card.is-unavailable:hover {
+    background: #111010;
+  }
+
+  .product-card.is-unavailable:hover .card-img {
+    transform: none;
+  }
+
   .card-img-wrap {
     position: relative;
     aspect-ratio: 4/3;
@@ -216,6 +229,17 @@ const styles = `
     margin-left: 2px;
   }
 
+  .card-stock {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7A7268;
+  }
+
+  .card-stock.low {
+    color: #C17A3A;
+  }
+
   /* Loading */
   .menu-loading {
     display: flex;
@@ -292,6 +316,7 @@ type Product = {
   id: number
   name: string
   base_price: number
+  stock: number
   is_available: boolean
   image_url: string | null
   category_name: string
@@ -305,8 +330,8 @@ export default function MenuPage() {
 
   // valores de demostración si la BD está vacía
   const sampleProducts: Product[] = [
-    { id: 100, name: 'Ejemplo: Hamburguesa', base_price: 85, is_available: true, image_url: null, category_name: 'Hamburguesas' },
-    { id: 101, name: 'Ejemplo: Taco al Pastor', base_price: 35, is_available: true, image_url: null, category_name: 'Tacos' },
+    { id: 100, name: 'Ejemplo: Hamburguesa', base_price: 85, stock: 8, is_available: true, image_url: null, category_name: 'Hamburguesas' },
+    { id: 101, name: 'Ejemplo: Taco al Pastor', base_price: 35, stock: 0, is_available: false, image_url: null, category_name: 'Tacos' },
   ];
   const sampleCategories: Category[] = [
     { id: 1, name: 'Hamburguesas' },
@@ -384,8 +409,9 @@ export default function MenuPage() {
             {filtered.map((p, i) => (
               <div
                 key={p.id}
-                className="product-card card-enter"
+                className={`product-card card-enter ${!p.is_available ? "is-unavailable" : ""}`}
                 style={{ animationDelay: `${i * 0.05}s` }}
+                aria-disabled={!p.is_available}
               >
                 <div className="card-img-wrap">
                   {p.image_url ? (
@@ -406,6 +432,9 @@ export default function MenuPage() {
                 <div className="card-body">
                   {!p.image_url && <span className="card-category">{p.category_name}</span>}
                   <h2 className="card-name">{p.name}</h2>
+                  <span className={`card-stock ${p.is_available && p.stock <= 3 ? "low" : ""}`}>
+                    {p.is_available ? `Stock disponible: ${p.stock}` : "Stock agotado"}
+                  </span>
                   <div className="card-price">
                     ${Number(p.base_price).toFixed(2)}
                     <span>MXN</span>

@@ -81,9 +81,16 @@ CREATE TABLE products (
     name VARCHAR(100) NOT NULL,
     base_price DECIMAL(10,2) NOT NULL, -- Mario: Validación > 0
     is_available BOOLEAN DEFAULT TRUE, -- Mario: Control de Stock
+    stock INT NOT NULL DEFAULT 10 CHECK (stock >= 0),
     -- columnas añadidas para US009: gestión de imágenes
     image_url VARCHAR(500),
-    image_uploaded_at TIMESTAMP
+    image_uploaded_at TIMESTAMP,
+    CONSTRAINT products_stock_availability_chk
+      CHECK (
+        (stock = 0 AND is_available = FALSE)
+        OR
+        (stock > 0 AND is_available = TRUE)
+      )
 );
 
 -- Complejidad del Menú (Opciones y Extras)
@@ -114,7 +121,8 @@ CREATE TABLE orders (
     customer_id INT REFERENCES users(id),
     restaurant_id INT REFERENCES restaurants(id),
     delivery_address_json JSONB,
-    status VARCHAR(50) DEFAULT 'PENDING', -- Irving: PENDING, PREPARING, READY
+    deliveryman_id INT REFERENCES users(id), -- US012: repartidor asignado
+    status VARCHAR(50) DEFAULT 'PENDING', -- Irving: PENDING, PREPARING, READY, DELIVERY_ASSIGNED
     total_amount DECIMAL(10,2),
     created_at TIMESTAMP DEFAULT NOW() -- Irving: Base para temporizador
 );
@@ -175,8 +183,8 @@ INSERT INTO restaurants (owner_user_id, name) VALUES (2, 'La Parrilla Mixteca');
 INSERT INTO categories (restaurant_id, name, descripcion) 
 VALUES (1, 'Hamburguesas', 'Especialidades al carbón');
 
-INSERT INTO products (category_id, name, base_price) 
-VALUES (1, 'Hamburguesa Clásica', 85.00);
+INSERT INTO products (category_id, name, base_price, stock, is_available) 
+VALUES (1, 'Hamburguesa Clásica', 85.00, 12, TRUE);
 
 -- Más categorías y productos de ejemplo
 INSERT INTO categories (restaurant_id, name, descripcion) 
@@ -185,12 +193,12 @@ VALUES (1, 'Tacos', 'Tacos al pastor y más');
 INSERT INTO categories (restaurant_id, name, descripcion)
 VALUES (1, 'Bebidas', 'Refrescos, aguas y cervezas');
 
-INSERT INTO products (category_id, name, base_price)
+INSERT INTO products (category_id, name, base_price, stock, is_available)
 VALUES
-  (2, 'Taco al Pastor', 35.00),
-  (2, 'Taco de Carne Asada', 40.00),
-  (3, 'Agua de Jamaica', 20.00),
-  (3, 'Cerveza', 40.00);
+  (2, 'Taco al Pastor', 35.00, 20, TRUE),
+  (2, 'Taco de Carne Asada', 40.00, 18, TRUE),
+  (3, 'Agua de Jamaica', 20.00, 25, TRUE),
+  (3, 'Cerveza', 40.00, 10, TRUE);
 
 -- Pedidos de prueba para dashboard
 INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
@@ -204,3 +212,26 @@ VALUES
   (1, 'CARD', 'SUCCESS', 'TXN1001', NOW() - INTERVAL '2 days'),
   (2, 'CASH', 'SUCCESS', NULL, NOW() - INTERVAL '1 day'),
   (3, 'CARD', 'FAILED', 'TXN1003', NOW());
+
+-- Crear restaurante
+INSERT INTO restaurants (name, email, phone) 
+VALUES ('Mi Restaurante', 'rest@test.local', '123456');
+
+-- Crear cliente
+INSERT INTO users (full_name, email, password, is_active) 
+VALUES ('Cliente Test', 'cliente@test.local', '$2a$10$pass', true);
+
+-- Crear pedidos en estado READY
+INSERT INTO orders (customer_id, restaurant_id, status, total_amount) 
+VALUES 
+  (1, 1, 'READY', 45.50),
+  (1, 1, 'READY', 32.00),
+  (1, 1, 'PREPARING', 28.75);
+
+-- Verificar
+SELECT id, status, total_amount FROM orders;
+
+-- Fetch orders
+fetch('/api/orders')
+  .then(r => r.json())
+  .then(d => console.log(d))

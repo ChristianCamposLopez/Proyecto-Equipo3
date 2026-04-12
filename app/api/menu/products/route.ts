@@ -12,6 +12,7 @@ export async function GET() {
         p.id,
         p.name,
         p.base_price,
+        p.stock,
         p.is_available,
         p.image_url,
         c.name AS category_name

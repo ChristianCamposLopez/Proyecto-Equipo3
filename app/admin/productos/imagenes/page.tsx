@@ -174,6 +174,8 @@ const styles = `
 
   .status-badge.has-img { border-color: #2A6A3A; color: #4CAF70; }
   .status-badge.no-img  { border-color: #3A2A1A; color: #7A5A3A; }
+  .status-badge.available { border-color: #2A6A3A; color: #4CAF70; }
+  .status-badge.sold-out  { border-color: #5A2020; color: #C04040; }
 
   .status-dot {
     width: 5px;
@@ -186,6 +188,38 @@ const styles = `
   .actions-cell {
     text-align: right;
     white-space: nowrap;
+  }
+
+  .stock-cell {
+    min-width: 240px;
+  }
+
+  .stock-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .stock-input {
+    width: 84px;
+    background: #1A1714;
+    border: 1px solid #2A2620;
+    color: #F2EDE4;
+    padding: 8px 10px;
+    font-size: 13px;
+    outline: none;
+  }
+
+  .stock-input:focus {
+    border-color: #C17A3A;
+  }
+
+  .stock-helper {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #7A7268;
+    letter-spacing: 0.05em;
   }
 
   .btn {
@@ -217,6 +251,26 @@ const styles = `
   }
 
   .btn-delete:hover {
+    background: #C04040;
+    color: #111010;
+    border-color: #C04040;
+  }
+
+  .btn-stock {
+    border-color: #2A2620;
+    color: #F2EDE4;
+  }
+
+  .btn-stock:hover {
+    border-color: #F2EDE4;
+  }
+
+  .btn-soldout {
+    border-color: #5A2020;
+    color: #C04040;
+  }
+
+  .btn-soldout:hover {
     background: #C04040;
     color: #111010;
     border-color: #C04040;
@@ -404,6 +458,7 @@ const styles = `
     .adm-search-wrap { padding: 16px 20px; }
     .adm-table-wrap { padding: 0 20px 40px; }
     .modal          { margin: 16px; padding: 24px; }
+    .stock-cell     { min-width: 200px; }
   }
 `
 
@@ -411,6 +466,7 @@ type Product = {
   id: number
   name: string
   base_price: number
+  stock: number
   is_available: boolean
   image_url: string | null
   category_name: string
@@ -422,8 +478,8 @@ export default function AdminImagenesPage() {
   const [products, setProducts] = useState<Product[]>([])
 
   const sampleProducts: Product[] = [
-    { id: 100, name: 'Hamburguesa de ejemplo', base_price: 85, is_available: true, image_url: null, category_name: 'Hamburguesas' },
-    { id: 101, name: 'Taco de ejemplo', base_price: 35, is_available: true, image_url: null, category_name: 'Tacos' },
+    { id: 100, name: 'Hamburguesa de ejemplo', base_price: 85, stock: 8, is_available: true, image_url: null, category_name: 'Hamburguesas' },
+    { id: 101, name: 'Taco de ejemplo', base_price: 35, stock: 0, is_available: false, image_url: null, category_name: 'Tacos' },
   ];
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -432,6 +488,8 @@ export default function AdminImagenesPage() {
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [savingStock, setSavingStock] = useState<number | null>(null)
+  const [stockInputs, setStockInputs] = useState<Record<number, string>>({})
   const [toast, setToast] = useState<Toast>(null)
   const [dragging, setDragging] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -442,7 +500,13 @@ export default function AdminImagenesPage() {
         const data = await r.json();
         return Array.isArray(data) ? data : [];
       })
-      .then((data) => setProducts(data as Product[]))
+      .then((data) => {
+        const productsData = data as Product[]
+        setProducts(productsData)
+        setStockInputs(
+          Object.fromEntries(productsData.map((product) => [product.id, String(product.stock)]))
+        )
+      })
       .finally(() => setLoading(false));
   }, [])
 
@@ -460,6 +524,45 @@ export default function AdminImagenesPage() {
     }
     setFile(f)
     setPreview(URL.createObjectURL(f))
+  }
+
+  async function handleStockSave(product: Product, nextStock: number) {
+    setSavingStock(product.id)
+
+    try {
+      const res = await fetch(`/api/products/${product.id}/stock`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stock: nextStock }),
+      })
+
+      const payload = await res.json()
+
+      if (!res.ok) {
+        throw new Error(payload?.error || "No fue posible actualizar el stock.")
+      }
+
+      setProducts((current) =>
+        current.map((item) =>
+          item.id === product.id
+            ? { ...item, stock: payload.stock, is_available: payload.is_available }
+            : item
+        )
+      )
+      setStockInputs((current) => ({ ...current, [product.id]: String(payload.stock) }))
+      showToast(
+        payload.is_available
+          ? `Stock actualizado para "${product.name}".`
+          : `"${product.name}" quedó marcado como agotado.`,
+        "success"
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No fue posible actualizar el stock."
+      showToast(message, "error")
+      setStockInputs((current) => ({ ...current, [product.id]: String(product.stock) }))
+    } finally {
+      setSavingStock(null)
+    }
   }
 
   // US009.2 — Subir imagen
@@ -519,9 +622,9 @@ export default function AdminImagenesPage() {
         <header className="adm-header">
           <div>
             <p className="adm-label">Panel de Administración</p>
-            <h1 className="adm-title">Gestión de <em>Imágenes</em></h1>
+            <h1 className="adm-title">Imágenes y <em>Disponibilidad</em></h1>
           </div>
-          <span className="adm-count">{dataProducts.filter(p => p.image_url).length} / {dataProducts.length} con imagen</span>
+          <span className="adm-count">{dataProducts.filter(p => p.is_available).length} / {dataProducts.length} disponibles</span>
         </header>
 
         {/* Search */}
@@ -548,6 +651,7 @@ export default function AdminImagenesPage() {
                   <th>Platillo</th>
                   <th>Precio</th>
                   <th>Estado imagen</th>
+                  <th>Disponibilidad</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
@@ -575,12 +679,54 @@ export default function AdminImagenesPage() {
                         {p.image_url ? "Con imagen" : "Sin imagen"}
                       </span>
                     </td>
+                    <td className="stock-cell">
+                      <span className={`status-badge ${p.is_available ? "available" : "sold-out"}`}>
+                        <span className="status-dot" />
+                        {p.is_available ? "Disponible" : "Agotado"}
+                      </span>
+                      <div className="stock-tools">
+                        <input
+                          className="stock-input"
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={stockInputs[p.id] ?? String(p.stock)}
+                          onChange={(e) =>
+                            setStockInputs((current) => ({ ...current, [p.id]: e.target.value }))
+                          }
+                          disabled={savingStock === p.id}
+                        />
+                        <button
+                          className="btn btn-stock"
+                          onClick={() => handleStockSave(p, Number(stockInputs[p.id] ?? p.stock))}
+                          disabled={
+                            savingStock === p.id ||
+                            stockInputs[p.id] === undefined ||
+                            stockInputs[p.id] === "" ||
+                            Number(stockInputs[p.id]) < 0 ||
+                            !Number.isInteger(Number(stockInputs[p.id]))
+                          }
+                        >
+                          {savingStock === p.id ? "Guardando" : "Guardar stock"}
+                        </button>
+                        <button
+                          className="btn btn-soldout"
+                          onClick={() => handleStockSave(p, 0)}
+                          disabled={savingStock === p.id || p.stock === 0}
+                        >
+                          Marcar agotado
+                        </button>
+                      </div>
+                      <div className="stock-helper">
+                        {p.is_available ? `Stock actual: ${p.stock}` : "Sin existencias para pedidos"}
+                      </div>
+                    </td>
                     <td className="actions-cell">
                       {/* US009.2 */}
                       <button
                         className="btn btn-upload"
                         onClick={() => setModal(p)}
-                        disabled={deleting === p.id}
+                        disabled={deleting === p.id || savingStock === p.id}
                       >
                         {p.image_url ? "Cambiar" : "Subir"}
                       </button>
@@ -589,7 +735,7 @@ export default function AdminImagenesPage() {
                         <button
                           className="btn btn-delete"
                           onClick={() => handleDelete(p)}
-                          disabled={deleting === p.id}
+                          disabled={deleting === p.id || savingStock === p.id}
                         >
                           {deleting === p.id ? "…" : "Eliminar"}
                         </button>

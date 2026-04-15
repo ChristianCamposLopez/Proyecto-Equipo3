@@ -294,6 +294,8 @@ type CartItem = {
 };
 
 export default function PedidoPage() {
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -305,9 +307,25 @@ export default function PedidoPage() {
   const restaurantId = '1'; // fijo
 
   useEffect(() => {
-    async function loadProducts() {
+    async function loadCategories() { //NUevo para categorias USOO1 (Sprint 6)
       try {
-        const res = await fetch(`/api/platos?restaurantId=${restaurantId}`);
+        const res = await fetch(`/api/categorias?restaurantId=${restaurantId}`);
+        const data = await res.json();
+        setCategories(data.categories || []);
+      } catch (error) {
+        console.error("Error al cargar categorías:", error);
+      }
+    }
+
+    async function loadProducts(categoryId: number | null = null) {
+      try {
+        let url = `/api/platos?restaurantId=${restaurantId}`;
+
+        if (categoryId) {
+          url += `&categoryId=${categoryId}`; // NUEVO para categorias USOO1 (Sprint 6)
+        }
+
+        const res = await fetch(url);
         const data = await res.json();
         setProducts(data.products || []);
       } catch (error) {
@@ -329,9 +347,10 @@ export default function PedidoPage() {
       }
     }
 
-    loadProducts();
+    loadProducts(selectedCategory);
     loadRecommendations();
-  }, []);
+    loadCategories(); // NUEVO para categorias USOO1 (Sprint 6)
+  }, [selectedCategory]);
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -534,6 +553,31 @@ export default function PedidoPage() {
             <h2 className="menu-section-title" style={{ marginTop: recommendations.length ? 0 : 0 }}>
               Menú Principal
             </h2>
+            <div style={{ marginBottom: '16px' }}>
+              <select
+                value={selectedCategory ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedCategory(value ? Number(value) : null);
+                }}
+                style={{
+                  padding: '10px',
+                  borderRadius: '8px',
+                  background: '#1A1714',
+                  color: '#F2EDE4',
+                  border: '1px solid #2A2620',
+                  width: '100%',
+                  maxWidth: '300px'
+                }}
+              >
+                <option value="">Todas las categorías</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             {products.length === 0 ? (
               <div className="menu-empty">No hay platillos disponibles</div>
             ) : (

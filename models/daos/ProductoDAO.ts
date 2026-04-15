@@ -111,38 +111,54 @@ export class ProductoDAO {
 
   // Obtener productos por restaurante (para el catálogo)
   static async getProductsByRestaurant(
-    restaurantId: number | null,
-    includeInactive: boolean = false
-  ): Promise<any[]> {
-    const query = `
-      SELECT
-        p.id,
-        p.name,
-        p.base_price,
-        p.is_active,
-        COALESCE(
-          (
-            SELECT pi.image_path
-            FROM product_images pi
-            WHERE pi.product_id = p.id
-              AND pi.is_primary = TRUE
-              AND pi.deleted_at IS NULL
-            LIMIT 1
-          ),
-          '/images/default-product.png'
-        ) AS image_display
-      FROM products p
-      JOIN categories c ON p.category_id = c.id
-      WHERE
-        p.deleted_at IS NULL
-        AND p.is_available = TRUE
-        AND ($2::boolean = TRUE OR p.is_active = TRUE)
-        AND ($1::int IS NULL OR c.restaurant_id = $1)
-      ORDER BY p.id
-    `;
-    const result = await db.query(query, [restaurantId, includeInactive]);
-    return result.rows;
-  }
+      restaurantId: number | null,
+      includeInactive: boolean = false,
+      categoryId: number | null = null
+    ): Promise<any[]> {
+
+      const query = `
+        SELECT
+          p.id,
+          p.name,
+          p.base_price,
+          p.is_active,
+          c.name AS category_name,
+
+          COALESCE(
+            (
+              SELECT pi.image_path
+              FROM product_images pi
+              WHERE pi.product_id = p.id
+                AND pi.is_primary = TRUE
+                AND pi.deleted_at IS NULL
+              LIMIT 1
+            ),
+            '/images/default-product.png'
+          ) AS image_display
+
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+
+        WHERE
+          p.deleted_at IS NULL
+          AND p.is_available = TRUE
+          AND ($2::boolean = TRUE OR p.is_active = TRUE)
+          AND ($1::int IS NULL OR c.restaurant_id = $1)
+
+          -- 🔥 FILTRO POR CATEGORÍA
+          AND ($3::int IS NULL OR p.category_id = $3)
+
+        ORDER BY p.id
+      `;
+
+      const result = await db.query(query, [
+        restaurantId,
+        includeInactive,
+        categoryId
+      ]);
+
+      return result.rows;
+    }
 
    static async getProductById(id: number): Promise<Producto | null> {
     const result = await db.query('SELECT * FROM products WHERE id = $1', [id]);

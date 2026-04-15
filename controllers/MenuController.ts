@@ -108,10 +108,19 @@ export class MenuController {
   }
 
   // Obtener productos para el catálogo (GET /api/platos)
-  async getCatalogProducts(restaurantId: number | null, includeInactive: boolean = false) {
-    const products = await ProductoDAO.getProductsByRestaurant(restaurantId, includeInactive);
-    return { products };
-  }
+   async getCatalogProducts(
+      restaurantId: number | null,
+      includeInactive: boolean = false,
+      categoryId: number | null = null // NUEVO Para filtaredo de categorias USOO1 (Sprint 6)
+    ) {
+      const products = await ProductoDAO.getProductsByRestaurant(
+        restaurantId,
+        includeInactive,
+        categoryId
+      );
+
+      return { products };
+    }
 
    async getProductById(id: number) {
     const product = await ProductoDAO.getProductById(id);
@@ -134,4 +143,5 @@ export class MenuController {
     const updated = await ProductoDAO.updateProduct(id, { descripcion: descripcion ?? undefined });
     return updated;
   }
+
 }

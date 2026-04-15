@@ -40,15 +40,19 @@ export async function POST(request: NextRequest) {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+
     const restaurantId = searchParams.get('restaurantId');
+    const categoryId = searchParams.get('categoryId'); //NUEVO Para filtaredo de categorias USOO1 (Sprint 6)
     const includeInactive = searchParams.get('includeInactive') === 'true';
 
     const result = await menuController.getCatalogProducts(
       restaurantId ? Number(restaurantId) : null,
-      includeInactive
+      includeInactive,
+      categoryId ? Number(categoryId) : null //NUEVO Para filtrado de categorias USOO1 (Sprint 6)
     );
 
     return NextResponse.json(result);
+
   } catch (err) {
     console.error('GET /api/platos error', err);
     return NextResponse.json(

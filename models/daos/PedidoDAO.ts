@@ -1,110 +1,191 @@
-// models/daos/PedidoDAO.ts
 import { db } from "../../config/db";
 
 export class PedidoDAO {
+
+  // Crear pedido: inserta en ambas tablas (activo e historial)
   static async crearPedido(
     customerId: number,
     restaurantId: number,
     items: { product_id: number; quantity: number }[]
   ) {
     const client = await db.connect();
-
     try {
       await client.query("BEGIN");
 
-      // 🔹 Traer precios en UNA sola query (optimizado 🔥)
+      // 1. Validar productos y precios
       const productIds = items.map(i => i.product_id);
-
-      const productsResult = await client.query(
-        `
-        SELECT id, base_price
-        FROM products
-        WHERE id = ANY($1)
-        `,
+      const productsRes = await client.query(
+        `SELECT id, base_price, stock, is_active FROM products WHERE id = ANY($1)`,
         [productIds]
       );
-
-      const priceMap = new Map(
-        productsResult.rows.map(p => [p.id, Number(p.base_price)])
-      );
-
-      // 🔹 Calcular total
-      let total = 0;
-
-      for (const item of items) {
-        const price = priceMap.get(item.product_id) || 0;
-        total += price * item.quantity;
+      if (productsRes.rowCount !== items.length) {
+        throw new Error("Algún producto no existe");
       }
 
-      // 🔹 Insertar pedido
-      const pedidoResult = await client.query(
-        `
-        INSERT INTO pedido_historial (
-          customer_id,
-          restaurant_id,
-          status,
-          total_amount
-        )
-        VALUES ($1, $2, 'PENDING', $3)
-        RETURNING id
-        `,
+      const priceMap = new Map<number, number>();
+      for (const row of productsRes.rows) {
+        if (!row.is_active) throw new Error(`Producto ${row.id} no está activo`);
+        const item = items.find(i => i.product_id === row.id)!;
+        if (row.stock < item.quantity) {
+          throw new Error(`Stock insuficiente para producto ${row.id}`);
+        }
+        priceMap.set(row.id, Number(row.base_price));
+      }
+
+      let total = 0;
+      for (const item of items) {
+        total += priceMap.get(item.product_id)! * item.quantity;
+      }
+
+      // 2. Insertar en pedido_historial (histórico)
+      const historialRes = await client.query(
+        `INSERT INTO pedido_historial (customer_id, restaurant_id, status, total_amount)
+         VALUES ($1, $2, 'PENDING', $3) RETURNING id`,
         [customerId, restaurantId, total]
       );
+      const pedidoId = historialRes.rows[0].id;
 
-      const pedidoId = pedidoResult.rows[0].id;
+      // 3. Insertar en orders (activo)
+      await client.query(
+        `INSERT INTO orders (id, customer_id, restaurant_id, status, total_amount)
+         VALUES ($1, $2, $3, 'PENDING', $4)`,
+        [pedidoId, customerId, restaurantId, total]
+      );
 
-      // 🔹 Insertar items
+      // 4. Insertar items en ambas tablas
       for (const item of items) {
-        const price = priceMap.get(item.product_id) || 0;
-
+        const unitPrice = priceMap.get(item.product_id)!;
+        // order_items (activo)
         await client.query(
-          `
-          INSERT INTO pedido_items_historial (
-            order_id,
-            product_id,
-            quantity,
-            unit_price_at_purchase
-          )
-          VALUES ($1, $2, $3, $4)
-          `,
-          [pedidoId, item.product_id, item.quantity, price]
+          `INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase)
+           VALUES ($1, $2, $3, $4)`,
+          [pedidoId, item.product_id, item.quantity, unitPrice]
+        );
+        // pedido_items_historial (histórico)
+        await client.query(
+          `INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+           VALUES ($1, $2, $3, $4)`,
+          [pedidoId, item.product_id, item.quantity, unitPrice]
+        );
+        // Descontar stock
+        await client.query(
+          `UPDATE products SET stock = stock - $1 WHERE id = $2`,
+          [item.quantity, item.product_id]
         );
       }
 
       await client.query("COMMIT");
-
       return { pedidoId };
-
-    } catch (error) {
+    } catch (e) {
       await client.query("ROLLBACK");
-      throw error;
+      throw e;
     } finally {
       client.release();
     }
   }
 
-  static async completarPedido(pedidoId: number) {
-    await db.query(
-      `
-      UPDATE pedido_historial
-      SET status = 'COMPLETED'
-      WHERE id = $1
-      `,
-      [pedidoId]
-    );
+  // Buscar pedido activo (en tabla orders)
+  static async findActiveOrderById(id: number) {
+    const result = await db.query(`SELECT * FROM orders WHERE id = $1`, [id]);
+    return result.rows[0];
   }
 
+  // Cambiar estado en pedido_historial
+  static async updateHistorialStatus(id: number, status: string) {
+    await db.query(`UPDATE pedido_historial SET status = $1 WHERE id = $2`, [status, id]);
+  }
+
+  // Eliminar pedido activo (orders y order_items)
+  static async deleteActiveOrder(orderId: number) {
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(`DELETE FROM order_items WHERE order_id = $1`, [orderId]);
+      await client.query(`DELETE FROM orders WHERE id = $1`, [orderId]);
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Cancelar pedido (cliente)
+  static async cancelPedido(orderId: number) {
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+
+      // 1. Cambiar estado en historial a CANCELLED
+      await client.query(
+        `UPDATE pedido_historial SET status = 'CANCELLED' WHERE id = $1`,
+        [orderId]
+      );
+
+      // 2. Revertir stock (opcional pero recomendado)
+      const items = await client.query(
+        `SELECT product_id, quantity FROM pedido_items_historial WHERE order_id = $1`,
+        [orderId]
+      );
+      for (const item of items.rows) {
+        await client.query(
+          `UPDATE products SET stock = stock + $1 WHERE id = $2`,
+          [item.quantity, item.product_id]
+        );
+      }
+
+      // 3. Eliminar de orders y order_items
+      await client.query(`DELETE FROM order_items WHERE order_id = $1`, [orderId]);
+      await client.query(`DELETE FROM orders WHERE id = $1`, [orderId]);
+
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Completar pedido (administrador o sistema)
+  static async completarPedido(orderId: number) {
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+
+      // 1. Cambiar estado en historial a COMPLETED
+      await client.query(
+        `UPDATE pedido_historial SET status = 'COMPLETED' WHERE id = $1`,
+        [orderId]
+      );
+
+      // 2. Eliminar de orders y order_items (ya no está activo)
+      await client.query(`DELETE FROM order_items WHERE order_id = $1`, [orderId]);
+      await client.query(`DELETE FROM orders WHERE id = $1`, [orderId]);
+
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Obtener pedidos de un usuario (desde historial)
   static async getPedidosByUser(userId: number) {
     const result = await db.query(
-      `
-      SELECT *
-      FROM pedido_historial
-      WHERE customer_id = $1
-      ORDER BY created_at DESC
-      `,
+      `SELECT 
+        ph.*,
+        o.status AS active_status,
+        CASE WHEN o.id IS NOT NULL THEN true ELSE false END AS is_active
+      FROM pedido_historial ph
+      LEFT JOIN orders o ON o.id = ph.id
+      WHERE ph.customer_id = $1
+      ORDER BY ph.created_at DESC`,
       [userId]
     );
-
     return result.rows;
   }
 }

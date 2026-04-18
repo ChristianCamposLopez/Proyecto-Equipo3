@@ -74,6 +74,35 @@ const styles = `
 
   @keyframes spin { to { transform: rotate(360deg); } }
   .loader-ring { width: 36px; height: 36px; border: 2px solid #2A2620; border-top-color: #C17A3A; border-radius: 50%; animation: spin 0.9s linear infinite; }
+  /* Estilo personalizado para el select de categorías - solo visual, sin JS extra */
+  .custom-category-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #111010;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23C17A3A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px;
+    cursor: pointer;
+  }
+
+  .custom-category-select:hover {
+    border-color: #C17A3A;
+  }
+
+  .custom-category-select option {
+    background-color: #111010;
+    color: #F2EDE4;
+    padding: 10px;
+  }
+
+  /* Para navegadores Firefox */
+  @-moz-document url-prefix() {
+    .custom-category-select {
+      background-color: #111010;
+      color: #F2EDE4;
+    }
+  }
 `;
 
 type Availability = {
@@ -109,7 +138,7 @@ export default function AdminPlatosPage({ params }: { params: Promise<{ restaura
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const [categories, setCategories] = useState<any[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [form, setForm] = useState<FormState>({
     name: '',
@@ -126,8 +155,14 @@ export default function AdminPlatosPage({ params }: { params: Promise<{ restaura
     async function load() {
       const resId = '1'; // fijo
       try {
+        // 🔹 Cargar productos
         const res = await fetch(`/api/platos?restaurantId=${resId}&includeInactive=true`);
         const data = await res.json();
+
+        // 🔹 Cargar categorías
+        const catRes = await fetch(`/api/categorias?restaurantId=${resId}`);
+        const catData = await catRes.json();
+        setCategories(catData.categories || []);
 
         const productsWithAvailability = await Promise.all(
           (data.products || []).map(async (product: Product) => {
@@ -185,6 +220,11 @@ export default function AdminPlatosPage({ params }: { params: Promise<{ restaura
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    if (!form.category_id) {
+      alert("Debes seleccionar una categoría");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       // 1. Crear el plato
@@ -259,7 +299,21 @@ export default function AdminPlatosPage({ params }: { params: Promise<{ restaura
                 <input name="name" placeholder="Nombre" value={form.name} onChange={handleChange} required className="full-width" />
                 <input name="base_price" type="number" placeholder="Precio" value={form.base_price} onChange={handleChange} required />
                 <input name="stock" type="number" placeholder="Stock" value={form.stock} onChange={handleChange} required />
-                <input name="category_id" type="number" placeholder="ID Categoría" value={form.category_id} onChange={handleChange} required className="full-width" />
+                <select
+                  name="category_id"
+                  value={form.category_id}
+                  onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+                  required
+                  className="full-width custom-category-select"  
+                >
+                  <option value="">Selecciona una categoría</option>
+
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
                 <textarea name="description" placeholder="Descripción (opcional)" value={form.description} onChange={handleChange} className="full-width" />
 
                 {/* --- SECCIÓN DE IMAGEN --- */}

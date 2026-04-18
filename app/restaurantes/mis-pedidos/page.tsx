@@ -1,7 +1,7 @@
 // app/restaurantes/mis-pedidos/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -271,23 +271,89 @@ const styles = `
   }
 `;
 
-
+// 🔥 Actualizamos el tipo Order
 type Order = {
   id: number;
   customer_id: number;
   restaurant_id: number;
-  status: string;
+  status: string;           // estado en pedido_historial (COMPLETED, CANCELLED, REFUNDED, etc.)
   total_amount: string;
   created_at: string;
+  refund_rejection_reason?: string | null;
+  is_active: boolean;       // true si existe en orders
+  active_status: string | null; // estado real en orders (PENDING, CONFIRMED, PREPARING, READY)
 };
 
 export default function MisPedidosPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState<number | null>(null);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const prevActiveStatusRef = useRef<Map<number, string | null>>(new Map());
 
-  const fetchOrders = async () => {
+  const ordersRef = useRef(orders);
+  useEffect(() => {
+    ordersRef.current = orders;
+  }, [orders]);
+
+  useEffect(() => {
+    const loadInitial = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/pedidos');
+        const data = await res.json();
+        const pedidos = data.pedidos || [];
+        setOrders(pedidos);
+        
+        const prevMap = new Map();
+        pedidos.forEach((order: Order) => {
+          prevMap.set(order.id, order.active_status);
+        });
+        prevActiveStatusRef.current = prevMap;
+      } catch (err) {
+        setError('No se pudieron cargar los pedidos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitial();
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/pedidos');
+        const data = await res.json();
+        const newOrders = data.pedidos || [];
+        
+        // 1. 🔥 COMPARA CON LA REF (Para evitar el parpadeo si no hay cambios)
+        if (JSON.stringify(newOrders) !== JSON.stringify(ordersRef.current)) {
+          
+          // 2. Detectar cambios para alertas
+          newOrders.forEach((newOrder: Order) => {
+            const prevActiveStatus = prevActiveStatusRef.current.get(newOrder.id);
+            const currentActiveStatus = newOrder.active_status;
+            
+            if (prevActiveStatus !== currentActiveStatus) {
+              if (currentActiveStatus === 'CONFIRMED') {
+                alert(`✅ Pedido #${newOrder.id} ha sido confirmado`);
+              }
+              prevActiveStatusRef.current.set(newOrder.id, currentActiveStatus);
+            }
+          });
+
+          // 3. Actualizar el estado real
+          setOrders(newOrders);
+        }
+      } catch (err) {
+        console.error('Error en polling:', err);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []); // [] está bien aquí porque usamos refs para los datos cambiantes
+
+  /*const fetchOrders = async () => {
     try {
       const res = await fetch('/api/pedidos');
       const data = await res.json();
@@ -297,27 +363,27 @@ export default function MisPedidosPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }; */
 
-  useEffect(() => {
+  /*useEffect(() => {
     fetchOrders();
-  }, []);
+  }, []); */
 
   const handleComplete = async (orderId: number) => {
     setCompletingId(orderId);
     setError(null);
     try {
-      const res = await fetch(`/api/pedidos/${orderId}/complete`, {
-        method: 'PUT',
-      });
+      const res = await fetch(`/api/pedidos/${orderId}/complete`, { method: 'PUT' });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Error al completar');
       }
-      // Actualizar el estado local
+      // Actualizar estado local: ya no está activo, cambiar status a COMPLETED
       setOrders(prev =>
         prev.map(order =>
-          order.id === orderId ? { ...order, status: 'COMPLETED' } : order
+          order.id === orderId
+            ? { ...order, status: 'COMPLETED', is_active: false, active_status: null }
+            : order
         )
       );
     } catch (err: any) {
@@ -327,9 +393,53 @@ export default function MisPedidosPage() {
     }
   };
 
+  const handleCancel = async (orderId: number) => {
+    setCancellingId(orderId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/pedidos/${orderId}/cancel`, { method: 'PUT' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Error al cancelar');
+      }
+      const data = await res.json();
+      setOrders(prev =>
+        prev.map(order =>
+          order.id === orderId
+            ? { ...order, status: 'CANCELLED', is_active: false, active_status: null, refund_rejection_reason: null }
+            : order
+        )
+      );
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleString('es-MX');
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'COMPLETED': return 'COMPLETADO';
+      case 'CANCELLED': return 'CANCELADO (reembolso pendiente)';
+      case 'REFUNDED': return 'REEMBOLSADO';
+      case 'REFUND_REJECTED': return 'REEMBOLSO RECHAZADO';
+      default: return 'PENDIENTE';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'COMPLETED': return '#1E3A2F';
+      case 'CANCELLED': return '#3A1E1E';
+      case 'REFUNDED': return '#1E3A2F';
+      case 'REFUND_REJECTED': return '#5C2E2E';
+      default: return '#2A2A1E';
+    }
   };
 
   if (loading) {
@@ -385,7 +495,7 @@ export default function MisPedidosPage() {
                     alignItems: 'center',
                   }}
                 >
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 'bold' }}>
                       Pedido #{order.id}
                     </div>
@@ -395,12 +505,7 @@ export default function MisPedidosPage() {
                     <div style={{ marginTop: '8px' }}>
                       <span
                         style={{
-                          background:
-                            order.status === 'COMPLETED'
-                              ? '#1E3A2F'
-                              : order.status === 'CANCELED'
-                              ? '#3A1E1E'
-                              : '#2A2A1E',
+                          background: getStatusColor(order.status),
                           padding: '4px 12px',
                           borderRadius: '40px',
                           fontSize: '12px',
@@ -408,36 +513,63 @@ export default function MisPedidosPage() {
                           color: '#F2EDE4',
                         }}
                       >
-                        {order.status === 'COMPLETED'
-                          ? 'COMPLETADO'
-                          : order.status === 'CANCELED'
-                          ? 'CANCELADO'
-                          : 'PENDIENTE'}
+                        {getStatusLabel(order.status)}
                       </span>
                     </div>
+                    {order.status === 'REFUND_REJECTED' && order.refund_rejection_reason && (
+                      <div style={{ marginTop: '8px', fontSize: '12px', color: '#E5A1A1', background: '#3A1E1E', padding: '8px', borderRadius: '8px' }}>
+                        Motivo del rechazo: {order.refund_rejection_reason}
+                      </div>
+                    )}
+                    {order.status === 'CANCELLED' && (
+                      <div style={{ marginTop: '8px', fontSize: '12px', color: '#C17A3A' }}>
+                        Tu solicitud de reembolso está pendiente. El administrador la procesará pronto.
+                      </div>
+                    )}
                     <div style={{ marginTop: '8px', fontSize: '20px', fontWeight: 'bold' }}>
                       ${Number(order.total_amount).toFixed(2)} MXN
                     </div>
                   </div>
 
-                  {order.status === 'PENDING' && (
-                    <button
-                      onClick={() => handleComplete(order.id)}
-                      disabled={completingId === order.id}
-                      style={{
-                        background: '#C17A3A',
-                        border: 'none',
-                        color: '#111010',
-                        padding: '8px 20px',
-                        borderRadius: '40px',
-                        fontWeight: 'bold',
-                        cursor: completingId === order.id ? 'not-allowed' : 'pointer',
-                        opacity: completingId === order.id ? 0.6 : 1,
-                      }}
-                    >
-                      {completingId === order.id ? 'Actualizando…' : 'Marcar como completado'}
-                    </button>
-                  )}
+                  {/* 🔥 CONDICIÓN MODIFICADA: solo si está activo y el estado activo es PENDING o CONFIRMED */}
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {order.is_active && (order.active_status === 'PENDING' || order.active_status === 'CONFIRMED') && (
+                      <>
+                        <button
+                          onClick={() => handleCancel(order.id)}
+                          disabled={cancellingId === order.id}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid #C17A3A',
+                            color: '#C17A3A',
+                            padding: '8px 20px',
+                            borderRadius: '40px',
+                            fontWeight: 'bold',
+                            cursor: cancellingId === order.id ? 'not-allowed' : 'pointer',
+                            opacity: cancellingId === order.id ? 0.6 : 1,
+                          }}
+                        >
+                          {cancellingId === order.id ? 'Cancelando…' : 'Cancelar pedido'}
+                        </button>
+                        <button
+                          onClick={() => handleComplete(order.id)}
+                          disabled={completingId === order.id}
+                          style={{
+                            background: '#C17A3A',
+                            border: 'none',
+                            color: '#111010',
+                            padding: '8px 20px',
+                            borderRadius: '40px',
+                            fontWeight: 'bold',
+                            cursor: completingId === order.id ? 'not-allowed' : 'pointer',
+                            opacity: completingId === order.id ? 0.6 : 1,
+                          }}
+                        >
+                          {completingId === order.id ? 'Actualizando…' : 'Marcar como completado'}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

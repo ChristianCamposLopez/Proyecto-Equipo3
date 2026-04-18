@@ -109,7 +109,7 @@ export class ProductoDAO {
     return result.rows[0];
   }
 
-  // Obtener productos por restaurante (para el catálogo)
+  // Obtener productos por restaurante (para el catálogo) se agregó filtro por categoría USOO1 (Sprint 6)
   static async getProductsByRestaurant(
       restaurantId: number | null,
       includeInactive: boolean = false,

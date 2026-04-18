@@ -1,3 +1,4 @@
+// controllers/CategoriaController.ts
 import { CategoriaDAO } from "../models/daos/CategoriaDAO";
 
 export class CategoriaController {

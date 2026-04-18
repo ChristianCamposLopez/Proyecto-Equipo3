@@ -1,3 +1,4 @@
+// app/api/categorias/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { CategoriaController } from "../../../controllers/CategoriaController";
 

@@ -203,7 +203,7 @@ CREATE TABLE orders (
 
     created_at TIMESTAMP DEFAULT NOW(),
 
-    CONSTRAINT chk_order_status CHECK (status IN ('PENDING', 'COMPLETED', 'CANCELED', 'DELIVERED'))
+    CONSTRAINT chk_order_status CHECK (status IN ('PENDING' , 'CONFIRMED' , 'PREPARING' , 'READY'))
 );
 
 /*
@@ -266,7 +266,9 @@ CREATE TABLE pedido_historial (
 
     created_at TIMESTAMP DEFAULT NOW(),
 
-    CONSTRAINT chk_order_status CHECK (status IN ('PENDING', 'COMPLETED', 'CANCELED', 'DELIVERED'))
+    refund_rejection_reason TEXT,
+
+    CONSTRAINT chk_order_status CHECK (status IN ('CANCELLED', 'COMPLETED', 'PENDING', 'REFUNDED', 'REFUND_REJECTED')) -- SOLO PEDIDOS FINALIZADOS O CANCELADOS PARA HISTORIAL
 );
 
 CREATE TABLE pedido_items_historial (
@@ -361,26 +363,34 @@ ON customer_recommendations(customer_id);
 -- 12. SEEDING (SOLO RESTAURANTE 1)
 -- =============================================
 
-INSERT INTO roles (name)
-VALUES ('client'), ('restaurant_admin'), ('chef');
+-- =============================================
+-- LIMPIEZA PREVIA (opcional, solo si quieres reiniciar)
+-- =============================================
+-- TRUNCATE TABLE order_items, pedido_items_historial, orders, pedido_historial, payments, product_availability, products, categories, restaurants, user_roles, users, roles RESTART IDENTITY CASCADE;
 
+-- =============================================
+-- 1. ROLES
+-- =============================================
+INSERT INTO roles (name) VALUES ('client'), ('restaurant_admin'), ('chef');
+
+-- =============================================
+-- 2. USUARIOS
+-- =============================================
 INSERT INTO users (email, full_name, phone_number)
 VALUES
-('cliente@ejemplo.com', 'Juan Perez', '5551234567'),
+('cliente@ejemplo.com', 'Juan Pérez', '5551234567'),
 ('admin@restaurante.com', 'Carlos Admin', '5559876543');
 
-INSERT INTO user_roles VALUES
-(1,1),
-(2,2);
+-- Asignar roles
+INSERT INTO user_roles VALUES (1,1), (2,2);
 
 -- =============================================
--- 4. RESTAURANTES (Solo La Parrilla Mixteca)
+-- 3. RESTAURANTE
 -- =============================================
-INSERT INTO restaurants (owner_user_id, name) VALUES 
-(2, 'La Parrilla Mixteca');
+INSERT INTO restaurants (owner_user_id, name) VALUES (2, 'La Parrilla Mixteca');
 
 -- =============================================
--- 5. CATEGORÍAS (Solo para restaurante 1)
+-- 4. CATEGORÍAS
 -- =============================================
 INSERT INTO categories (restaurant_id, name, descripcion) VALUES
 (1, 'Hamburguesas', 'Especialidades al carbón'),
@@ -388,188 +398,142 @@ INSERT INTO categories (restaurant_id, name, descripcion) VALUES
 (1, 'Complementos', 'Papas y aros de cebolla');
 
 -- =============================================
--- 6. PRODUCTOS (PLATOS) solo para restaurante 1
+-- 5. PRODUCTOS (con stock e is_active)
 -- =============================================
-
--- Productos para La Parrilla Mixteca (Restaurant_id 1, Categorías 1, 2, 3)
-INSERT INTO products (category_id, name, base_price, stock) VALUES
-(1, 'Hamburguesa Clásica', 85.00, 10),
-(1, 'Hamburguesa BBQ Bacon', 110.00, 15),
-(1, 'Hamburguesa Doble Queso', 135.00, 8),
-(2, 'Agua de Jamaica 500ml', 25.00, 50),
-(2, 'Refrescos Variados', 30.00, 100),
-(3, 'Papas Gajo Sazonadas', 45.00, 20),
-(3, 'Aros de Cebolla (8 pzs)', 55.00, 12);
+INSERT INTO products (category_id, name, base_price, stock, is_active) VALUES
+(1, 'Hamburguesa Clásica', 85.00, 20, true),
+(1, 'Hamburguesa BBQ Bacon', 110.00, 15, true),
+(1, 'Hamburguesa Doble Queso', 135.00, 10, true),
+(2, 'Agua de Jamaica 500ml', 25.00, 50, true),
+(2, 'Refresco Cola 500ml', 30.00, 100, true),
+(3, 'Papas Gajo Sazonadas', 45.00, 30, true),
+(3, 'Aros de Cebolla (8 pzs)', 55.00, 20, true);
 
 -- =============================================
--- 13. DATOS DE PRUEBA PARA RANKING DE VENTAS (solo restaurante 1)
+-- 6. DISPONIBILIDAD DE PRODUCTOS (usando IDs directos)
 -- =============================================
+-- Hamburguesa Clásica (id=1): Lunes a Domingo, horarios variados
+INSERT INTO product_availability (product_id, day_of_week, start_time, end_time) VALUES
+(1, 1, '12:00', '22:00'), (1, 2, '12:00', '22:00'), (1, 3, '12:00', '22:00'),
+(1, 4, '12:00', '22:00'), (1, 5, '12:00', '22:00'), (1, 6, '13:00', '23:00'),
+(1, 0, '13:00', '23:00');
 
--- =============================================
--- 13.1 PEDIDOS DE PRUEBA PARA LA PARRILLA MIXTECA (Restaurant_id 1)
--- =============================================
+-- Hamburguesa BBQ Bacon (id=2): Sábado y domingo
+INSERT INTO product_availability (product_id, day_of_week, start_time, end_time) VALUES
+(2, 6, '14:00', '00:00'), (2, 0, '14:00', '00:00');
 
--- Pedido 1: 5 Hamburguesas Clásicas (Completado - hace 15 días)
-INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
-VALUES (
-  1, 1, 
-  '{"street":"Av. Reforma 123","city":"Ciudad de México","zip":"06500"}',
-  'COMPLETED', 
-  425.00, 
-  NOW() - INTERVAL '15 days'
-);
-
--- Pedido 2: 3 Hamburguesas BBQ Bacon + 2 Refrescos (Completado - hace 10 días)
-INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
-VALUES (
-  1, 1,
-  '{"street":"Av. Insurgentes 456","city":"Ciudad de México","zip":"06700"}',
-  'COMPLETED',
-  390.00,
-  NOW() - INTERVAL '10 days'
-);
-
--- Pedido 3: 2 Hamburguesas Doble Queso + 4 Papas Gajo (Completado - hace 8 días)
-INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
-VALUES (
-  1, 1,
-  '{"street":"Calle Durango 789","city":"Ciudad de México","zip":"06700"}',
-  'COMPLETED',
-  450.00,
-  NOW() - INTERVAL '8 days'
-);
-
--- Pedido 4: 4 Hamburguesas Clásicas + 6 Aguas de Jamaica (Completado - hace 5 días)
-INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
-VALUES (
-  1, 1,
-  '{"street":"Av. Universidad 1000","city":"Ciudad de México","zip":"04510"}',
-  'COMPLETED',
-  490.00,
-  NOW() - INTERVAL '5 days'
-);
-
--- Pedido 5: 1 Hamburguesa Doble Queso + 2 Aros de Cebolla (Completado - hace 3 días)
-INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
-VALUES (
-  1, 1,
-  '{"street":"Calle Coahuila 45","city":"Ciudad de México","zip":"06700"}',
-  'COMPLETED',
-  245.00,
-  NOW() - INTERVAL '3 days'
-);
-
--- Pedido 6: CANCELADO - 3 Hamburguesas Clásicas (No debe contar para el ranking)
-INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
-VALUES (
-  1, 1,
-  '{"street":"Av. Reforma 123","city":"Ciudad de México","zip":"06500"}',
-  'CANCELED',
-  255.00,
-  NOW() - INTERVAL '2 days'
-);
-
--- Pedido 7: 10 Hamburguesas BBQ Bacon + 5 Refrescos (Completado - hoy)
-INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
-VALUES (
-  1, 1,
-  '{"street":"Av. Insurgentes 456","city":"Ciudad de México","zip":"06700"}',
-  'COMPLETED',
-  1250.00,
-  NOW()
-);
-
--- =============================================
--- 13.2 ORDER_ITEMS PARA LA PARRILLA MIXTECA
--- =============================================
-
--- Pedido 1 (order_id = 1)
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
-(1, 1, 5, 85.00); -- Hamburguesa Clásica
-
--- Pedido 2 (order_id = 2)
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
-(2, 2, 3, 110.00), -- Hamburguesa BBQ Bacon
-(2, 5, 2, 30.00);  -- Refrescos Variados
-
--- Pedido 3 (order_id = 3)
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
-(3, 3, 2, 135.00), -- Hamburguesa Doble Queso
-(3, 6, 4, 45.00);  -- Papas Gajo Sazonadas
-
--- Pedido 4 (order_id = 4)
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
-(4, 1, 4, 85.00),  -- Hamburguesa Clásica
-(4, 4, 6, 25.00);  -- Agua de Jamaica
-
--- Pedido 5 (order_id = 5)
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
-(5, 3, 1, 135.00), -- Hamburguesa Doble Queso
-(5, 7, 2, 55.00);  -- Aros de Cebolla
-
--- Pedido 6 (order_id = 6) - CANCELADO
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
-(6, 1, 3, 85.00);  -- Hamburguesa Clásica
-
--- Pedido 7 (order_id = 7)
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase) VALUES
-(7, 2, 10, 110.00), -- Hamburguesa BBQ Bacon
-(7, 5, 5, 30.00);   -- Refrescos Variados
-
--- =============================================
--- 13.5 AGREGAR PAGOS DE PRUEBA (solo para pedidos del restaurante 1)
--- =============================================
-
-INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at) VALUES
-(1, 'CARD', 'SUCCESS', 'TXN1001', NOW() - INTERVAL '15 days'),
-(2, 'CASH', 'SUCCESS', NULL, NOW() - INTERVAL '10 days'),
-(3, 'CARD', 'SUCCESS', 'TXN1002', NOW() - INTERVAL '8 days'),
-(4, 'CARD', 'SUCCESS', 'TXN1003', NOW() - INTERVAL '5 days'),
-(5, 'CASH', 'SUCCESS', NULL, NOW() - INTERVAL '3 days'),
-(6, 'CARD', 'FAILED', 'TXN1004', NOW() - INTERVAL '2 days'),
-(7, 'CARD', 'SUCCESS', 'TXN1005', NOW());
-
--- =============================================
--- 14. DISPONIBILIDAD DE PRODUCTOS (US020) solo para restaurante 1
--- =============================================
-
--- Disponibilidad para La Parrilla Mixteca (restaurant_id = 1)
-
--- Hamburguesa Clásica (product_id = 1)
--- Disponible de lunes a viernes de 12:00 a 22:00, sábados y domingos de 13:00 a 23:00
+-- Agua de Jamaica (id=4): Todos los días 10:00-20:00
 INSERT INTO product_availability (product_id, day_of_week, start_time, end_time)
-VALUES
-((SELECT id FROM products WHERE name = 'Hamburguesa Clásica' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 1, '12:00', '22:00'),
-((SELECT id FROM products WHERE name = 'Hamburguesa Clásica' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 2, '12:00', '22:00'),
-((SELECT id FROM products WHERE name = 'Hamburguesa Clásica' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 3, '12:00', '22:00'),
-((SELECT id FROM products WHERE name = 'Hamburguesa Clásica' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 4, '12:00', '22:00'),
-((SELECT id FROM products WHERE name = 'Hamburguesa Clásica' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 5, '12:00', '22:00'),
-((SELECT id FROM products WHERE name = 'Hamburguesa Clásica' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 6, '13:00', '23:00'),
-((SELECT id FROM products WHERE name = 'Hamburguesa Clásica' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 0, '13:00', '23:00');
+SELECT 4, day, '10:00', '20:00' FROM (VALUES (0),(1),(2),(3),(4),(5),(6)) AS days(day);
 
--- Hamburguesa BBQ Bacon (product_id = 2)
--- Sólo fines de semana: sábado y domingo de 14:00 a 00:00
-INSERT INTO product_availability (product_id, day_of_week, start_time, end_time)
-VALUES
-((SELECT id FROM products WHERE name = 'Hamburguesa BBQ Bacon' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 6, '14:00', '00:00'),
-((SELECT id FROM products WHERE name = 'Hamburguesa BBQ Bacon' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 0, '14:00', '00:00');
+-- Papas Gajo (id=6): Lunes, miércoles, viernes 18:00-22:00
+INSERT INTO product_availability (product_id, day_of_week, start_time, end_time) VALUES
+(6, 1, '18:00', '22:00'), (6, 3, '18:00', '22:00'), (6, 5, '18:00', '22:00');
 
--- Agua de Jamaica (product_id = 4)
--- Disponible todos los días de 10:00 a 20:00
-INSERT INTO product_availability (product_id, day_of_week, start_time, end_time)
-SELECT id, day, '10:00', '20:00'
-FROM products
-CROSS JOIN (VALUES (0),(1),(2),(3),(4),(5),(6)) AS days(day)
-WHERE name = 'Agua de Jamaica 500ml' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1);
+-- =============================================
+-- 7. PEDIDOS (historial + activos)
+-- =============================================
 
--- Papas Gajo Sazonadas (product_id = 6)
--- Solo lunes, miércoles y viernes de 18:00 a 22:00
-INSERT INTO product_availability (product_id, day_of_week, start_time, end_time)
-VALUES
-((SELECT id FROM products WHERE name = 'Papas Gajo Sazonadas' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 1, '18:00', '22:00'),
-((SELECT id FROM products WHERE name = 'Papas Gajo Sazonadas' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 3, '18:00', '22:00'),
-((SELECT id FROM products WHERE name = 'Papas Gajo Sazonadas' AND category_id IN (SELECT id FROM categories WHERE restaurant_id = 1)), 5, '18:00', '22:00');
+-- -------------------------------------------------
+-- Pedido activo (PENDING) para que el cliente pueda cancelar
+-- Se inserta en orders, pedido_historial, order_items y pedido_items_historial
+-- -------------------------------------------------
+INSERT INTO pedido_historial (id, customer_id, restaurant_id, status, total_amount, created_at)
+VALUES (100, 1, 1, 'PENDING', 195.00, NOW());
 
+INSERT INTO orders (id, customer_id, restaurant_id, status, total_amount)
+VALUES (100, 1, 1, 'PREPARING', 195.00);
+
+-- Items: 1 Hamburguesa Clásica (85) + 1 Refresco (30) + 1 Papas Gajo (45) = 160? No, da 160. Pero el total es 195, así que agregamos otro item: 1 Aros de Cebolla (55) → 85+30+45+55=215. Ajustamos: mejor 2 Hamburguesas Clásicas (170) + 1 Refresco (30) = 200. Dejamos 195? Podemos ajustar: 1 Hamburguesa Clásica (85) + 1 Hamburguesa BBQ (110) = 195. Sí.
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+VALUES (100, 1, 1, 85.00), (100, 2, 1, 110.00);
+INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase)
+VALUES (100, 1, 1, 85.00), (100, 2, 1, 110.00);
+
+-- Pago asociado (aunque pendiente, se registra)
+INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at)
+VALUES (100, 'CARD', 'PENDING', 'TXN_PEND', NOW());
+
+-- -------------------------------------------------
+-- Pedido COMPLETED (finalizado) – solo en historial
+-- -------------------------------------------------
+INSERT INTO pedido_historial (id, customer_id, restaurant_id, status, total_amount, created_at)
+VALUES (101, 1, 1, 'COMPLETED', 425.00, NOW() - INTERVAL '15 days');
+
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+VALUES (101, 1, 5, 85.00);
+
+INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at)
+VALUES (101, 'CARD', 'SUCCESS', 'TXN101', NOW() - INTERVAL '15 days');
+
+-- -------------------------------------------------
+-- Pedido CANCELLED (pendiente de reembolso) – solo historial
+-- -------------------------------------------------
+INSERT INTO pedido_historial (id, customer_id, restaurant_id, status, total_amount, created_at)
+VALUES (102, 1, 1, 'CANCELLED', 390.00, NOW() - INTERVAL '10 days');
+
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+VALUES (102, 2, 3, 110.00), (102, 5, 2, 30.00);
+
+INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at)
+VALUES (102, 'CASH', 'SUCCESS', NULL, NOW() - INTERVAL '10 days');
+
+-- -------------------------------------------------
+-- Pedido REFUNDED (reembolsado) – solo historial
+-- -------------------------------------------------
+INSERT INTO pedido_historial (id, customer_id, restaurant_id, status, total_amount, created_at)
+VALUES (103, 1, 1, 'REFUNDED', 450.00, NOW() - INTERVAL '8 days');
+
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+VALUES (103, 3, 2, 135.00), (103, 6, 4, 45.00);
+
+INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at)
+VALUES (103, 'CARD', 'SUCCESS', 'TXN103', NOW() - INTERVAL '8 days');
+
+-- -------------------------------------------------
+-- Pedido REFUND_REJECTED (reembolso rechazado) con motivo – solo historial
+-- -------------------------------------------------
+INSERT INTO pedido_historial (id, customer_id, restaurant_id, status, total_amount, created_at, refund_rejection_reason)
+VALUES (104, 1, 1, 'REFUND_REJECTED', 490.00, NOW() - INTERVAL '5 days', 'Cancelación fuera del plazo permitido (el pedido ya estaba en preparación)');
+
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+VALUES (104, 1, 4, 85.00), (104, 4, 6, 25.00);
+
+INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at)
+VALUES (104, 'CARD', 'SUCCESS', 'TXN104', NOW() - INTERVAL '5 days');
+
+-- -------------------------------------------------
+-- Otro pedido CANCELLED (pendiente de reembolso) más reciente
+-- -------------------------------------------------
+INSERT INTO pedido_historial (id, customer_id, restaurant_id, status, total_amount, created_at)
+VALUES (105, 1, 1, 'CANCELLED', 255.00, NOW() - INTERVAL '2 days');
+
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+VALUES (105, 1, 3, 85.00);
+
+INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at)
+VALUES (105, 'CARD', 'FAILED', 'TXN105', NOW() - INTERVAL '2 days');
+
+-- -------------------------------------------------
+-- Pedido activo PENDING (otro) para pruebas adicionales
+-- -------------------------------------------------
+INSERT INTO pedido_historial (id, customer_id, restaurant_id, status, total_amount, created_at)
+VALUES (106, 1, 1, 'PENDING', 245.00, NOW());
+
+INSERT INTO orders (id, customer_id, restaurant_id, status, total_amount)
+VALUES (106, 1, 1, 'PENDING', 245.00);
+
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+VALUES (106, 3, 1, 135.00), (106, 7, 2, 55.00);
+INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase)
+VALUES (106, 3, 1, 135.00), (106, 7, 2, 55.00);
+
+INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at)
+VALUES (106, 'CARD', 'PENDING', 'TXN106', NOW());
+
+-- =============================================
+-- FIN DEL SEEDING
+-- =============================================
 /*
 -- =============================================
 -- GENERAR PREFERENCIAS DESDE HISTORIAL

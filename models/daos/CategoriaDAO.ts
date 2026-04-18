@@ -1,3 +1,4 @@
+// models/daos/CategoriaDAO.ts
 import { db } from "../../config/db";
 
 export interface Categoria {

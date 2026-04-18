@@ -32,7 +32,7 @@ export const LoginForm = () => {
       }
 
       localStorage.setItem('token', data.token);
-      router.push('/dashboard');
+      router.push('/admin/dashboard');
     } catch {
       setError('Error de conexión con el servidor');
     } finally {

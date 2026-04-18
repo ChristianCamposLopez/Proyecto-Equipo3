@@ -38,7 +38,9 @@ services:
       # Persistencia de datos
       - pg_data:/var/lib/postgresql/data
       # Autocarga del esquema — :z para SELinux
-      - ./bd/init.sql:/docker-entrypoint-initdb.d/init.sql:z
+      - ./bd/init.sql:/docker-entrypoint-initdb.d/01_init.sql:z
+      # Sprint 3: Migración para US019, US020, US016-017, US004, US008
+      - ./bd/migration_sprint3.sql:/docker-entrypoint-initdb.d/02_migration_sprint3.sql:z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d restaurante_bd"]
       interval: 5s

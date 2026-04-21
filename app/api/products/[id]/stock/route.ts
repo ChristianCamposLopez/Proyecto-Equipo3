@@ -1,35 +1,38 @@
-// app/api/products/[id]/stock/route.ts
-import { NextRequest } from 'next/server';
-import { StockDAO } from '@/models/daos/StockDAO';
+import { NextRequest, NextResponse } from 'next/server';
+import { ProductAvailabilityDAO } from '@/models/daos/ProductAvailabilityDAO';
 
-interface Context {
-  params: { id: string } | Promise<{ id: string }>;
-}
+type Context = {
+  params: Promise<{ id: string }>;
+};
 
-const dao = new StockDAO();
+const productAvailabilityDAO = new ProductAvailabilityDAO();
 
-async function resolveId(context: Context) {
-  const { params } = context;
-  const resolved = typeof params === 'object' && 'then' in params ? await params : params;
-  return parseInt(resolved.id, 10);
-}
-
-// GET /api/products/[id]/stock — Obtener información de stock
-export async function GET(req: NextRequest, context: Context) {
+export async function PATCH(req: NextRequest, context: Context) {
   try {
-    const productId = await resolveId(context);
-    if (isNaN(productId)) {
-      return new Response(JSON.stringify({ error: 'ID inválido' }), { status: 400 });
+    const { id } = await context.params;
+    const productId = Number(id);
+
+    if (!Number.isInteger(productId) || productId <= 0) {
+      return NextResponse.json({ error: 'ID de producto inválido' }, { status: 400 });
     }
 
-    const product = await dao.getProductWithStock(productId);
-    if (!product) {
-      return new Response(JSON.stringify({ error: 'Producto no encontrado' }), { status: 404 });
+    const body = await req.json();
+    const stock = Number(body?.stock);
+
+    if (!Number.isInteger(stock) || stock < 0) {
+      return NextResponse.json(
+        { error: 'El stock debe ser un entero mayor o igual a cero' },
+        { status: 400 }
+      );
     }
 
-    return new Response(JSON.stringify(product), { status: 200 });
+    const updated = await productAvailabilityDAO.updateStock(productId, stock);
+    return NextResponse.json(updated);
   } catch (error) {
-    console.error('[GET /api/products/[id]/stock]', error);
-    return new Response(JSON.stringify({ error: 'Error al obtener stock' }), { status: 500 });
+    const message = error instanceof Error ? error.message : 'Error al actualizar stock';
+    const status = message.includes('no encontrado') ? 404 : 500;
+
+    console.error('[PATCH /api/products/[id]/stock]', error);
+    return NextResponse.json({ error: message }, { status });
   }
 }

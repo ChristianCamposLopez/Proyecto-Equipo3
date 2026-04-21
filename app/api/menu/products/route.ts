@@ -12,6 +12,7 @@ export async function GET() {
         p.id,
         p.name,
         p.base_price,
+        p.stock,
         p.is_available,
         p.image_url,
         COALESCE(p.stock_quantity, 0)::int AS stock_quantity,

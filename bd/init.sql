@@ -24,23 +24,24 @@ DROP TABLE IF EXISTS user_roles CASCADE;
 DROP TABLE IF EXISTS roles CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS promotions CASCADE;
-DROP TABLE IF EXISTS reviews CASCADE;
+DROP TABLE IF EXISTS review CASCADE;
 
--- =============================================
--- 2. USUARIOS Y ROLES
--- =============================================
-
+-- 2. INFRAESTRUCTURA DE USUARIOS Y ROLES (Seguridad)
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     phone_number VARCHAR(20) UNIQUE,
+    reset_token VARCHAR(255),
+    token_expiracion TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE roles (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(50) UNIQUE
+    name VARCHAR(50) UNIQUE, -- 'client', 'restaurant_admin', 'chef', 'repartidor'
+    permisos TEXT -- permisos asociados al rol (US010.4)
 );
 
 CREATE TABLE user_roles (
@@ -49,31 +50,26 @@ CREATE TABLE user_roles (
     PRIMARY KEY (user_id, role_id)
 );
 
--- =============================================
--- 3. RESTAURANTES
--- =============================================
-
+-- 3. RESTAURANTES Y HORARIOS
 CREATE TABLE restaurants (
     id SERIAL PRIMARY KEY,
     owner_user_id INT REFERENCES users(id),
     name VARCHAR(100) NOT NULL,
     latitude DECIMAL(10,8),
     longitude DECIMAL(11,8),
+    tax_id VARCHAR(50),
     is_active BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE restaurant_hours (
     id SERIAL PRIMARY KEY,
     restaurant_id INT REFERENCES restaurants(id),
-    day_of_week INT,
+    day_of_week INT, -- 0=Domingo, 1=Lunes...
     open_time TIME,
     close_time TIME
 );
 
--- =============================================
--- 4. CATEGORÍAS
--- =============================================
-
+-- 4. MÓDULO DE IVAN Y MARIO: CATÁLOGO Y GESTIÓN DE MENÚ
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
     restaurant_id INT REFERENCES restaurants(id),
@@ -205,40 +201,6 @@ CREATE TABLE orders (
 
     CONSTRAINT chk_order_status CHECK (status IN ('PENDING' , 'CONFIRMED' , 'PREPARING' , 'READY'))
 );
-
-/*
-CREATE TABLE customer_product_preferences (
-    id SERIAL PRIMARY KEY,
-
-    customer_id INT NOT NULL REFERENCES users(id),
-    product_id INT NOT NULL REFERENCES products(id),
-
-    order_count INT DEFAULT 0, -- cuántas veces lo pidió
-    last_ordered_at TIMESTAMP, -- última vez que lo pidió
-
-    score DECIMAL(10,4), -- métrica ponderada
-
-    updated_at TIMESTAMP DEFAULT NOW(),
-
-    UNIQUE (customer_id, product_id)
-);
-
-CREATE TABLE customer_recommendations (
-    id SERIAL PRIMARY KEY,
-
-    customer_id INT NOT NULL REFERENCES users(id),
-
-    product_id INT NOT NULL REFERENCES products(id),
-
-    score DECIMAL(10,4),
-
-    rank INT, -- posición (1 a 5)
-
-    created_at TIMESTAMP DEFAULT NOW(),
-
-    UNIQUE (customer_id, product_id)
-); 
-*/
 
 CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,

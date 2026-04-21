@@ -349,7 +349,7 @@ CREATE INDEX idx_orders_customer_status
 ON orders(customer_id, status);
 
 CREATE INDEX idx_order_items_product 
-ON order_items(product_id);
+ON order_items(product_id); 
 
 /*
 CREATE INDEX idx_preferences_customer 

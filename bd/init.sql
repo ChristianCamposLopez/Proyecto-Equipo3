@@ -8,6 +8,8 @@
 
 -- 1. LIMPIEZA DE TABLAS (Evitar conflictos de duplicidad)
 DROP TABLE IF EXISTS payments CASCADE;
+DROP TABLE IF EXISTS cart_items CASCADE;
+DROP TABLE IF EXISTS carts CASCADE;
 DROP TABLE IF EXISTS order_item_options CASCADE;
 DROP TABLE IF EXISTS order_items CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
@@ -18,6 +20,7 @@ DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS restaurant_hours CASCADE;
 DROP TABLE IF EXISTS restaurants CASCADE;
+DROP TABLE IF EXISTS delivery_addresses CASCADE;
 DROP TABLE IF EXISTS user_roles CASCADE;
 DROP TABLE IF EXISTS roles CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
@@ -35,6 +38,25 @@ CREATE TABLE users (
     token_expiracion TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE delivery_addresses (
+    id SERIAL PRIMARY KEY,
+    customer_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    street VARCHAR(150) NOT NULL,
+    exterior_number VARCHAR(20) NOT NULL,
+    interior_number VARCHAR(20),
+    neighborhood VARCHAR(100),
+    city VARCHAR(100) NOT NULL,
+    state VARCHAR(100) NOT NULL,
+    postal_code VARCHAR(10) NOT NULL,
+    delivery_references VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT delivery_addresses_postal_code_chk CHECK (postal_code ~ '^[0-9]{5}$')
+);
+
+CREATE INDEX delivery_addresses_customer_idx
+ON delivery_addresses(customer_id);
 
 CREATE TABLE roles (
     id SERIAL PRIMARY KEY,
@@ -81,9 +103,16 @@ CREATE TABLE products (
     name VARCHAR(100) NOT NULL,
     base_price DECIMAL(10,2) NOT NULL, -- Mario: Validación > 0
     is_available BOOLEAN DEFAULT TRUE, -- Mario: Control de Stock
+    stock INT NOT NULL DEFAULT 10 CHECK (stock >= 0),
     -- columnas añadidas para US009: gestión de imágenes
     image_url VARCHAR(500),
-    image_uploaded_at TIMESTAMP
+    image_uploaded_at TIMESTAMP,
+    CONSTRAINT products_stock_availability_chk
+      CHECK (
+        (stock = 0 AND is_available = FALSE)
+        OR
+        (stock > 0 AND is_available = TRUE)
+      )
 );
 
 -- Complejidad del Menú (Opciones y Extras)
@@ -108,13 +137,41 @@ CREATE TABLE options (
     price_modifier DECIMAL(10,2) DEFAULT 0.00
 );
 
--- 5. MÓDULO DE FRAY E IRVING: PEDIDOS Y COCINA
+-- 5. MÓDULO DE FRAY: CARRITO DE COMPRAS
+CREATE TABLE carts (
+    id SERIAL PRIMARY KEY,
+    customer_id INT NOT NULL REFERENCES users(id),
+    restaurant_id INT REFERENCES restaurants(id),
+    status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT carts_status_chk CHECK (status IN ('ACTIVE', 'CHECKED_OUT', 'ABANDONED'))
+);
+
+CREATE UNIQUE INDEX carts_one_active_per_customer_idx
+ON carts(customer_id)
+WHERE status = 'ACTIVE';
+
+CREATE TABLE cart_items (
+    id SERIAL PRIMARY KEY,
+    cart_id INT NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+    product_id INT NOT NULL REFERENCES products(id),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_price DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT cart_items_unique_product_per_cart UNIQUE (cart_id, product_id)
+);
+
+-- 6. MÓDULO DE IRVING: PEDIDOS Y COCINA
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
     customer_id INT REFERENCES users(id),
     restaurant_id INT REFERENCES restaurants(id),
     delivery_address_json JSONB,
-    status VARCHAR(50) DEFAULT 'PENDING', -- Irving: PENDING, PREPARING, READY
+    deliveryman_id INT REFERENCES users(id), -- US012: repartidor asignado
+    status VARCHAR(50) DEFAULT 'PENDING', -- Irving: PENDING, PREPARING, READY, DELIVERY_ASSIGNED
+    note VARCHAR(200), -- US007: notas especiales del cliente para cocina
     total_amount DECIMAL(10,2),
     created_at TIMESTAMP DEFAULT NOW() -- Irving: Base para temporizador
 );
@@ -166,17 +223,33 @@ INSERT INTO roles (name, permisos) VALUES
 -- Contraseñas hasheadas con bcrypt (password original: 'password123')
 INSERT INTO users (email, password_hash, full_name, phone_number) VALUES 
 ('cliente@ejemplo.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Juan Perez', '5551234567'),
-('admin@restaurante.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Carlos Admin', '5559876543');
+('admin@restaurante.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Carlos Admin', '5559876543'),
+('repartidor1@ejemplo.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Laura Repartidora', '5550000001'),
+('repartidor2@ejemplo.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Marco Repartidor', '5550000002'),
+('repartidor3@ejemplo.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Elena Repartidora', '5550000003');
 
-INSERT INTO user_roles VALUES (1, 1), (2, 2);
+INSERT INTO user_roles VALUES (1, 1), (2, 2), (3, 4), (4, 4), (5, 4);
+
+INSERT INTO delivery_addresses (
+    customer_id,
+    street,
+    exterior_number,
+    neighborhood,
+    city,
+    state,
+    postal_code,
+    delivery_references
+)
+VALUES
+  (1, 'Av. Central', '123', 'Centro', 'Ciudad', 'Oaxaca', '12345', 'Casa color blanco');
 
 INSERT INTO restaurants (owner_user_id, name) VALUES (2, 'La Parrilla Mixteca');
 
 INSERT INTO categories (restaurant_id, name, descripcion) 
 VALUES (1, 'Hamburguesas', 'Especialidades al carbón');
 
-INSERT INTO products (category_id, name, base_price) 
-VALUES (1, 'Hamburguesa Clásica', 85.00);
+INSERT INTO products (category_id, name, base_price, stock, is_available) 
+VALUES (1, 'Hamburguesa Clásica', 85.00, 12, TRUE);
 
 -- Más categorías y productos de ejemplo
 INSERT INTO categories (restaurant_id, name, descripcion) 
@@ -185,22 +258,40 @@ VALUES (1, 'Tacos', 'Tacos al pastor y más');
 INSERT INTO categories (restaurant_id, name, descripcion)
 VALUES (1, 'Bebidas', 'Refrescos, aguas y cervezas');
 
-INSERT INTO products (category_id, name, base_price)
+INSERT INTO products (category_id, name, base_price, stock, is_available)
 VALUES
-  (2, 'Taco al Pastor', 35.00),
-  (2, 'Taco de Carne Asada', 40.00),
-  (3, 'Agua de Jamaica', 20.00),
-  (3, 'Cerveza', 40.00);
+  (2, 'Taco al Pastor', 35.00, 20, TRUE),
+  (2, 'Taco de Carne Asada', 40.00, 18, TRUE),
+  (3, 'Agua de Jamaica', 20.00, 25, TRUE),
+  (3, 'Cerveza', 40.00, 10, TRUE);
+
+INSERT INTO carts (customer_id, restaurant_id, status)
+VALUES (1, 1, 'ACTIVE');
+
+INSERT INTO cart_items (cart_id, product_id, quantity, unit_price)
+VALUES
+  (1, 1, 1, 85.00),
+  (1, 3, 2, 40.00);
 
 -- Pedidos de prueba para dashboard
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
+INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, note, total_amount, created_at)
 VALUES
-  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'COMPLETED', 160.00, NOW() - INTERVAL '2 days'),
-  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'COMPLETED', 125.00, NOW() - INTERVAL '1 day'),
-  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'CANCELLED', 85.00, NOW());
+  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'COMPLETED', 'Sin cebolla', 160.00, NOW() - INTERVAL '2 days'),
+  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'COMPLETED', 'Extra picante', 125.00, NOW() - INTERVAL '1 day'),
+  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'CANCELLED', NULL, 85.00, NOW());
 
 INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at)
 VALUES
   (1, 'CARD', 'SUCCESS', 'TXN1001', NOW() - INTERVAL '2 days'),
   (2, 'CASH', 'SUCCESS', NULL, NOW() - INTERVAL '1 day'),
   (3, 'CARD', 'FAILED', 'TXN1003', NOW());
+
+-- Crear pedidos en estado READY
+INSERT INTO orders (customer_id, restaurant_id, status, note, total_amount) 
+VALUES 
+  (1, 1, 'READY', 'Sin cilantro', 45.50),
+  (1, 1, 'READY', 'Salsa aparte', 32.00),
+  (1, 1, 'PREPARING', 'Bien dorado', 28.75);
+
+-- Verificar
+SELECT id, status, total_amount FROM orders;

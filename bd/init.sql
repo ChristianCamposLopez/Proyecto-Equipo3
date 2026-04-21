@@ -38,6 +38,25 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE delivery_addresses (
+    id SERIAL PRIMARY KEY,
+    customer_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    street VARCHAR(150) NOT NULL,
+    exterior_number VARCHAR(20) NOT NULL,
+    interior_number VARCHAR(20),
+    neighborhood VARCHAR(100),
+    city VARCHAR(100) NOT NULL,
+    state VARCHAR(100) NOT NULL,
+    postal_code VARCHAR(10) NOT NULL,
+    delivery_references VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT delivery_addresses_postal_code_chk CHECK (postal_code ~ '^[0-9]{5}$')
+);
+
+CREATE INDEX delivery_addresses_customer_idx
+ON delivery_addresses(customer_id);
+
 CREATE TABLE roles (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE, -- 'client', 'restaurant_admin', 'chef', 'repartidor'
@@ -83,29 +102,31 @@ CREATE TABLE categories (
 
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
-
     category_id INT REFERENCES categories(id),
     descripcion TEXT NULL,
-
     name VARCHAR(100) NOT NULL,
-
     base_price DECIMAL(10,2) NOT NULL,
-
     -- disponibilidad temporal (stock agotado o cocina cerrada)
     is_available BOOLEAN DEFAULT TRUE,
-
-    -- eliminación lógica del plato (US005.3)
+    -- Nota: eliminación lógica del plato (US005.3) IVAN SANCHEZ MORALES
     is_active BOOLEAN DEFAULT TRUE,
-
-    -- control de inventario (US005.5)
-    stock INTEGER DEFAULT 0,
+    stock INT NOT NULL DEFAULT 10 CHECK (stock >= 0),
     deleted_at TIMESTAMP NULL
+    -- columnas añadidas para US009: gestión de imágenes
+    image_url VARCHAR(500),
+    image_uploaded_at TIMESTAMP,
+    CONSTRAINT products_stock_availability_chk
+      CHECK (
+        (stock = 0 AND is_available = FALSE)
+        OR
+        (stock > 0 AND is_available = TRUE)
+      )
 );
 
 -- =============================================
 -- 6. IMÁGENES DE PRODUCTOS (US009)
 -- =============================================
-
+--Nota: Esta es de mi version de imagenes que soporta multiples imagenes por producto YA QUE SE REPITIERON ASIGNACION DE HISTORIAS.
 CREATE TABLE product_images (
     id SERIAL PRIMARY KEY,
 
@@ -133,21 +154,18 @@ CREATE INDEX idx_product_images_is_primary
 ON product_images(is_primary);
 
 -- =============================================
--- 6. DISPONIBILIDAD DE PRODUCTOS (US020)
+-- 6. DISPONIBILIDAD DE PRODUCTOS (US020) 
 -- =============================================
-
+--Nota: Tabla para definir en qué días y horarios específicos está disponible cada producto.
 CREATE TABLE product_availability (
     id SERIAL PRIMARY KEY,
-
     product_id INT NOT NULL
         REFERENCES products(id)
         ON DELETE CASCADE,
 
     day_of_week INT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
-
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
-
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -182,6 +200,32 @@ CREATE TABLE options (
     price_modifier DECIMAL(10,2) DEFAULT 0.00
 );
 
+-- 5. MÓDULO DE FRAY: CARRITO DE COMPRAS
+CREATE TABLE carts (
+    id SERIAL PRIMARY KEY,
+    customer_id INT NOT NULL REFERENCES users(id),
+    restaurant_id INT REFERENCES restaurants(id),
+    status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT carts_status_chk CHECK (status IN ('ACTIVE', 'CHECKED_OUT', 'ABANDONED'))
+);
+
+CREATE UNIQUE INDEX carts_one_active_per_customer_idx
+ON carts(customer_id)
+WHERE status = 'ACTIVE';
+
+CREATE TABLE cart_items (
+    id SERIAL PRIMARY KEY,
+    cart_id INT NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+    product_id INT NOT NULL REFERENCES products(id),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_price DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT cart_items_unique_product_per_cart UNIQUE (cart_id, product_id)
+);
+
 -- =============================================
 -- 8. PEDIDOS
 -- =============================================
@@ -190,122 +234,51 @@ CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
     customer_id INT REFERENCES users(id),
     restaurant_id INT REFERENCES restaurants(id),
-
     delivery_address_json JSONB,
-
-    status VARCHAR(50) DEFAULT 'PENDING',
-
+    deliveryman_id INT REFERENCES users(id),
+    status VARCHAR(50) DEFAULT 'PENDING', -- Aqui segun yo cuando 
+    note VARCHAR(200), -- US007: notas especiales del cliente para cocina
     total_amount DECIMAL(10,2),
-
-    created_at TIMESTAMP DEFAULT NOW(),
-
-    CONSTRAINT chk_order_status CHECK (status IN ('PENDING' , 'CONFIRMED' , 'PREPARING' , 'READY'))
+    created_at TIMESTAMP DEFAULT NOW() -- Irving: Base para temporizador
 );
 
 CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
-
     order_id INT REFERENCES orders(id),
-
     product_id INT REFERENCES products(id),
-
     quantity INT NOT NULL,
-
-    -- preserva precio histórico
     unit_price_at_purchase DECIMAL(10,2)
 );
 
+--Nota: Esta tabla es para las historias de usario de recomendacion, cancelacion y rembolsos ya que la orden desaparece por parte de crhistian en la historia de dasboard chef
 CREATE TABLE pedido_historial (
     id SERIAL PRIMARY KEY,
     customer_id INT REFERENCES users(id),
     restaurant_id INT REFERENCES restaurants(id),
-
     delivery_address_json JSONB,
-
     status VARCHAR(50) DEFAULT 'PENDING',
-
     total_amount DECIMAL(10,2),
-
     created_at TIMESTAMP DEFAULT NOW(),
-
     refund_rejection_reason TEXT,
-
     CONSTRAINT chk_order_status CHECK (status IN ('CANCELLED', 'COMPLETED', 'PENDING', 'REFUNDED', 'REFUND_REJECTED')) -- SOLO PEDIDOS FINALIZADOS O CANCELADOS PARA HISTORIAL
 );
 
+--Nota: Esta tabla es para las historias de usario de recomendacion, cancelacion y rembolsos ya que la orden desaparece por parte de crhistian en la historia de dasboard chef
 CREATE TABLE pedido_items_historial (
     id SERIAL PRIMARY KEY,
-
     order_id INT REFERENCES pedido_historial(id), -- 🔥 CAMBIO AQUÍ
-
     product_id INT REFERENCES products(id),
-
     quantity INT NOT NULL,
     unit_price_at_purchase DECIMAL(10,2)
 );
 
 CREATE TABLE order_item_options (
     id SERIAL PRIMARY KEY,
-
     order_item_id INT REFERENCES order_items(id),
-
     option_id INT REFERENCES options(id),
-
     price_at_purchase DECIMAL(10,2)
 );
 
--- =============================================
--- 9. PAGOS
--- =============================================
-
-CREATE TABLE payments (
-    id SERIAL PRIMARY KEY,
-    order_id INT REFERENCES pedido_historial(id), -- 🔥 CAMBIO POR QUE LA TABLA ORDER ES TEMPORAL SEGUN CHRISTIAN Y NO SE SI LOS PAGOS SE MANTIENEN DE FORMA PERMANENTE?
-    payment_method VARCHAR(50),
-    status VARCHAR(50) DEFAULT 'PENDING',
-    transaction_id VARCHAR(100),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- =============================================
--- 10. PROMOCIONES
--- =============================================
-
-CREATE TABLE promotions (
-    id SERIAL PRIMARY KEY,
-
-    restaurant_id INT REFERENCES restaurants(id),
-
-    code VARCHAR(50) UNIQUE NOT NULL,
-
-    discount_percentage DECIMAL(5,2) NOT NULL,
-
-    start_date TIMESTAMP,
-
-    end_date TIMESTAMP,
-
-    is_active BOOLEAN DEFAULT TRUE
-);
-
--- =============================================
--- 11. REVIEWS
--- =============================================
-
-CREATE TABLE reviews (
-    id SERIAL PRIMARY KEY,
-
-    order_id INT REFERENCES orders(id),
-
-    customer_id INT REFERENCES users(id),
-
-    restaurant_id INT REFERENCES restaurants(id),
-
-    rating INT CHECK (rating >= 1 AND rating <= 5),
-
-    comment TEXT,
-
-    created_at TIMESTAMP DEFAULT NOW()
-);
 
 CREATE INDEX idx_orders_customer_status 
 ON orders(customer_id, status);
@@ -313,22 +286,26 @@ ON orders(customer_id, status);
 CREATE INDEX idx_order_items_product 
 ON order_items(product_id); 
 
-/*
-CREATE INDEX idx_preferences_customer 
-ON customer_product_preferences(customer_id);
+-- Nota: Ya que no se realiza pasarela de pagos esta tabla ya no se usaria segun yo(pero tampoco afecta si se conserva).
+-- 6. MÓDULO DE CHRISTIAN: PAGOS DIGITALES 
+CREATE TABLE payments (
+    id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(id), -- Christian: Trazabilidad
+    payment_method VARCHAR(50), -- 'CARD', 'CASH'
+    status VARCHAR(50) DEFAULT 'PENDING', -- 'SUCCESS', 'FAILED'
+    transaction_id VARCHAR(100), -- ID de pasarela externa
+    created_at TIMESTAMP DEFAULT NOW()
+);
 
-CREATE INDEX idx_recommendations_customer 
-ON customer_recommendations(customer_id);
-
-*/
--- =============================================
--- 12. SEEDING (SOLO RESTAURANTE 1)
--- =============================================
-
--- =============================================
--- LIMPIEZA PREVIA (opcional, solo si quieres reiniciar)
--- =============================================
--- TRUNCATE TABLE order_items, pedido_items_historial, orders, pedido_historial, payments, product_availability, products, categories, restaurants, user_roles, users, roles RESTART IDENTITY CASCADE;
+-- Nota:Ya que no existia pagos yo no vi necesario el uso de rembolsos como una tabla sola asi que use pedido_historial para marcar los rembolsos.
+-- 6.1 REEMBOLSOS (US026)
+CREATE TABLE refunds (
+    id SERIAL PRIMARY KEY,
+    payment_id INT REFERENCES payments(id),
+    amount DECIMAL(10,2),
+    reason VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW()
+);
 
 -- =============================================
 -- 1. ROLES
@@ -496,71 +473,3 @@ VALUES (106, 'CARD', 'PENDING', 'TXN106', NOW());
 -- =============================================
 -- FIN DEL SEEDING
 -- =============================================
-/*
--- =============================================
--- GENERAR PREFERENCIAS DESDE HISTORIAL
--- =============================================
-
-INSERT INTO customer_product_preferences (
-    customer_id,
-    product_id,
-    order_count,
-    last_ordered_at,
-    score,
-    updated_at
-)
-SELECT 
-    o.customer_id,
-    oi.product_id,
-    SUM(oi.quantity) AS order_count,
-    MAX(o.created_at) AS last_ordered_at,
-
-    -- score simple (puedes mejorar luego)
-    SUM(oi.quantity) * 1.0 AS score,
-
-    NOW()
-FROM orders o
-JOIN order_items oi ON oi.order_id = o.id
-WHERE o.status = 'COMPLETED'
-GROUP BY o.customer_id, oi.product_id
-ON CONFLICT (customer_id, product_id)
-DO UPDATE SET
-    order_count = EXCLUDED.order_count,
-    last_ordered_at = EXCLUDED.last_ordered_at,
-    score = EXCLUDED.score,
-    updated_at = NOW();
-
--- =============================================
--- GENERAR RECOMENDACIONES
--- =============================================
-
-DELETE FROM customer_recommendations;
-
-INSERT INTO customer_recommendations (
-    customer_id,
-    product_id,
-    score,
-    rank,
-    created_at
-)
-SELECT 
-    customer_id,
-    product_id,
-    score,
-    ROW_NUMBER() OVER (
-        PARTITION BY customer_id 
-        ORDER BY score DESC
-    ) AS rank,
-    NOW()
-FROM customer_product_preferences;
-
--- Venta masiva para alterar el ranking dinámico
-
-INSERT INTO pedido_historial (customer_id, restaurant_id, status, total_amount, created_at)
-VALUES (1, 1, 'COMPLETED', 2750.00, NOW());
-
-
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
-VALUES ((SELECT MAX(id) FROM pedido_historial), 7, 50, 55.00);
-
-*/

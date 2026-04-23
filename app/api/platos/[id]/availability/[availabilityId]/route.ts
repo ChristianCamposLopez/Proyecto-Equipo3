@@ -1,3 +1,4 @@
+// app/api/platos/[id]/availability/[availabilityId]/route.ts
 import { NextResponse } from 'next/server';
 import { DisponibilidadController } from '@/controllers/DisponibilidadController';
 

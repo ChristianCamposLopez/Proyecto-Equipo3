@@ -445,7 +445,7 @@ export default function EditarPlato() {
   const deleteImage = async (imageId: number) => {
     if (!confirm('¿Eliminar imagen?')) return;
 
-    const res = await fetch(`/api/platos/images/${imageId}`, {
+    const res = await fetch(`/api/platos/${productId}/images/${imageId}`, {
       method: 'DELETE',
     });
 

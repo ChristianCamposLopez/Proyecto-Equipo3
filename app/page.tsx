@@ -15,6 +15,7 @@ export default function RootMenu() {
     { name: 'Recuperar Contraseña', path: '/recovery', icon: '🔑' },
     { name: 'Menú de Productos', path: '/menu', icon: '🍱' },
     { name: 'Gestión de Pedidos', path: '/orders', icon: '🛒' },
+    { name: 'Cocina', path: '/kitchen', icon: '👨‍🍳' },
   ];
 
   return (

@@ -1,3 +1,4 @@
+// controllers/pedidoController.ts
 import { PedidoDAO } from "../models/daos/PedidoDAO";
 
 export class PedidoController {
@@ -13,10 +14,16 @@ export class PedidoController {
     return await PedidoDAO.crearPedido(userId, restaurantId, items);
   }
 
+  // controllers/pedidoController.ts
+
   async completarPedido(pedidoId: number) {
     const pedido = await PedidoDAO.findActiveOrderById(pedidoId);
     if (!pedido) {
       throw new Error("Pedido no encontrado o ya finalizado");
+    }
+    // Solo permitir completar si el estado actual es DELIVERED
+    if (pedido.status !== 'DELIVERED') {
+      throw new Error(`No se puede completar un pedido en estado '${pedido.status}'. Solo se permite completar pedidos entregados (DELIVERED).`);
     }
     await PedidoDAO.completarPedido(pedidoId);
   }
@@ -26,8 +33,8 @@ export class PedidoController {
     if (!pedido) {
       throw new Error("Pedido no encontrado o ya finalizado");
     }
-    // Estados en los que NO se puede cancelar
-    if (["PREPARING", "READY"].includes(pedido.status)) {
+    // Estados en los que se puede cancelar
+    if (!["PENDING", "CONFIRMED"].includes(pedido.status)) {
       throw new Error("No se puede cancelar el pedido en este estado");
     }
     await PedidoDAO.cancelPedido(pedidoId);
@@ -36,5 +43,17 @@ export class PedidoController {
 
   async getPedidos(userId: number) {
     return await PedidoDAO.getPedidosByUser(userId);
+  }
+
+  async registrarHistorial(
+    orderId: number,
+    customerId: number,
+    restaurantId: number,
+    items: { product_id: number; quantity: number }[]
+  ) {
+    if (!items || items.length === 0) {
+      throw new Error("No hay items para registrar en historial");
+    }
+    return await PedidoDAO.registrarHistorial(orderId, customerId, restaurantId, items);
   }
 }

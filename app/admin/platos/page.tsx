@@ -237,7 +237,7 @@ export default function AdminPlatosPage({ params }: { params: Promise<{ restaura
           base_price: Number(form.base_price),
           stock: Number(form.stock),
           category_id: Number(form.category_id),
-          description: form.description.trim() === "" ? null : form.description
+          descripcion: form.description.trim() === "" ? null : form.description
         })
       });
 

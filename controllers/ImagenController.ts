@@ -59,12 +59,12 @@ export class ImagenController {
 
     // Insertar en BD
     const newImage = await ImagenDAO.insertImage({
-      productId,
-      imagePath: publicPath,
-      fileName,
-      fileSize: buffer.length,
+      product_id: productId,
+      image_path: publicPath,
+      file_name: fileName,
+      file_size: buffer.length,
       format: fmt,
-      isPrimary,
+      is_primary: isPrimary,
     });
 
     return { image: newImage };

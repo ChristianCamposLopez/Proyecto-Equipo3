@@ -1,3 +1,4 @@
+// models/entities/DisponibilidadEntity.ts
 export interface DisponibilidadEntity {
   id: number;
   product_id: number;

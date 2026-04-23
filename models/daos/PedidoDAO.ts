@@ -1,3 +1,4 @@
+// models/daos/PedidoDAO.ts
 import { db } from "../../config/db";
 
 export class PedidoDAO {
@@ -84,6 +85,64 @@ export class PedidoDAO {
     }
   }
 
+  static async registrarHistorial(
+      orderId: number,
+      customerId: number,
+      restaurantId: number,
+      items: { product_id: number; quantity: number }[]
+    ) {
+      const client = await db.connect();
+      try {
+        await client.query("BEGIN");
+
+        // Obtener precios unitarios actuales de los productos
+        const productIds = items.map(i => i.product_id);
+        const productsRes = await client.query(
+          `SELECT id, base_price FROM products WHERE id = ANY($1)`,
+          [productIds]
+        );
+        if (productsRes.rowCount !== items.length) {
+          throw new Error("Algún producto no existe");
+        }
+
+        const priceMap = new Map<number, number>();
+        for (const row of productsRes.rows) {
+          priceMap.set(row.id, Number(row.base_price));
+        }
+
+        let total = 0;
+        for (const item of items) {
+          total += priceMap.get(item.product_id)! * item.quantity;
+        }
+
+        // Insertar en pedido_historial usando el mismo orderId
+        await client.query(
+          `INSERT INTO pedido_historial (id, customer_id, restaurant_id, status, total_amount)
+          VALUES ($1, $2, $3, 'PENDING', $4)
+          ON CONFLICT (id) DO NOTHING`,   // Evita duplicados si ya existe
+          [orderId, customerId, restaurantId, total]
+        );
+
+        // Insertar items en pedido_items_historial
+        for (const item of items) {
+          const unitPrice = priceMap.get(item.product_id)!;
+          await client.query(
+            `INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+            VALUES ($1, $2, $3, $4)`,
+            [orderId, item.product_id, item.quantity, unitPrice]
+          );
+        }
+
+        await client.query("COMMIT");
+        return { success: true };
+      } catch (e) {
+        await client.query("ROLLBACK");
+        throw e;
+      } finally {
+        client.release();
+      }
+  }
+
   // Buscar pedido activo (en tabla orders)
   static async findActiveOrderById(id: number) {
     const result = await db.query(`SELECT * FROM orders WHERE id = $1`, [id]);
@@ -96,7 +155,7 @@ export class PedidoDAO {
   }
 
   // Eliminar pedido activo (orders y order_items)
-  static async deleteActiveOrder(orderId: number) {
+  /*static async deleteActiveOrder(orderId: number) {
     const client = await db.connect();
     try {
       await client.query("BEGIN");
@@ -109,13 +168,28 @@ export class PedidoDAO {
     } finally {
       client.release();
     }
-  }
+  }*/
 
   // Cancelar pedido (cliente)
+  // models/daos/PedidoDAO.ts
+
   static async cancelPedido(orderId: number) {
     const client = await db.connect();
     try {
       await client.query("BEGIN");
+
+      // 0. Verificar el estado actual en pedido_historial
+      const historialCheck = await client.query(
+        `SELECT status FROM pedido_historial WHERE id = $1 FOR UPDATE`,
+        [orderId]
+      );
+      if (historialCheck.rowCount === 0) {
+        throw new Error("Pedido no encontrado en el historial");
+      }
+      const currentStatus = historialCheck.rows[0].status;
+      if (currentStatus !== 'PENDING') {
+        throw new Error(`No se puede cancelar un pedido en estado '${currentStatus}'. Solo se permite cancelar pedidos 'PENDING'.`);
+      }
 
       // 1. Cambiar estado en historial a CANCELLED
       await client.query(
@@ -123,7 +197,7 @@ export class PedidoDAO {
         [orderId]
       );
 
-      // 2. Revertir stock (opcional pero recomendado)
+      // 2. Revertir stock (usando items del historial)
       const items = await client.query(
         `SELECT product_id, quantity FROM pedido_items_historial WHERE order_id = $1`,
         [orderId]
@@ -135,11 +209,12 @@ export class PedidoDAO {
         );
       }
 
-      // 3. Eliminar de orders y order_items
+      // 3. Eliminar de orders y order_items (si existen, porque puede que ya se hayan eliminado)
       await client.query(`DELETE FROM order_items WHERE order_id = $1`, [orderId]);
       await client.query(`DELETE FROM orders WHERE id = $1`, [orderId]);
 
       await client.query("COMMIT");
+      return { message: "Pedido cancelado. Stock revertido." };
     } catch (e) {
       await client.query("ROLLBACK");
       throw e;
@@ -153,17 +228,12 @@ export class PedidoDAO {
     const client = await db.connect();
     try {
       await client.query("BEGIN");
-
-      // 1. Cambiar estado en historial a COMPLETED
       await client.query(
         `UPDATE pedido_historial SET status = 'COMPLETED' WHERE id = $1`,
         [orderId]
       );
-
-      // 2. Eliminar de orders y order_items (ya no está activo)
       await client.query(`DELETE FROM order_items WHERE order_id = $1`, [orderId]);
       await client.query(`DELETE FROM orders WHERE id = $1`, [orderId]);
-
       await client.query("COMMIT");
     } catch (e) {
       await client.query("ROLLBACK");

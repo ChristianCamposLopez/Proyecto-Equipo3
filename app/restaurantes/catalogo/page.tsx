@@ -300,7 +300,8 @@ export default function PedidoPage() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingRecommendations, setLoadingRecommendations] = useState(true);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [pendingProductId, setPendingProductId] = useState<number | null>(null)
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null)
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -352,86 +353,35 @@ export default function PedidoPage() {
     loadCategories(); // NUEVO para categorias USOO1 (Sprint 6)
   }, [selectedCategory]);
 
-  const addToCart = (product: Product) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.product_id === product.id);
-      if (existing) {
-        return prev.map(item =>
-          item.product_id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [
-        ...prev,
-        {
-          product_id: product.id,
-          name: product.name,
-          price: parseFloat(product.base_price),
-          quantity: 1,
-        },
-      ];
-    });
-    setMessage(null);
-  };
-
-  const updateQuantity = (productId: number, delta: number) => {
-    setCart(prev =>
-      prev
-        .map(item =>
-          item.product_id === productId
-            ? { ...item, quantity: Math.max(0, item.quantity + delta) }
-            : item
-        )
-        .filter(item => item.quantity > 0)
-    );
-  };
-
-  const removeItem = (productId: number) => {
-    setCart(prev => prev.filter(item => item.product_id !== productId));
-  };
-
-  const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-  const handleSubmitOrder = async () => {
-    if (cart.length === 0) {
-      setMessage({ type: 'error', text: 'El carrito está vacío' });
-      return;
-    }
-
-    setSubmitting(true);
-    setMessage(null);
+  const addToCart = async (productId: number) => {
+    setPendingProductId(productId)
+    setFeedback(null)
 
     try {
-      const items = cart.map(item => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-      }));
-
-      const res = await fetch('/api/pedidos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          restaurant_id: parseInt(restaurantId),
-          items,
+          customerId: 1, // o restaurant/customer real
+          productId,
+          quantity: 1,
         }),
-      });
+      })
 
-      const data = await res.json();
+      const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Error al crear el pedido');
+        throw new Error(data.error || "Error al agregar al carrito")
       }
 
-      setMessage({ type: 'success', text: `¡Pedido #${data.pedidoId} creado con éxito!` });
-      setCart([]);
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      setFeedback({ type: "success", message: "Agregado al carrito" })
 
+    } catch (error: any) {
+      setFeedback({ type: "error", message: error.message })
+    } finally {
+      setPendingProductId(null)
+    }
+  }
   const hasValidImage = (url: string) => url && url.trim() !== '' && url !== 'null' && url !== 'undefined';
 
   if (loading || loadingRecommendations) {
@@ -529,7 +479,7 @@ export default function PedidoPage() {
                         </div>
                         <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                           <button
-                            onClick={() => addToCart(p)}
+                            onClick={() => addToCart(p.id)}
                             className="btn-add"
                           >
                             Agregar
@@ -633,7 +583,7 @@ export default function PedidoPage() {
                       </div>
                       <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                         <button
-                          onClick={() => addToCart(p)}
+                          onClick={() => addToCart(p.id)}
                           className="btn-add"
                         >
                           Agregar
@@ -651,78 +601,7 @@ export default function PedidoPage() {
               </div>
             )}
           </div>
-
-          {/* Carrito (columna derecha) - igual que antes */}
-          <div style={{ flex: 1, minWidth: '280px', background: '#1A1714', padding: '24px', borderRadius: '16px', height: 'fit-content', position: 'sticky', top: '24px' }}>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', marginBottom: '16px' }}>Tu pedido</h2>
-            {cart.length === 0 ? (
-              <p style={{ color: '#7A7268' }}>Aún no hay platillos agregados.</p>
-            ) : (
-              <>
-                <ul style={{ listStyle: 'none', marginBottom: '24px' }}>
-                  {cart.map(item => (
-                    <li key={item.product_id} style={{ marginBottom: '16px', borderBottom: '1px solid #2A2620', paddingBottom: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <strong>{item.name}</strong>
-                          <div style={{ fontSize: '14px', color: '#C17A3A' }}>${item.price} MXN</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button
-                            onClick={() => updateQuantity(item.product_id, -1)}
-                            style={{ background: '#2A2620', border: 'none', color: '#F2EDE4', width: '28px', height: '28px', borderRadius: '4px', cursor: 'pointer' }}
-                          >
-                            −
-                          </button>
-                          <span style={{ minWidth: '24px', textAlign: 'center' }}>{item.quantity}</span>
-                          <button
-                            onClick={() => updateQuantity(item.product_id, 1)}
-                            style={{ background: '#2A2620', border: 'none', color: '#F2EDE4', width: '28px', height: '28px', borderRadius: '4px', cursor: 'pointer' }}
-                          >
-                            +
-                          </button>
-                          <button
-                            onClick={() => removeItem(item.product_id)}
-                            style={{ background: 'transparent', border: 'none', color: '#A55', cursor: 'pointer', marginLeft: '8px' }}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                <div style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>
-                  Total: ${totalAmount.toFixed(2)} MXN
-                </div>
-                <button
-                  onClick={handleSubmitOrder}
-                  disabled={submitting || cart.length === 0}
-                  style={{
-                    background: '#C17A3A',
-                    border: 'none',
-                    color: '#111010',
-                    fontWeight: 'bold',
-                    padding: '12px 24px',
-                    width: '100%',
-                    borderRadius: '40px',
-                    fontSize: '16px',
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    opacity: submitting || cart.length === 0 ? 0.6 : 1,
-                  }}
-                >
-                  {submitting ? 'Procesando…' : 'Confirmar pedido'}
-                </button>
-                {message && (
-                  <div style={{ marginTop: '16px', padding: '12px', borderRadius: '8px', background: message.type === 'success' ? '#1E3A2F' : '#3A1E1E', color: '#F2EDE4', textAlign: 'center' }}>
-                    {message.text}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
         </div>
-
         <footer className="menu-footer">
           <span>Usa los botones para agregar al carrito o ver detalles</span>
           <span>{products.length} platillos disponibles</span>

@@ -8,7 +8,7 @@ async function getUserFromSession() {
 }
 
 // ✅ Crear pedido
-export async function POST(request: Request) {
+/*export async function POST(request: Request) {
   try {
     const user = await getUserFromSession();
     const body = await request.json();
@@ -39,6 +39,47 @@ export async function POST(request: Request) {
     console.error(error);
     return NextResponse.json(
       { error: "Error al crear pedido" },
+      { status: 500 }
+    );
+  }
+}*/
+
+// app/api/pedidos/route.ts
+
+export async function POST(request: Request) {
+  try {
+    const user = await getUserFromSession();
+    const body = await request.json();
+
+    // Nuevos campos requeridos: orderId, customerId, restaurant_id, items
+    const { orderId, customerId, restaurant_id, items } = body;
+
+    if (!orderId || !customerId || !restaurant_id || !items) {
+      return NextResponse.json(
+        { error: "Faltan datos: orderId, customerId, restaurant_id, items" },
+        { status: 400 }
+      );
+    }
+
+    // Validar que el usuario coincide con el customerId (seguridad)
+    if (user.id !== customerId) {
+      return NextResponse.json(
+        { error: "No autorizado" },
+        { status: 403 }
+      );
+    }
+
+    const controller = new PedidoController();
+    await controller.registrarHistorial(orderId, customerId, restaurant_id, items);
+
+    return NextResponse.json({
+      message: "Pedido registrado en historial",
+      pedidoId: orderId,
+    });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Error al registrar historial del pedido" },
       { status: 500 }
     );
   }

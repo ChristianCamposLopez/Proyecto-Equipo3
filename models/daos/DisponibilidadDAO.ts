@@ -86,6 +86,7 @@ export class DisponibilidadDAO {
     return (result.rowCount ?? 0) > 0;
   }
 } */
+// models/daos/DisponibilidadDAO.ts
 import { db } from "@/config/db";
 import { DisponibilidadEntity } from "../entities/DisponibilidadEntity";
 

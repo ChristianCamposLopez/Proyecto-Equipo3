@@ -1,3 +1,4 @@
+// models/entities/ImagenEntity.ts
 export interface ImagenEntity {
   id: number;
   product_id: number;

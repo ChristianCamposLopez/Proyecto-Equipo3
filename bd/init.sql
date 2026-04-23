@@ -1,12 +1,13 @@
 -- =============================================
 -- PROYECTO: SISTEMA DE PEDIDOS PARA RESTAURANTES
 -- EQUIPO: No. 3
--- DESCRIPCIÓN: Script Único de Persistencia (Sprint 3)
--- Autores: @
--- Fecha: 24/febrero/2026                     
+-- DESCRIPCIÓN: Script Único de Persistencia (Sprint 4)
 -- =============================================
 
--- 1. LIMPIEZA DE TABLAS (Evitar conflictos de duplicidad)
+--RESTAURAND_ID: Siempre sera 1 ya que ahora no se maneja un sistema multi-tenant, pero se deja la estructura para futuras expansiones.
+
+
+-- 1. LIMPIEZA DE TABLAS
 DROP TABLE IF EXISTS payments CASCADE;
 DROP TABLE IF EXISTS cart_items CASCADE;
 DROP TABLE IF EXISTS carts CASCADE;
@@ -16,6 +17,7 @@ DROP TABLE IF EXISTS orders CASCADE;
 DROP TABLE IF EXISTS product_option_groups CASCADE;
 DROP TABLE IF EXISTS options CASCADE;
 DROP TABLE IF EXISTS option_groups CASCADE;
+DROP TABLE IF EXISTS product_images CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS restaurant_hours CASCADE;
@@ -94,16 +96,25 @@ CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
     restaurant_id INT REFERENCES restaurants(id),
     name VARCHAR(100) NOT NULL,
-    descripcion TEXT -- Agregado según análisis de Ivan
+    descripcion TEXT
 );
+
+-- =============================================
+-- 5. PRODUCTS (MODIFICADO PARA SPRINT 4)
+-- =============================================
 
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
     category_id INT REFERENCES categories(id),
+    descripcion TEXT NULL,
     name VARCHAR(100) NOT NULL,
-    base_price DECIMAL(10,2) NOT NULL, -- Mario: Validación > 0
-    is_available BOOLEAN DEFAULT TRUE, -- Mario: Control de Stock
+    base_price DECIMAL(10,2) NOT NULL,
+    is_available BOOLEAN DEFAULT TRUE,
+    -- Nota: activacion y desactivacion del plato IVAN SANCHEZ MORALES
+    is_active BOOLEAN DEFAULT TRUE,
     stock INT NOT NULL DEFAULT 10 CHECK (stock >= 0),
+    -- Nota: eliminación lógica del plato (US005.3) IVAN SANCHEZ MORALES
+    deleted_at TIMESTAMP NULL,
     -- columnas añadidas para US009: gestión de imágenes
     image_url VARCHAR(500),
     image_uploaded_at TIMESTAMP,
@@ -115,13 +126,68 @@ CREATE TABLE products (
       )
 );
 
--- Complejidad del Menú (Opciones y Extras)
+-- =============================================
+-- 6. IMÁGENES DE PRODUCTOS (US009)
+-- =============================================
+--Nota: Esta es de mi version de imagenes que soporta multiples imagenes por producto YA QUE SE REPITIERON ASIGNACION DE HISTORIAS.
+CREATE TABLE product_images (
+    id SERIAL PRIMARY KEY,
+
+    product_id INT NOT NULL
+        REFERENCES products(id)
+        ON DELETE CASCADE,
+
+    image_path VARCHAR(500) NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_size INT,
+    format VARCHAR(10),
+
+    is_primary BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    deleted_at TIMESTAMP NULL
+);
+
+CREATE INDEX idx_product_images_product_id
+ON product_images(product_id);
+
+CREATE INDEX idx_product_images_is_primary
+ON product_images(is_primary);
+
+-- =============================================
+-- 6. DISPONIBILIDAD DE PRODUCTOS (US020) 
+-- =============================================
+--Nota: Tabla para definir en qué días y horarios específicos está disponible cada producto.
+CREATE TABLE product_availability (
+    id SERIAL PRIMARY KEY,
+    product_id INT NOT NULL
+        REFERENCES products(id)
+        ON DELETE CASCADE,
+
+    day_of_week INT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_product_availability_product
+ON product_availability(product_id);
+
+CREATE INDEX idx_product_availability_day
+ON product_availability(day_of_week);
+
+-- =============================================
+-- 7. OPCIONES DE MENÚ
+-- =============================================
+
 CREATE TABLE option_groups (
     id SERIAL PRIMARY KEY,
     restaurant_id INT REFERENCES restaurants(id),
-    name VARCHAR(100), -- Ej: "Término de carne"
+    name VARCHAR(100),
     min_selection INT DEFAULT 0,
-    max_selection INT 
+    max_selection INT
 );
 
 CREATE TABLE product_option_groups (
@@ -178,10 +244,32 @@ CREATE TABLE orders (
 
 CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
-    order_id INT REFERENCES orders(id), -- Fray: Vínculo de Carrito
+    order_id INT REFERENCES orders(id),
     product_id INT REFERENCES products(id),
     quantity INT NOT NULL,
-    unit_price_at_purchase DECIMAL(10,2) -- Persistencia de precio histórico
+    unit_price_at_purchase DECIMAL(10,2)
+);
+
+--Nota: Esta tabla es para las historias de usario de recomendacion, cancelacion y rembolsos ya que la orden desaparece por parte de crhistian en la historia de dasboard chef
+CREATE TABLE pedido_historial (
+    id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES users(id),
+    restaurant_id INT REFERENCES restaurants(id),
+    delivery_address_json JSONB,
+    status VARCHAR(50) DEFAULT 'PENDING',
+    total_amount DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT NOW(),
+    refund_rejection_reason TEXT,
+    CONSTRAINT chk_order_status CHECK (status IN ('CANCELLED', 'COMPLETED', 'PENDING', 'REFUNDED', 'REFUND_REJECTED')) -- SOLO PEDIDOS FINALIZADOS O CANCELADOS PARA HISTORIAL
+);
+
+--Nota: Esta tabla es para las historias de usario de recomendacion, cancelacion y rembolsos ya que la orden desaparece por parte de crhistian en la historia de dasboard chef
+CREATE TABLE pedido_items_historial (
+    id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES pedido_historial(id), -- 🔥 CAMBIO AQUÍ
+    product_id INT REFERENCES products(id),
+    quantity INT NOT NULL,
+    unit_price_at_purchase DECIMAL(10,2)
 );
 
 CREATE TABLE order_item_options (
@@ -191,7 +279,14 @@ CREATE TABLE order_item_options (
     price_at_purchase DECIMAL(10,2)
 );
 
--- 6. MÓDULO DE CHRISTIAN: PAGOS DIGITALES
+
+CREATE INDEX idx_orders_customer_status 
+ON orders(customer_id, status);
+
+CREATE INDEX idx_order_items_product 
+ON order_items(product_id); 
+
+-- 6. MÓDULO DE CHRISTIAN: PAGOS DIGITALES 
 CREATE TABLE payments (
     id SERIAL PRIMARY KEY,
     order_id INT REFERENCES orders(id), -- Christian: Trazabilidad
@@ -210,88 +305,3 @@ CREATE TABLE refunds (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- =============================================
--- 7. SEMBRADO DE PRUEBA (SEEDING)
--- =============================================
-
-INSERT INTO roles (name, permisos) VALUES 
-('client', 'ver_menu,hacer_pedido'),
-('restaurant_admin', 'gestionar_pedidos,gestionar_menu,ver_reportes'),
-('chef', 'ver_pedidos,actualizar_estado'),
-('repartidor', 'ver_entregas,actualizar_entrega');
-
--- Contraseñas hasheadas con bcrypt (password original: 'password123')
-INSERT INTO users (email, password_hash, full_name, phone_number) VALUES 
-('cliente@ejemplo.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Juan Perez', '5551234567'),
-('admin@restaurante.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Carlos Admin', '5559876543'),
-('repartidor1@ejemplo.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Laura Repartidora', '5550000001'),
-('repartidor2@ejemplo.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Marco Repartidor', '5550000002'),
-('repartidor3@ejemplo.com', '$2a$10$8K1p/a0dR1xqM8K3hKLx3OQx5bY2M5Z9E9V5m6N7o8P9q0R1s2T3u', 'Elena Repartidora', '5550000003');
-
-INSERT INTO user_roles VALUES (1, 1), (2, 2), (3, 4), (4, 4), (5, 4);
-
-INSERT INTO delivery_addresses (
-    customer_id,
-    street,
-    exterior_number,
-    neighborhood,
-    city,
-    state,
-    postal_code,
-    delivery_references
-)
-VALUES
-  (1, 'Av. Central', '123', 'Centro', 'Ciudad', 'Oaxaca', '12345', 'Casa color blanco');
-
-INSERT INTO restaurants (owner_user_id, name) VALUES (2, 'La Parrilla Mixteca');
-
-INSERT INTO categories (restaurant_id, name, descripcion) 
-VALUES (1, 'Hamburguesas', 'Especialidades al carbón');
-
-INSERT INTO products (category_id, name, base_price, stock, is_available) 
-VALUES (1, 'Hamburguesa Clásica', 85.00, 12, TRUE);
-
--- Más categorías y productos de ejemplo
-INSERT INTO categories (restaurant_id, name, descripcion) 
-VALUES (1, 'Tacos', 'Tacos al pastor y más');
-
-INSERT INTO categories (restaurant_id, name, descripcion)
-VALUES (1, 'Bebidas', 'Refrescos, aguas y cervezas');
-
-INSERT INTO products (category_id, name, base_price, stock, is_available)
-VALUES
-  (2, 'Taco al Pastor', 35.00, 20, TRUE),
-  (2, 'Taco de Carne Asada', 40.00, 18, TRUE),
-  (3, 'Agua de Jamaica', 20.00, 25, TRUE),
-  (3, 'Cerveza', 40.00, 10, TRUE);
-
-INSERT INTO carts (customer_id, restaurant_id, status)
-VALUES (1, 1, 'ACTIVE');
-
-INSERT INTO cart_items (cart_id, product_id, quantity, unit_price)
-VALUES
-  (1, 1, 1, 85.00),
-  (1, 3, 2, 40.00);
-
--- Pedidos de prueba para dashboard
-INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, status, note, total_amount, created_at)
-VALUES
-  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'COMPLETED', 'Sin cebolla', 160.00, NOW() - INTERVAL '2 days'),
-  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'COMPLETED', 'Extra picante', 125.00, NOW() - INTERVAL '1 day'),
-  (1, 1, '{"street":"Av. Central","city":"Ciudad","zip":"12345"}', 'CANCELLED', NULL, 85.00, NOW());
-
-INSERT INTO payments (order_id, payment_method, status, transaction_id, created_at)
-VALUES
-  (1, 'CARD', 'SUCCESS', 'TXN1001', NOW() - INTERVAL '2 days'),
-  (2, 'CASH', 'SUCCESS', NULL, NOW() - INTERVAL '1 day'),
-  (3, 'CARD', 'FAILED', 'TXN1003', NOW());
-
--- Crear pedidos en estado READY
-INSERT INTO orders (customer_id, restaurant_id, status, note, total_amount) 
-VALUES 
-  (1, 1, 'READY', 'Sin cilantro', 45.50),
-  (1, 1, 'READY', 'Salsa aparte', 32.00),
-  (1, 1, 'PREPARING', 'Bien dorado', 28.75);
-
--- Verificar
-SELECT id, status, total_amount FROM orders;

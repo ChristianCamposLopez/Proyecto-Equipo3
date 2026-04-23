@@ -85,19 +85,23 @@ export async function buildCartSummary(customerId: number): Promise<CartSummary>
   const cart = await getOrCreateActiveCart(customerId);
   const itemsResult = await db.query(
     `SELECT
-        ci.id,
-        ci.product_id,
-        p.name AS product_name,
-        c.name AS category_name,
-        p.image_url,
-        ci.quantity,
-        p.stock AS available_stock,
-        p.is_available,
-        ci.unit_price::float8 AS unit_price,
-        (ci.quantity * ci.unit_price)::float8 AS subtotal
+          ci.id,
+          ci.product_id,
+          p.name AS product_name,
+          c.name AS category_name,
+          COALESCE(pi.image_path, p.image_url) AS image_url,   -- ← prioriza product_images
+          ci.quantity,
+          p.stock AS available_stock,
+          p.is_available,
+          ci.unit_price::float8 AS unit_price,
+          (ci.quantity * ci.unit_price)::float8 AS subtotal
       FROM cart_items ci
       JOIN products p ON p.id = ci.product_id
       JOIN categories c ON c.id = p.category_id
+      LEFT JOIN product_images pi 
+          ON pi.product_id = p.id 
+          AND pi.is_primary = true 
+          AND pi.deleted_at IS NULL   -- si usas borrado lógico
       WHERE ci.cart_id = $1
       ORDER BY ci.created_at ASC, ci.id ASC`,
     [cart.id]

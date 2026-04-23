@@ -33,12 +33,18 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password_secreto
-      - POSTGRES_DB=proyecto_equipo3
+      - POSTGRES_DB=restaurante_bd
     volumes:
-      # Esto asegura que los platos, pedidos y usuarios no se borren si apagan Docker
+      # Persistencia de datos
       - pg_data:/var/lib/postgresql/data
-      # Autocarga de las tablas del Sprint 2
-      - ./bd/init.sql:/docker-entrypoint-initdb.d/init.sql
+      # Autocarga del esquema — :z para SELinux
+      - ./bd/init.sql:/docker-entrypoint-initdb.d/init.sql:z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d restaurante_bd"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 volumes:
   pg_data:

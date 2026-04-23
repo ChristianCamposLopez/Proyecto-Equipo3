@@ -312,38 +312,59 @@ export default function CartPage(){
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem('cart')
-    if (stored) {
+    const loadCart = async () => {
       try {
-        setItems(JSON.parse(stored))
-      } catch (e) {
-        console.error('Error loading cart:', e)
+        const res = await fetch('/api/cart?customerId=1')
+        const data = await res.json()
+
+        setItems(data.items || [])
+      } catch (error) {
+        console.error('Error loading cart:', error)
       }
     }
+
+    loadCart()
   }, [])
 
-  const updateCart = (newItems: CartItem[]) => {
-    setItems(newItems)
-    localStorage.setItem('cart', JSON.stringify(newItems))
-  }
+  const removeItem = async (id: number) => {
+    await fetch('/api/cart/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerId: 1,
+        productId: id
+      })
+    })
 
-  const removeItem = (id: number) => {
-    updateCart(items.filter(item => item.id !== id))
-  }
-
-  const updateQuantity = (id: number, quantity: number) => {
-    if (quantity <= 0) {
-      removeItem(id)
-      return
-    }
-    updateCart(items.map(item =>
-      item.id === id ? { ...item, quantity } : item
-    ))
+    const res = await fetch('/api/cart?customerId=1')
+    const data = await res.json()
+    setItems(data.items || [])
   }
 
   const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
   const tax = subtotal * 0.16
   const total = subtotal + tax
+
+  const updateQuantity = async (id: number, quantity: number) => {
+    if (quantity <= 0) {
+      await removeItem(id)
+      return
+    }
+
+    await fetch('/api/cart/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerId: 1,
+        productId: id,
+        quantity
+      })
+    })
+
+    const res = await fetch('/api/cart?customerId=1')
+    const data = await res.json()
+    setItems(data.items || [])
+  }
 
   const handleCheckout = async () => {
     if (items.length === 0) {
@@ -352,55 +373,52 @@ export default function CartPage(){
     }
 
     setLoading(true)
+
     try {
-      // Get the proper customer_id and restaurant_id
       const configRes = await fetch('/api/config/ids')
-      if (!configRes.ok) {
-        throw new Error('No se pudo obtener la configuración')
-      }
       const config = await configRes.json()
 
       const requestBody = {
-        customer_id: config.customer_id,
         restaurant_id: config.restaurant_id,
+        customer_id: config.customer_id,
         items: items.map(item => ({
           product_id: item.id,
           quantity: item.quantity,
           unit_price_at_purchase: item.price
         })),
-        total_amount: total
+        total_amount: items.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0
+        )
       }
 
-      console.log('Enviando pedido:', requestBody)
-
-      const res = await fetch('/api/orders/create', {
+      const res = await fetch('/api/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       })
 
-      let responseData
-      try {
-        responseData = await res.json()
-      } catch (parseError) {
-        console.error('Error parsing response:', parseError)
-        throw new Error(`Respuesta inválida del servidor (Status: ${res.status})`)
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Error al crear pedido')
       }
 
-      if (res.ok && responseData.success) {
-        localStorage.removeItem('cart')
-        setItems([])
-        window.location.href = '/confirmacion'
-      } else {
-        const errorMsg = responseData.error || responseData.message || 'Error desconocido al crear el pedido'
-        console.error('Error response:', responseData)
-        console.error('Error message:', errorMsg)
-        alert(`Error: ${errorMsg}`)
-      }
-    } catch (error) {
-      console.error('Checkout error:', error)
-      const errorMsg = error instanceof Error ? error.message : 'Error desconocido'
-      alert(`Error al confirmar el pedido: ${errorMsg}`)
+      // 🔥 limpiar carrito backend
+      await fetch('/api/cart/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: config.customer_id
+        })
+      })
+
+      setItems([])
+
+      window.location.href = '/confirmacion'
+
+    } catch (error: any) {
+      alert(error.message)
     } finally {
       setLoading(false)
     }

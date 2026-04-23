@@ -1,7 +1,8 @@
 "use client"
 
 import Image from "next/image"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"; // 👈 Importa el router
 
 interface Order {
   id: number
@@ -71,10 +72,12 @@ const statusLabels: Record<string, string> = {
   COMPLETED: "Entregado",
   DELIVERED: "Entregado",
   CANCELLED: "Cancelado",
+  CONFIRMED: "Confirmado",
 }
 
 const statusSteps: Record<string, number> = {
   PENDING: 0,
+  CONFIRMED: 0,
   PREPARING: 0,
   READY: 0,
   DELIVERY_ASSIGNED: 1,
@@ -801,6 +804,7 @@ const pageStyles = `
 `
 
 export default function OrdersPage() {
+  const router = useRouter(); // 👈 Inicializa el router
   const [orders, setOrders] = useState<Order[]>([])
   const [cart, setCart] = useState<CartSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -814,6 +818,12 @@ export default function OrdersPage() {
   const [addressForm, setAddressForm] = useState<AddressForm>(emptyAddressForm)
   const [isSavingAddress, setIsSavingAddress] = useState(false)
   const [lastOrdersSync, setLastOrdersSync] = useState<Date | null>(null)
+
+  // Ref para guardar el estado anterior de cada pedido (status)
+  const prevStatusRef = useRef<Map<number, string>>(new Map());
+  // Ref para claves únicas de pedidos ya redirigidos
+  const redirectedKeys = useRef<Set<string>>(new Set());
+  const getOrderUniqueKey = (order: Order) => `${order.id}|${order.created_at}`;
 
   const loadData = useCallback(async (options?: { showLoading?: boolean; preserveMessage?: boolean }) => {
     const showLoading = options?.showLoading ?? true
@@ -866,6 +876,65 @@ export default function OrdersPage() {
       }
     }
   }, [])
+
+  // Efecto para inicializar prevStatusRef cuando se cargan los pedidos inicialmente
+  useEffect(() => {
+    if (orders.length === 0) return;
+    const newPrevMap = new Map<number, string>();
+    orders.forEach(order => {
+      newPrevMap.set(order.id, order.status);
+    });
+    prevStatusRef.current = newPrevMap;
+  }, [orders]); // Se ejecuta cada vez que orders cambia completamente
+
+  // Efecto para el polling y detección de cambios de estado
+  useEffect(() => {
+    const checkForStatusChanges = async () => {
+      try {
+        const res = await fetch(`/api/orders?customerId=${DEMO_CUSTOMER_ID}`);
+        const newOrders = await readJsonResponse(res);
+        if (!res.ok) throw new Error(newOrders?.error);
+
+        const newOrdersArray = Array.isArray(newOrders) ? newOrders : [];
+
+        // Detectar cambios
+        for (const newOrder of newOrdersArray) {
+          const prevStatus = prevStatusRef.current.get(newOrder.id);
+          const currentStatus = newOrder.status;
+          const uniqueKey = getOrderUniqueKey(newOrder);
+
+          // ✅ Solo cuando cambia a 'CONFIRMED'
+          const isConfirmedStatus = currentStatus === 'CONFIRMED';
+          
+          if (prevStatus && prevStatus !== currentStatus && isConfirmedStatus && !redirectedKeys.current.has(uniqueKey)) {
+            // Marcar como redirigido
+            redirectedKeys.current.add(uniqueKey);
+            sessionStorage.setItem("confirmedRedirectedKeys", JSON.stringify(Array.from(redirectedKeys.current)));
+            // Redirigir
+            router.push("/confirmacion");
+            break; // Solo una redirección por ciclo
+          }
+        }
+
+        // Actualizar el mapa de estados anteriores
+        const updatedPrevMap = new Map<number, string>();
+        newOrdersArray.forEach(order => {
+          updatedPrevMap.set(order.id, order.status);
+        });
+        prevStatusRef.current = updatedPrevMap;
+
+        // Actualizar el estado de orders
+        setOrders(newOrdersArray);
+        setLastOrdersSync(new Date());
+      } catch (err) {
+        console.error("Error en polling de pedidos:", err);
+      }
+    };
+
+    checkForStatusChanges();
+    const intervalId = setInterval(checkForStatusChanges, ORDER_REFRESH_MS);
+    return () => clearInterval(intervalId);
+  }, [router]); 
 
   useEffect(() => {
     loadData()
@@ -991,19 +1060,19 @@ export default function OrdersPage() {
     }
   }
 
+  // app/nuevo/OrdersPage.tsx (fragmento)
+
   const submitOrder = async () => {
-    if (!cart || cart.item_count === 0 || isSubmittingOrder) {
-      return
-    }
-
+    if (!cart || cart.item_count === 0 || isSubmittingOrder) return;
     if (!selectedAddressId) {
-      setMessage({ type: "error", text: "Selecciona o registra una dirección de entrega antes de confirmar" })
-      return
+      setMessage({ type: "error", text: "Selecciona o registra una dirección de entrega antes de confirmar" });
+      return;
     }
 
-    setIsSubmittingOrder(true)
-    setMessage(null)
+    setIsSubmittingOrder(true);
+    setMessage(null);
     try {
+      // 1. Crear pedido activo (descuenta stock, inserta en orders/order_items)
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1012,40 +1081,99 @@ export default function OrdersPage() {
           note: orderNote,
           deliveryAddressId: selectedAddressId,
         }),
-      })
+      });
 
-      const data = await readJsonResponse(response)
-      if (!response.ok) {
-        throw new Error(data?.error || "No se pudo confirmar el pedido")
+      const data = await readJsonResponse(response);
+      if (!response.ok) throw new Error(data?.error || "No se pudo confirmar el pedido");
+
+      const newOrderId = data.id; // ID del pedido recién creado
+
+      // 2. Registrar el pedido en el historial (sin modificar stock ni active tables)
+      //    Necesitamos los items del carrito y el restaurant_id.
+      //    Asumiendo que el cart contiene los items con product_id y quantity.
+      const itemsForHistory = cart.items.map(item => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+      }));
+
+      const historyRes = await fetch("/api/pedidos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: newOrderId,
+          customerId: DEMO_CUSTOMER_ID,
+          restaurant_id: 1,  // Asegúrate de tener restaurant_id en cart
+          items: itemsForHistory,
+        }),
+      });
+
+      if (!historyRes.ok) {
+        // Solo loguear error, no fallar el pedido principal
+        console.error("Error al registrar historial:", await historyRes.text());
+      } else {
+        setMessage({ type: "success", text: `Pedido #${newOrderId} confirmado y enviado a cocina` });
       }
 
-      setOrderNote("")
-      setMessage({ type: "success", text: `Pedido #${data.id} confirmado y enviado a cocina` })
-      await loadData()
+      setOrderNote("");
+      await loadData(); // recargar pedidos y carrito
     } catch (error) {
-      const text = error instanceof Error ? error.message : "No se pudo confirmar el pedido"
-      setMessage({ type: "error", text })
+      const text = error instanceof Error ? error.message : "No se pudo confirmar el pedido";
+      setMessage({ type: "error", text });
     } finally {
-      setIsSubmittingOrder(false)
+      setIsSubmittingOrder(false);
     }
-  }
+  };
+
+  // app/nuevo/OrdersPage.tsx (fragmento)
 
   const cancelOrder = async (id: number) => {
-    const res = await fetch("/api/orders/cancel", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId: id }),
-    })
+    if (!confirm("¿Cancelar este pedido?")) return;
 
-    const data = await res.json()
-    if (!res.ok) {
-      alert(data.error || "No se pudo cancelar el pedido")
-      return
+    setPendingItemId(id);   // o un estado de carga específico
+    setMessage(null);
+
+    try {
+      // --- PRIMERA LLAMADA: Cancelar en orders (activo) ---
+      const resOrders = await fetch("/api/orders/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: id }),
+      });
+
+      if (!resOrders.ok) {
+        const errorData = await resOrders.json();
+        console.warn("Error al cancelar en orders:", errorData.error);
+        // No lanzamos error todavía, continuamos con la segunda llamada
+      }
+
+      // --- SEGUNDA LLAMADA: Cancelar en historial (con reversión de stock y limpieza) ---
+      const resHistorial = await fetch(`/api/pedidos/${id}/cancel`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const dataHistorial = await resHistorial.json();
+
+      if (!resHistorial.ok) {
+        throw new Error(dataHistorial.error || "Error al cancelar el pedido en el historial");
+      }
+
+      // Actualizar el estado local de pedidos
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === id
+            ? { ...order, status: "CANCELLED", is_active: false, active_status: null }
+            : order
+        )
+      );
+
+      setMessage({ type: "success", text: `Pedido #${id} cancelado correctamente` });
+    } catch (error: any) {
+      setMessage({ type: "error", text: error.message });
+    } finally {
+      setPendingItemId(null);
     }
-
-    alert("Pedido cancelado")
-    loadData()
-  }
+  };
 
   const assignDeliveryman = async (id: number) => {
     const res = await fetch("/api/orders/assign-deliveryman", {
@@ -1457,7 +1585,7 @@ export default function OrdersPage() {
                         <td>{order.deliveryman_name ?? "Sin asignar"}</td>
                         <td>
                           <div className="order-actions">
-                            {order.status !== "CANCELLED" && !["COMPLETED", "DELIVERED"].includes(order.status) && (
+                            {(order.status === "PENDING" || order.status === "CONFIRMED") && (
                               <button className="table-btn" onClick={() => cancelOrder(order.id)}>
                                 Cancelar / Reembolsar
                               </button>

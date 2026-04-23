@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link";
 import { useEffect, useState } from "react"
 
 const styles = `
@@ -371,275 +372,131 @@ const styles = `
     .menu-filters { padding: 16px 24px; }
     .menu-footer { padding: 20px 24px; flex-direction: column; }
   }
-
-  /* Add to cart button */
-  .add-to-cart-btn {
-    width: 100%;
-    padding: 12px;
-    background: #C17A3A;
-    color: #111010;
-    border: none;
-    font-weight: 600;
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background 0.2s;
-    margin-top: 12px;
-  }
-
-  .add-to-cart-btn:hover:not(:disabled) {
-    background: #D18A4A;
-  }
-
-  .add-to-cart-btn:disabled {
-    background: #7A7268;
-    cursor: not-allowed;
-  }
-
-  /* Modal */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    animation: fadeIn 0.2s ease;
-  }
-
-  .modal-content {
-    background: #111010;
-    border: 1px solid #2A2620;
-    border-radius: 4px;
-    padding: 32px;
-    max-width: 400px;
-    width: 90%;
-    animation: scaleIn 0.2s ease;
-  }
-
-  .modal-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-
-  .modal-category {
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #C17A3A;
-    margin-bottom: 16px;
-  }
-
-  .modal-price {
-    font-size: 20px;
-    font-weight: 600;
-    color: #F2EDE4;
-    margin-bottom: 24px;
-  }
-
-  .quantity-section {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-
-  .quantity-label {
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #7A7268;
-  }
-
-  .quantity-control {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid #2A2620;
-    border-radius: 2px;
-  }
-
-  .quantity-btn {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: transparent;
-    color: #C17A3A;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-
-  .quantity-btn:hover {
-    background: #1E1C19;
-  }
-
-  .quantity-display {
-    width: 40px;
-    text-align: center;
-    font-weight: 600;
-  }
-
-  .modal-buttons {
-    display: flex;
-    gap: 12px;
-  }
-
-  .modal-btn {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    font-weight: 600;
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-    border-radius: 2px;
-  }
-
-  .modal-btn.cancel {
-    background: #2A2620;
-    color: #7A7268;
-  }
-
-  .modal-btn.cancel:hover {
-    background: #3A3630;
-    color: #F2EDE4;
-  }
-
-  .modal-btn.confirm {
-    background: #C17A3A;
-    color: #111010;
-  }
-
-  .modal-btn.confirm:hover:not(:disabled) {
-    background: #D18A4A;
-  }
-
-  .modal-btn.confirm:disabled {
-    background: #7A7268;
-    cursor: not-allowed;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  @keyframes scaleIn {
-    from { transform: scale(0.95); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-  }
-
-  /* Floating cart button */
-  .floating-cart {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    width: 60px;
-    height: 60px;
-    background: #C17A3A;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    box-shadow: 0 4px 12px rgba(193, 122, 58, 0.3);
-    transition: all 0.2s;
-    z-index: 100;
-  }
-
-  .floating-cart:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 16px rgba(193, 122, 58, 0.4);
-  }
-
-  .cart-badge {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background: #dc2626;
-    color: white;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-  }
 `
 
 type Product = {
-  id: number
-  name: string
-  base_price: number
-  stock: number
-  is_available: boolean
-  stock_quantity: number
-  image_url: string | null
-  category_name: string
-}
+  id: number;
+  name: string;
+  base_price: number;
+  stock: number;          // valor por defecto
+  is_available: boolean;  // valor por defecto
+  image_url: string | null;
+  category_name: string;
+  category_id?: number;
+};
 
-type Category = { id: number; name: string }
+type Recommendation = {
+  id: number;
+  name: string;
+  base_price: string;     // viene como string desde la API
+  image_display: string;
+};
+
+type Category = { id: number; name: string };
 
 type CartSummary = {
-  item_count: number
-  total_quantity: number
-  total_amount: number
-}
+  item_count: number;
+  total_quantity: number;
+  total_amount: number;
+};
 
-const DEMO_CUSTOMER_ID = 1
+const DEMO_CUSTOMER_ID = 1;
+const RESTAURANT_ID = "1";
 
 export default function MenuPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [activeCategory, setActiveCategory] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [cart, setCart] = useState<CartSummary>({ item_count: 0, total_quantity: 0, total_amount: 0 })
-  const [pendingProductId, setPendingProductId] = useState<number | null>(null)
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null)
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [activeCategory, setActiveCategory] = useState<number | null>(null);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(true);
+  const [cart, setCart] = useState<CartSummary>({
+    item_count: 0,
+    total_quantity: 0,
+    total_amount: 0,
+  });
+  const [pendingProductId, setPendingProductId] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
+  // 1. Cargar categorías
   useEffect(() => {
-    Promise.all([
-      fetch("/api/menu/products").then(async (r) => {
-        const data = await r.json()
-        return Array.isArray(data) ? data : []
-      }),
-      fetch("/api/menu/categories").then(async (r) => {
-        const data = await r.json()
-        return Array.isArray(data) ? data : []
-      }),
-      fetch(`/api/cart?customerId=${DEMO_CUSTOMER_ID}`).then(async (r) => {
-        const data = await r.json()
-        return data && typeof data === "object" ? data : { item_count: 0, total_quantity: 0, total_amount: 0 }
-      }),
-    ])
-      .then(([prods, cats, currentCart]) => {
-        setProducts(prods as Product[])
-        setCategories(cats as Category[])
-        setCart(currentCart as CartSummary)
+    fetch(`/api/categorias?restaurantId=${RESTAURANT_ID}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setCategories(data.categories || []);
       })
-      .finally(() => setLoading(false))
-  }, [])
+      .catch(console.error)
+      .finally(() => setLoadingCategories(false));
+  }, []);
 
-  const filtered = activeCategory
-    ? products.filter((p) => p.category_name === categories.find((c) => c.id === activeCategory)?.name)
-    : products
+  // 2. Cargar productos según categoría activa
+  useEffect(() => {
+    if (loadingCategories) return;
+    setLoadingProducts(true);
+    let url = `/api/platos?restaurantId=${RESTAURANT_ID}`;
+    if (activeCategory !== null) {
+      url += `&categoryId=${activeCategory}`;
+    }
+    fetch(url)
+      .then((res) => res.json())
+      .then((data) => {
+        const rawProducts = data.products || [];
+        const mappedProducts: Product[] = rawProducts.map((p: any) => {
+          let categoryName = "Sin categoría";
+          if (p.category_name) {
+            categoryName = p.category_name;
+          } else if (p.category_id && categories.length > 0) {
+            const cat = categories.find((c) => c.id === p.category_id);
+            if (cat) categoryName = cat.name;
+          } else if (activeCategory !== null) {
+            const activeCat = categories.find((c) => c.id === activeCategory);
+            if (activeCat) categoryName = activeCat.name;
+          }
+          return {
+            id: p.id,
+            name: p.name,
+            base_price: typeof p.base_price === "string" ? parseFloat(p.base_price) : p.base_price,
+            stock: 100,
+            is_available: true,
+            image_url: p.image_display && p.image_display.trim() !== "" ? p.image_display : null,
+            category_name: categoryName,
+            category_id: p.category_id,
+          };
+        });
+        setProducts(mappedProducts);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingProducts(false));
+  }, [activeCategory, categories, loadingCategories]);
+
+  // 3. Cargar recomendaciones
+  useEffect(() => {
+    fetch(`/api/recommendations?restaurantId=${RESTAURANT_ID}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        setRecommendations(data.recommendations || []);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingRecommendations(false));
+  }, []);
+
+  // 4. Cargar resumen del carrito
+  useEffect(() => {
+    fetch(`/api/cart?customerId=${DEMO_CUSTOMER_ID}`)
+      .then(async (r) => {
+        const data = await r.json();
+        return data && typeof data === "object"
+          ? data
+          : { item_count: 0, total_quantity: 0, total_amount: 0 };
+      })
+      .then(setCart)
+      .catch(console.error);
+  }, []);
 
   const addToCart = async (productId: number) => {
-    setPendingProductId(productId)
-    setFeedback(null)
-
+    setPendingProductId(productId);
+    setFeedback(null);
     try {
       const res = await fetch("/api/cart", {
         method: "POST",
@@ -649,26 +506,26 @@ export default function MenuPage() {
           productId,
           quantity: 1,
         }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || "No se pudo agregar el producto")
-      }
-
-      setCart(data as CartSummary)
-      setFeedback({ type: "success", message: "Producto agregado al carrito" })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo agregar el producto");
+      setCart(data as CartSummary);
+      setFeedback({ type: "success", message: "Producto agregado al carrito" });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "No se pudo agregar el producto"
-      setFeedback({ type: "error", message })
+      const message = error instanceof Error ? error.message : "No se pudo agregar el producto";
+      setFeedback({ type: "error", message });
     } finally {
-      setPendingProductId(null)
+      setPendingProductId(null);
     }
-  }
+  };
+
+  const hasValidImage = (url: string) => url && url.trim() !== "" && url !== "null" && url !== "undefined";
+
+  const loading = loadingCategories || loadingProducts || loadingRecommendations;
 
   return (
     <>
-      <style>{styles}</style>
+      <style>{styles}</style> {/* Aquí van los estilos originales de page2 (los del archivo) */}
       <div className="menu-root">
         <header className="menu-hero">
           <div className="menu-topbar">
@@ -676,10 +533,9 @@ export default function MenuPage() {
               <p className="menu-label">La Parrilla Mixteca — Menú</p>
               <h1 className="menu-title">Nuestros <em>Platillos</em></h1>
               <p className="menu-subtitle">
-                Selecciona tus productos, agrégalos al carrito y revisa el total antes de confirmar el pedido.
+                Selecciona tus productos, agrégalos al carrito o consulta sus detalles.
               </p>
             </div>
-
             <aside className="cart-chip">
               <div className="cart-chip-label">Carrito activo</div>
               <div className="cart-chip-total">${Number(cart.total_amount).toFixed(2)}</div>
@@ -693,7 +549,7 @@ export default function MenuPage() {
           </div>
         </header>
 
-        {!loading && categories.length > 0 && (
+        {!loadingCategories && categories.length > 0 && (
           <div className="menu-filters">
             <button
               className={`filter-btn ${activeCategory === null ? "active" : ""}`}
@@ -722,121 +578,193 @@ export default function MenuPage() {
         {loading ? (
           <div className="menu-loading">
             <div className="loader-ring" />
-            Cargando menú…
+            Cargando menú y recomendaciones…
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="menu-empty">Sin platillos disponibles</div>
         ) : (
-          <div className="menu-grid">
-            {filtered.map((product, index) => (
-              <div
-                key={product.id}
-                className={`product-card card-enter ${!product.is_available ? "is-unavailable" : ""}`}
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                <div className="card-img-wrap">
-                  {product.image_url ? (
-                    <Image
-                      className="card-img"
-                      src={product.image_url}
-                      alt={product.name}
-                      width={640}
-                      height={480}
-                    />
-                  ) : (
-                    <div className="card-no-img">
-                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                        <rect x="3" y="3" width="18" height="18" rx="1" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <path d="M21 15l-5-5L5 21" />
-                      </svg>
-                      <span>Sin imagen</span>
-                    </div>
-                  )}
-                  <div className="card-badge">{product.category_name}</div>
-                  {!product.is_available && <div className="card-unavailable">No disponible</div>}
-                </div>
-
-                <div className="card-body">
-                  <h2 className="card-name">{product.name}</h2>
-                  <span className={`card-stock ${product.is_available && product.stock <= 3 ? "low" : ""}`}>
-                    {product.is_available ? `Stock disponible: ${product.stock}` : "Stock agotado"}
-                  </span>
-                  <div className="card-price">
-                    ${Number(product.base_price).toFixed(2)}
-                    <span>MXN</span>
-                  </div>
-                  <div className="card-actions">
-                    <button
-                      className="add-btn"
-                      onClick={() => addToCart(product.id)}
-                      disabled={!product.is_available || pendingProductId === product.id}
+          <>
+            {/* SECCIÓN DE RECOMENDACIONES */}
+            {recommendations.length > 0 && (
+              <section className="menu-recommendations" style={{ padding: "0 48px", marginBottom: "32px" }}>
+                <h2 className="menu-section-title" style={{ color: "#C17A3A", marginTop: 0 }}>
+                  Recomendado para ti 🔥
+                </h2>
+                <div className="menu-grid">
+                  {recommendations.map((rec, idx) => (
+                    <div
+                      key={`rec-${rec.id}`}
+                      className="product-card"
+                      style={{
+                        animationDelay: `${idx * 0.05}s`,
+                        border: "1px solid rgba(193, 122, 58, 0.3)",
+                      }}
                     >
-                      {pendingProductId === product.id ? "Agregando..." : "Agregar al carrito"}
-                    </button>
-                  </div>
+                      <div className="card-img-wrap">
+                        {hasValidImage(rec.image_display) ? (
+                          <img
+                            className="card-img"
+                            src={rec.image_display}
+                            alt={rec.name}
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              target.style.display = "none";
+                              const parent = target.parentElement;
+                              if (parent) {
+                                const placeholder = document.createElement("div");
+                                placeholder.className = "card-no-img";
+                                placeholder.innerHTML = `
+                                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <rect x="3" y="3" width="18" height="18" rx="1"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <path d="M21 15l-5-5L5 21"/>
+                                  </svg>
+                                  <span>Sin imagen</span>
+                                `;
+                                parent.appendChild(placeholder);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="card-no-img">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <rect x="3" y="3" width="18" height="18" rx="1" />
+                              <circle cx="8.5" cy="8.5" r="1.5" />
+                              <path d="M21 15l-5-5L5 21" />
+                            </svg>
+                            <span>Sin imagen</span>
+                          </div>
+                        )}
+                        <div className="card-badge" style={{ backgroundColor: "#C17A3A" }}>Recomendado</div>
+                      </div>
+                      <div className="card-body">
+                        <h2 className="card-name">{rec.name}</h2>
+                        <div className="card-price">
+                          ${typeof rec.base_price === "string" ? parseFloat(rec.base_price).toFixed(2) : rec.base_price}
+                          <span>MXN</span>
+                        </div>
+                        <div className="card-actions" style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
+                          <button
+                            className="add-btn"
+                            onClick={() => addToCart(rec.id)}
+                            disabled={pendingProductId === rec.id}
+                          >
+                            {pendingProductId === rec.id ? "Agregando..." : "Agregar al carrito"}
+                          </button>
+                          <Link href={`/menu/${rec.id}`} className="btn-details">
+                            Ver detalles
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+                <hr style={{ border: "0", borderTop: "1px solid rgba(255,255,255,0.05)", margin: "24px 0" }} />
+              </section>
+            )}
 
-        {selectedProduct && (
-          <div className="modal-overlay" onClick={() => setSelectedProduct(null)}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-              <h2 className="modal-title">{selectedProduct.name}</h2>
-              <p className="modal-category">{selectedProduct.category_name}</p>
-              <div className="modal-price">${Number(selectedProduct.base_price).toFixed(2)} MXN</div>
-              
-              <div className="quantity-section">
-                <label className="quantity-label">Cantidad</label>
-                <div className="quantity-control">
-                  <button 
-                    className="quantity-btn"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  >−</button>
-                  <div className="quantity-display">{quantity}</div>
-                  <button 
-                    className="quantity-btn"
-                    onClick={() => setQuantity(quantity + 1)}
-                  >+</button>
+            {/* MENÚ PRINCIPAL */}
+            <div style={{ padding: "0 48px" }}>
+              <h2 className="menu-section-title" style={{ marginTop: 0 }}>Menú Principal</h2>
+              {products.length === 0 ? (
+                <div className="menu-empty">Sin platillos disponibles</div>
+              ) : (
+                <div className="menu-grid">
+                  {products.map((product, idx) => (
+                    <div
+                      key={product.id}
+                      className={`product-card ${!product.is_available ? "is-unavailable" : ""}`}
+                      style={{ animationDelay: `${idx * 0.05}s` }}
+                    >
+                      <div className="card-img-wrap">
+                        {product.image_url ? (
+                          <Image
+                            className="card-img"
+                            src={product.image_url}
+                            alt={product.name}
+                            width={640}
+                            height={480}
+                          />
+                        ) : (
+                          <div className="card-no-img">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <rect x="3" y="3" width="18" height="18" rx="1" />
+                              <circle cx="8.5" cy="8.5" r="1.5" />
+                              <path d="M21 15l-5-5L5 21" />
+                            </svg>
+                            <span>Sin imagen</span>
+                          </div>
+                        )}
+                        <div className="card-badge">{product.category_name}</div>
+                        {!product.is_available && <div className="card-unavailable">No disponible</div>}
+                      </div>
+                      <div className="card-body">
+                        <h2 className="card-name">{product.name}</h2>
+                        <span className={`card-stock ${product.is_available && product.stock <= 3 ? "low" : ""}`}>
+                          {product.is_available ? `Stock disponible: ${product.stock}` : "Stock agotado"}
+                        </span>
+                        <div className="card-price">
+                          ${product.base_price.toFixed(2)}
+                          <span>MXN</span>
+                        </div>
+                        <div className="card-actions" style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
+                          <button
+                            className="add-btn"
+                            onClick={() => addToCart(product.id)}
+                            disabled={!product.is_available || pendingProductId === product.id}
+                          >
+                            {pendingProductId === product.id ? "Agregando..." : "Agregar al carrito"}
+                          </button>
+                          <Link href={`/menu/${product.id}`} className="btn-details">
+                            Ver detalles
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-
-              <div className="modal-buttons">
-                <button 
-                  className="modal-btn cancel"
-                  onClick={() => setSelectedProduct(null)}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  className="modal-btn confirm"
-                  onClick={addToCart}
-                  disabled={adding}
-                >
-                  {adding ? 'Agregando...' : 'Agregar'}
-                </button>
-              </div>
+              )}
             </div>
-          </div>
+          </>
         )}
-
-        <button 
-          className="floating-cart"
-          onClick={() => window.location.href = '/carrito'}
-          title="Ver carrito"
-        >
-          🛒
-          {cartCount > 0 && <div className="cart-badge">{cartCount}</div>}
-        </button>
 
         <footer className="menu-footer">
           <span>Sistema de Pedidos</span>
-          <span>{filtered.length} platillos visibles</span>
+          <span>{products.length} platillos visibles</span>
           <span>Total del carrito: ${Number(cart.total_amount).toFixed(2)}</span>
         </footer>
       </div>
+
+      {/* Estilos adicionales para el botón "Ver detalles" (tomados de page1) */}
+      <style>{`
+        .btn-details {
+          display: inline-block;
+          padding: 8px 16px;
+          font-size: 12px;
+          font-weight: 500;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          border-radius: 40px;
+          text-decoration: none;
+          transition: all 0.2s ease;
+          cursor: pointer;
+          font-family: 'DM Sans', sans-serif;
+          background: transparent;
+          color: #C17A3A;
+          border: 1px solid #C17A3A;
+          text-align: center;
+        }
+        .btn-details:hover {
+          background: rgba(193, 122, 58, 0.1);
+          transform: scale(1.02);
+        }
+        .menu-recommendations .add-btn {
+          background: #C17A3A;
+          color: #111010;
+          border: none;
+        }
+        .menu-recommendations .add-btn:hover {
+          background: #D48A4A;
+        }
+      `}</style>
     </>
-  )
+  );
 }

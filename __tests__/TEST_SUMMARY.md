@@ -286,7 +286,7 @@ npm test us010-carrito
 npm test us011-crear-orden
 npm test us012-historial-ordenes
 npm test us015-us006-exportacion
-npm test us013-validacion-productos
+npm test us013-validacion-productos-
 npm test us014-dashboard
 npm test timezone-dates
 ```

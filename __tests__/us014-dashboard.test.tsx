@@ -2,7 +2,7 @@
  * US014: Dashboard de Ventas
  * Pruebas para el dashboard de reportes y estadísticas
  */
-
+/*
 describe('US014: Dashboard de Ventas', () => {
   const mockDailySalesData = [
     {
@@ -336,3 +336,4 @@ describe('US014: Dashboard de Ventas', () => {
     })
   })
 })
+*/

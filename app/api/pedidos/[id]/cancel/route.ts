@@ -17,8 +17,17 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await params; // 👈 clave
+    const { id } = await params;
     const pedidoId = Number(id);
+
+    // --- AÑADE ESTA VALIDACIÓN ---
+    if (isNaN(pedidoId)) {
+      return NextResponse.json(
+        { error: "Invalid order id" }, 
+        { status: 400 }
+      );
+    }
+    // ------------------------------
 
     const controller = new PedidoController();
     const result = await controller.cancelPedido(pedidoId);

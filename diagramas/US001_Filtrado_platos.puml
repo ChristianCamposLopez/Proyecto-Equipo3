@@ -1,0 +1,50 @@
+@startuml US001_Filtrado_platos
+
+title US001 - Filtrado de Platos
+
+actor Cliente as cliente
+participant "GET /api/categorias" as route
+participant CategoriaController as controller
+participant CategoriaDAO as dao
+participant Database as db
+participant CategoriaEntity as entity
+
+autonumber
+
+cliente -> route: GET /api/categorias?restaurantId=1
+note right of route: route.ts valida restaurantId
+
+route -> controller: getCategoriesByRestaurant(1)
+activate controller
+
+controller -> controller: validar restaurantId
+note right of controller: Verifica que restaurantId no sea null
+
+controller -> dao: getByRestaurant(1)
+activate dao
+
+dao -> db: SELECT id, name, restaurant_id\nFROM categories\nWHERE restaurant_id = 1\nORDER BY name ASC
+activate db
+
+db -> db: Ejecuta query en BD
+db --> dao: result.rows (categorías)
+deactivate db
+
+dao -> entity: Mapea rows a CategoriaEntity[]
+entity --> dao: Array<CategoriaEntity>
+deactivate dao
+
+dao --> controller: Promise<CategoriaEntity[]>
+deactivate controller
+
+controller --> route: { categories: CategoriaEntity[] }
+
+route --> cliente: HTTP 200\n{\n  "categories": [\n    {\n      "id": 1,\n      "name": "Categoría A",\n      "restaurant_id": 1\n    }\n  ]\n}
+
+note right of cliente
+  Cliente recibe lista de categorías
+  filtradas por restaurante
+  y puede usarlas para filtrar platos
+end note
+
+@enduml

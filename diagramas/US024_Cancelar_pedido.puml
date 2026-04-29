@@ -1,0 +1,90 @@
+@startuml US024_Cancelar_pedido
+
+title US024 - Cancelar Pedido
+
+actor Cliente as cliente
+participant "PUT /api/pedidos/[id]/cancel" as route
+participant Session as session
+participant PedidoController as controller
+participant PedidoDAO as dao
+participant Database as db
+participant Order as order
+
+autonumber
+
+cliente -> route: PUT /api/pedidos/123/cancel
+note right of route: route.ts obtiene el id del pedido
+
+route -> session: getUserFromSession()
+activate session
+session --> route: { id: userId }
+deactivate session
+
+note right of route: Valida que el usuario esté autenticado
+route -> route: Validar que id es número (isNaN check)
+
+route -> controller: new PedidoController()
+route -> controller: cancelPedido(123)
+activate controller
+
+note right of controller
+  El controlador busca y valida
+  el estado actual del pedido
+end note
+
+controller -> dao: findActiveOrderById(123)
+activate dao
+
+dao -> db: SELECT * FROM orders\nWHERE id = 123
+db --> dao: Order record
+deactivate dao
+
+dao --> controller: Order object
+
+controller -> controller: Validar estado\nSolo PENDING y CONFIRMED\npueden cancelarse
+
+note right of controller: Si estado ≠ PENDING o CONFIRMED\ntira error "No se puede cancelar..."
+
+controller -> dao: cancelPedido(123)
+activate dao
+
+dao -> db: BEGIN TRANSACTION
+dao -> db: SELECT status FROM pedido_historial\nWHERE id = 123 FOR UPDATE
+db --> dao: status = 'PENDING'
+
+note right of dao
+  DAO realiza operaciones complejas:
+  1. Verifica estado en historial
+  2. Cambia estado a CANCELLED
+  3. Revierte stock de productos
+  4. Elimina registros activos
+end note
+
+dao -> db: UPDATE pedido_historial\nSET status = 'CANCELLED'\nWHERE id = 123
+dao -> db: SELECT product_id, quantity\nFROM pedido_items_historial\nWHERE order_id = 123
+db --> dao: items list
+
+loop For each item
+  dao -> db: UPDATE products\nSET stock = stock + quantity\nWHERE id = product_id
+end
+
+dao -> db: DELETE FROM order_items\nWHERE order_id = 123
+dao -> db: DELETE FROM orders\nWHERE id = 123
+
+dao -> db: COMMIT TRANSACTION
+deactivate dao
+
+dao --> controller: { message: "Pedido cancelado..." }
+
+controller --> route: { message: "Pedido cancelado. Queda pendiente de reembolso." }
+deactivate controller
+
+route --> cliente: HTTP 200\n{\n  "message": "Pedido cancelado.\n  Queda pendiente de reembolso."\n}
+
+note right of cliente
+  El pedido está cancelado y ahora
+  queda pendiente de reembolso
+  por parte del administrador
+end note
+
+@enduml

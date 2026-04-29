@@ -1,3 +1,4 @@
+// models/entities/CategoriaEntity.ts
 export interface CategoriaEntity {
   id: number;
   name: string;

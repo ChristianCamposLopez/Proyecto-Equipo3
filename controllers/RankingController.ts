@@ -1,3 +1,4 @@
+// controllers/RankingController.ts
 import { RankingDAO } from '@/models/daos/RankingDAO';
 import { RankingResponse } from '@/models/entities/RankingEntities';
 

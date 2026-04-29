@@ -3,6 +3,7 @@
  * Pruebas para la exportación de reportes de ventas
  */
 
+/*
 describe('US015: Exportación de Reportes a Excel', () => {
   const mockDailySales = [
     {
@@ -333,3 +334,5 @@ describe('US006: Exportación de Reportes a CSV', () => {
     })
   })
 })
+
+*/

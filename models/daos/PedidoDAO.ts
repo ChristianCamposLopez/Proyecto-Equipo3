@@ -2,7 +2,7 @@
 import { db } from "../../config/db";
 
 export class PedidoDAO {
-
+/*
   // Crear pedido: inserta en ambas tablas (activo e historial)
   static async crearPedido(
     customerId: number,
@@ -83,8 +83,8 @@ export class PedidoDAO {
     } finally {
       client.release();
     }
-  }
-
+  } 
+*/
   static async registrarHistorial(
       orderId: number,
       customerId: number,

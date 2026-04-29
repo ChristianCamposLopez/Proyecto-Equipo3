@@ -1,3 +1,4 @@
+// app/api/platos/[id]/price/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { MenuController } from '@/controllers/MenuController';
 

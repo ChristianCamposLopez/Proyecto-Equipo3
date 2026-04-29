@@ -1,3 +1,4 @@
+// app/api/platos/[id]/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { MenuController } from '@/controllers/MenuController';
 
@@ -24,6 +25,7 @@ export async function GET(
   }
 }
 
+/*
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -42,4 +44,4 @@ export async function DELETE(
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+}*/

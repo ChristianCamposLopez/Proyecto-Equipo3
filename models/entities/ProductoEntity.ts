@@ -1,3 +1,4 @@
+// models/entities/ProductoEntity.ts
 export interface ProductoEntity {
   id: number;
   category_id: number;

@@ -1,0 +1,56 @@
+@startuml diagrama_casos_uso
+
+title Diagrama de Casos de Uso - Gestión de Pedidos y Reembolsos
+
+skinparam actorStyle awesome
+skinparam backgroundColor #FEFEFE
+skinparam usecaseBackgroundColor #E8F4F8
+skinparam usecaseBorderColor #2C3E50
+skinparam arrowColor #2C3E50
+
+' ===== ACTORES =====
+actor Cliente as cliente
+actor Administrador as admin
+
+' ===== CASOS DE USO =====
+
+usecase "Filtrar Platos\nby Categoría" as UC001
+usecase "Cancelar\nPedido" as UC024
+usecase "Gestionar\nReembolso" as UC026
+usecase "Listar Reembolsos\nPendientes" as UC026_list
+usecase "Aprobar\nReembolso" as UC026_approve
+usecase "Rechazar\nReembolso" as UC026_reject
+
+' ===== RELACIONES CON ACTORES =====
+
+cliente --> UC001 : inicia
+cliente --> UC024 : inicia
+
+admin --> UC026 : inicia
+UC026 --> UC026_list : incluye
+UC026 --> UC026_approve : incluye
+UC026 --> UC026_reject : incluye
+
+' ===== RELACIONES ENTRE CASOS DE USO =====
+UC024 .-> UC026 : precede
+
+note right of UC001
+  El cliente puede filtrar
+  los platos disponibles
+  por categoría para
+  hacer un pedido
+end note
+
+note right of UC024
+  El cliente cancela
+  su pedido para luego
+  solicitar reembolso
+end note
+
+note right of UC026
+  El administrador gestiona
+  las solicitudes de reembolso
+  de pedidos cancelados
+end note
+
+@enduml

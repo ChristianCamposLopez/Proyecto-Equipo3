@@ -1,3 +1,4 @@
+// models/entities/RankingEntities.ts
 export interface RankedProduct {
   product_id: number;
   product_name: string;

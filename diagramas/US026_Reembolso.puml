@@ -1,0 +1,132 @@
+@startuml US026_Reembolso
+
+title US026 - Gestionar Reembolso
+
+actor Administrador as admin
+participant "GET /api/reembolsos" as getRoute
+participant "PATCH /api/reembolsos/[id]/process" as patchRoute
+participant Session as session
+participant ReembolsoController as controller
+participant ReembolsoDAO as dao
+participant Database as db
+participant Cliente as cliente
+
+autonumber 1
+
+== Listar Reembolsos Pendientes ==
+
+admin -> getRoute: GET /api/reembolsos
+note right of getRoute: getRoute.ts obtiene sesión admin
+
+getRoute -> session: getAdminSession()
+activate session
+session --> getRoute: { id: adminId, role: 'admin' }
+deactivate session
+
+note right of getRoute: Valida que el usuario tenga rol admin
+
+getRoute -> controller: new ReembolsoController()
+getRoute -> controller: getPendingRefunds()
+activate controller
+
+controller -> dao: getPendingRefunds()
+activate dao
+
+dao -> db: SELECT ph.id, ph.customer_id,\nu.full_name, ph.total_amount,\nph.created_at, ph.status\nFROM pedido_historial ph\nJOIN users u ON u.id = ph.customer_id\nWHERE ph.status = 'CANCELLED'\nORDER BY ph.created_at DESC
+
+db --> dao: Lista de pedidos cancelados\n(pendientes de reembolso)
+deactivate dao
+
+dao --> controller: Promise<Refund[]>
+
+controller --> getRoute: { refunds: Refund[] }
+deactivate controller
+
+getRoute --> admin: HTTP 200\n{\n  "refunds": [\n    {\n      "order_id": 123,\n      "customer_id": 5,\n      "customer_name": "Juan",\n      "total_amount": 250.50,\n      "created_at": "2024-01-01T...",\n      "status": "CANCELLED"\n    }\n  ]\n}
+
+note right of admin
+  Admin ve lista de reembolsos
+  pendientes por procesar
+end note
+
+== Procesar Reembolso (Aprobar o Rechazar) ==
+
+alt Admin aprueba reembolso
+  admin -> patchRoute: PATCH /api/reembolsos/123/process\n{\n  "action": "approve"\n}
+else Admin rechaza reembolso
+  admin -> patchRoute: PATCH /api/reembolsos/123/process\n{\n  "action": "reject",\n  "reason": "Motivo del rechazo"\n}
+end
+
+note right of patchRoute: patchRoute.ts valida request
+
+patchRoute -> session: getAdminSession()
+activate session
+session --> patchRoute: { id: adminId, role: 'admin' }
+deactivate session
+
+patchRoute -> patchRoute: Validar que action sea\n"approve" o "reject"
+
+alt action == "approve"
+
+  patchRoute -> controller: new ReembolsoController()
+  patchRoute -> controller: approveRefund(123)
+  activate controller
+
+  controller -> dao: approveRefund(123)
+  activate dao
+
+  dao -> db: UPDATE pedido_historial\nSET status = 'REFUNDED',\nrefund_rejection_reason = NULL\nWHERE id = 123\nAND status = 'CANCELLED'\nRETURNING id
+
+  db --> dao: Order record updated
+
+  dao --> controller: { success: true,\nmessage: "Reembolso aprobado" }
+  deactivate dao
+
+  note right of controller
+    El controlador puede enviar
+    notificación al cliente
+    (email, push notification)
+  end note
+
+  controller --> patchRoute: { success: true,\nmessage: "Reembolso aprobado" }
+  deactivate controller
+
+  patchRoute --> admin: HTTP 200\n{\n  "success": true,\n  "message": "Reembolso aprobado"\n}
+
+else action == "reject"
+
+  patchRoute -> controller: new ReembolsoController()
+  patchRoute -> controller: rejectRefund(123, "Motivo...")
+  activate controller
+
+  controller -> dao: rejectRefund(123, "Motivo...")
+  activate dao
+
+  dao -> db: UPDATE pedido_historial\nSET status = 'REFUND_REJECTED',\nrefund_rejection_reason = 'Motivo...'\nWHERE id = 123\nAND status = 'CANCELLED'\nRETURNING id
+
+  db --> dao: Order record updated
+
+  dao --> controller: { success: true,\nmessage: "Reembolso rechazado",\nreason: "Motivo..." }
+  deactivate dao
+
+  note right of controller
+    El controlador puede enviar
+    notificación al cliente
+    con el motivo del rechazo
+  end note
+
+  controller --> patchRoute: { success: true,\nmessage: "Reembolso rechazado" }
+  deactivate controller
+
+  patchRoute --> admin: HTTP 200\n{\n  "success": true,\n  "message": "Reembolso rechazado",\n  "reason": "Motivo..."\n}
+
+end
+
+note right of admin
+  Reembolso procesado:
+  - Si APROBADO: Pedido en REFUNDED
+  - Si RECHAZADO: Pedido en REFUND_REJECTED
+  - Cliente recibe notificación
+end note
+
+@enduml

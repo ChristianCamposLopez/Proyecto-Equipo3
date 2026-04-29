@@ -1,4 +1,4 @@
-// app/api/platos/images/[imageId]/route.ts
+// app/api/platos/[id]/images/[imageId]/route.ts
 import { NextResponse } from 'next/server';
 import { ImagenController } from '@/controllers/ImagenController';
 

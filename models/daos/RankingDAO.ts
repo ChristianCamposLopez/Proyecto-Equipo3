@@ -1,3 +1,4 @@
+// models/daos/RankingDAO.ts
 import { db } from '@/config/db';
 import { RankedProduct } from '../entities/RankingEntities';
 

@@ -1,3 +1,4 @@
+// app/api/platos/[id]/availability/route.ts
 import { NextResponse } from 'next/server';
 import { DisponibilidadController } from '@/controllers/DisponibilidadController';
 
@@ -31,8 +32,17 @@ export async function POST(
     if (isNaN(productId)) {
       return NextResponse.json({ error: 'Invalid product id' }, { status: 400 });
     }
+
     const body = await request.json();
     const { dayOfWeek, startTime, endTime } = body;
+    // --- AGREGA ESTA VALIDACIÓN ---
+    if (!dayOfWeek || !startTime || !endTime) {
+      return NextResponse.json(
+        { error: 'Faltan campos obligatorios: dayOfWeek, startTime y endTime' }, 
+        { status: 400 }
+      );
+    }
+
     const availability = await controller.create({
       productId,
       dayOfWeek,

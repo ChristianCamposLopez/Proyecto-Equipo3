@@ -2,7 +2,7 @@
 import { PedidoDAO } from "../models/daos/PedidoDAO";
 
 export class PedidoController {
-
+  /*
   async crearPedido(
     userId: number,
     restaurantId: number,
@@ -12,7 +12,7 @@ export class PedidoController {
       throw new Error("El carrito está vacío");
     }
     return await PedidoDAO.crearPedido(userId, restaurantId, items);
-  }
+  } */
 
   // controllers/pedidoController.ts
 

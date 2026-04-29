@@ -1,3 +1,4 @@
+//models/entities/RecomendacionEntity.ts
 export interface RecomendacionEntity {
   id: number;
   name: string;

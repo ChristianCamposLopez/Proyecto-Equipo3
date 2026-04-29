@@ -1,0 +1,115 @@
+@startuml diagrama_clases
+
+' Estilo general
+skinparam backgroundColor #FEFEFE
+skinparam classBackgroundColor #E8F4F8
+skinparam classBorderColor #2C3E50
+skinparam arrowColor #2C3E50
+skinparam classAttributeIconSize 0
+
+' ===== ENTIDADES DE NEGOCIO =====
+
+class CategoriaEntity {
+  - id: number
+  - name: string
+  - restaurant_id: number
+}
+
+class Order {
+  - id: number
+  - customer_id: number
+  - restaurant_id: number
+  - delivery_address_json: Record<string, any>
+  - status: OrderStatus
+  - total_amount: number
+  - created_at: string
+  - confirmed_at: string | null
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+class OrderItem {
+  - id: number
+  - order_id: number
+  - product_id: number
+  - quantity: number
+  - unit_price_at_purchase: number
+}
+
+class Cliente {
+  - id: number
+  - full_name: string
+  - email: string
+}
+
+class Administrador {
+  - id: number
+  - full_name: string
+  - role: string
+}
+
+' ===== CONTROLADORES =====
+
+class CategoriaController {
+  + getCategoriesByRestaurant(restaurantId: number): Promise<Categoria[]>
+}
+
+class PedidoController {
+  + cancelPedido(pedidoId: number): Promise<any>
+  + completarPedido(pedidoId: number): Promise<void>
+  + getPedidos(userId: number): Promise<any>
+}
+
+class ReembolsoController {
+  + getPendingRefunds(): Promise<Refund[]>
+  + approveRefund(orderId: number): Promise<any>
+  + rejectRefund(orderId: number, reason: string): Promise<any>
+}
+
+' ===== DATA ACCESS OBJECTS (DAOs) =====
+
+class CategoriaDAO {
+  + {static} getByRestaurant(restaurantId: number): Promise<CategoriaEntity[]>
+}
+
+class PedidoDAO {
+  + {static} findActiveOrderById(id: number): Promise<Order>
+  + {static} cancelPedido(orderId: number): Promise<any>
+  + {static} completarPedido(orderId: number): Promise<void>
+  + {static} getPedidosByUser(userId: number): Promise<Order[]>
+  + {static} updateHistorialStatus(id: number, status: string): Promise<void>
+}
+
+class ReembolsoDAO {
+  + {static} getPendingRefunds(): Promise<Refund[]>
+  + {static} approveRefund(orderId: number): Promise<any>
+  + {static} rejectRefund(orderId: number, reason: string): Promise<any>
+}
+
+' ===== RELACIONES =====
+
+CategoriaController --> CategoriaDAO : usa
+CategoriaDAO --> CategoriaEntity : retorna
+
+PedidoController --> PedidoDAO : usa
+PedidoDAO --> Order : retorna
+Order "*" --> "1" OrderItem : contiene
+
+ReembolsoController --> ReembolsoDAO : usa
+ReembolsoDAO --> Order : opera sobre
+
+Order --> Cliente : asociado a
+Order --> OrderStatus : contiene estado
+
+PedidoDAO --> OrderStatus : maneja
+
+Administrador <-- ReembolsoController : autorizado de
+
+@enduml

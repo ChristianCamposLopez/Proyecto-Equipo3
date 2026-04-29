@@ -383,7 +383,7 @@ export class ProductoDAO {
 
     return result.rows[0] || null;
   }
-
+  /*
   static async updateNombre(id: number, name: string): Promise<ProductoEntity> {
 
     const result = await db.query(
@@ -406,4 +406,5 @@ export class ProductoDAO {
 
     return result.rows[0];
   }
+    */
 }

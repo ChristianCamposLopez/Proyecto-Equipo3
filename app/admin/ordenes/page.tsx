@@ -449,7 +449,7 @@ export default function AdminOrdenesPage() {
                         {processing === order.id ? "…" : "Listo"}
                       </button>
                     )}
-                    {(order.status === 'PENDING' || order.status === 'CONFIRMED') && (
+               {/*     {(order.status === 'PENDING' || order.status === 'CONFIRMED') && (
                       <button
                         className="btn btn-cancel"
                         onClick={() => handleStatusChange(order, 'CANCELLED')}
@@ -458,6 +458,7 @@ export default function AdminOrdenesPage() {
                         {processing === order.id ? "…" : "Cancelar"}
                       </button>
                     )}
+              */}
                   </div>
                 </div>
               ))}

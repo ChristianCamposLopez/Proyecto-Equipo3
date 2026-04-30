@@ -3,7 +3,7 @@
  * Pruebas para el endpoint de creación de órdenes y validaciones
  */
 
-/*
+
 
 describe('US011: Creación de Órdenes', () => {
   const mockOrderData = {
@@ -269,4 +269,3 @@ describe('US011: Creación de Órdenes', () => {
   })
 })
 
-*/

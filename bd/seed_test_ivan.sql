@@ -20,17 +20,17 @@ INSERT INTO roles (name, permisos) VALUES
 ('chef', '{"ver_pedidos_pendientes","actualizar_estado_cocina"}'),
 ('repartidor', '{"ver_pedidos_asignados","actualizar_entrega"}');
 
--- 3. USUARIOS
+-- 3. USUARIOS todas son hash_admin
 WITH inserted_users AS (
     INSERT INTO users (email, password_hash, full_name, phone_number, reset_token, token_expiracion)
     VALUES
-        ('cliente1@test.com', 'hash_cliente1', 'Carlos López', '5512345678', NULL, NULL),
-        ('cliente2@test.com', 'hash_cliente2', 'María García', '5512345679', NULL, NULL),
-        ('admin_rest@test.com', 'hash_admin', 'Javier Martínez', '5512345680', NULL, NULL),
-        ('chef1@test.com', 'hash_chef1', 'Ana Rodríguez', '5512345681', NULL, NULL),
-        ('repartidor1@test.com', 'hash_repart1', 'Luis Fernández', '5512345682', NULL, NULL),
-        ('repartidor2@test.com', 'hash_repart2', 'Elena Torres', '5512345683', NULL, NULL),
-        ('cliente_inactivo@test.com', 'hash_inactivo', 'Pedro Infante', '5512345684', NULL, NULL)
+        ('cliente1@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Carlos López', '5512345678', NULL, NULL),
+        ('cliente2@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'María García', '5512345679', NULL, NULL),
+        ('admin_rest@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Javier Martínez', '5512345680', NULL, NULL),
+        ('chef1@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Ana Rodríguez', '5512345681', NULL, NULL),
+        ('repartidor1@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Luis Fernández', '5512345682', NULL, NULL),
+        ('repartidor2@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Elena Torres', '5512345683', NULL, NULL),
+        ('cliente_inactivo@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Pedro Infante', '5512345684', NULL, NULL)
     RETURNING id, email
 )
 INSERT INTO user_roles (user_id, role_id)

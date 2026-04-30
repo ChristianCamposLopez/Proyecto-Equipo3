@@ -14,7 +14,11 @@ export class AuthControlador {
     return this.authService.registrar(datos);
   }
 
-  async login(datos: AutenticacionDTO): Promise<string> {
+  /*async login(datos: AutenticacionDTO): Promise<string> {
+    return this.authService.login(datos);
+  } */
+
+  async login(datos: AutenticacionDTO): Promise<{ token: string; userId: string; rol: string }> {
     return this.authService.login(datos);
   }
 

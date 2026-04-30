@@ -29,7 +29,7 @@ export class AuthService {
       await this.authRepo.asignarRol(userId, 2); // restaurant_admin por defecto
     }
   }
-
+/*
   async login(datos: AutenticacionDTO): Promise<string> {
     const usuario = await this.authRepo.buscarPorEmail(datos.email);
 
@@ -49,7 +49,7 @@ export class AuthService {
       email: usuario.email,
       rol: rolNombre,
     });
-  }
+  } */
 
   async solicitarRecuperacion(email: string): Promise<string> {
     const usuario = await this.authRepo.buscarPorEmail(email);
@@ -71,5 +71,33 @@ export class AuthService {
     const usuario = await this.authRepo.buscarPorEmail(email);
     if (!usuario) return false;
     return usuario.validarRol(permiso);
+  }
+
+  async login(datos: AutenticacionDTO): Promise<{ token: string; userId: string; rol: string }> {
+    const usuario = await this.authRepo.buscarPorEmail(datos.email);
+
+    if (!usuario) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    const credencialesValidas = await bcrypt.compare(datos.password, usuario.passwordHash);
+    if (!credencialesValidas) {
+      throw new Error('Contraseña incorrecta');
+    }
+
+    const rolNombre = usuario.rol?.nombre || 'sin_rol';
+
+    const token = generarToken({
+      userId: usuario.id,
+      email: usuario.email,
+      rol: rolNombre,
+    });
+
+    // Retornamos el objeto completo para que el controlador lo use
+    return {
+      token,
+      userId: usuario.id,
+      rol: rolNombre
+    };
   }
 }

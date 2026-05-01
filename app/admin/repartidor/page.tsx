@@ -323,10 +323,10 @@ export default function KitchenPage() {
         <div className="kitchen-wrap">
           <header className="kitchen-header">
             <div>
-              <div className="kitchen-eyebrow">US007 · Cocina</div>
+              <div className="kitchen-eyebrow">Asignacion de repartidores</div>
               <h1 className="kitchen-title">Pedidos activos</h1>
               <p className="kitchen-copy">
-                Revisa cada pedido con sus productos y las notas especiales del cliente antes de iniciar la preparacion.
+                Pedidos con sus productos y las notas especiales del cliente para ser asignados a un repartidor.
               </p>
             </div>
             <button className="refresh-btn" onClick={loadOrders} disabled={loading}>

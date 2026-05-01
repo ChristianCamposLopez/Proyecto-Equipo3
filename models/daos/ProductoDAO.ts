@@ -337,36 +337,42 @@ export class ProductoDAO {
 
     const result = await db.query(
       `
-      SELECT
-        p.id,
-        p.name,
-        p.base_price,
-        p.is_active,
-        c.name AS category_name,
+     SELECT
+      p.id,
+      p.name,
+      p.base_price,
+      p.is_active,
+      c.name AS category_name,
+      COALESCE(
+        (SELECT pi.image_path FROM product_images pi 
+         WHERE pi.product_id = p.id AND pi.is_primary = TRUE AND pi.deleted_at IS NULL LIMIT 1),
+        '/images/default-product.png'
+      ) AS image_display
+    FROM products p
+    JOIN categories c ON p.category_id = c.id
+    WHERE
+      p.deleted_at IS NULL
+      AND p.is_available = TRUE
+      AND ($2::boolean = TRUE OR p.is_active = TRUE)
+      AND ($1::int IS NULL OR c.restaurant_id = $1)
+      AND ($3::int IS NULL OR p.category_id = $3)
 
-        COALESCE(
-          (
-            SELECT pi.image_path
-            FROM product_images pi
-            WHERE pi.product_id = p.id
-              AND pi.is_primary = TRUE
-              AND pi.deleted_at IS NULL
-            LIMIT 1
-          ),
-          '/images/default-product.png'
-        ) AS image_display
+      -- 🔥 LÓGICA DE DISPONIBILIDAD (US020) --
+      AND (
+        $2::boolean = TRUE -- 1. Si es admin, mostrar todo
+        OR 
+        NOT EXISTS (SELECT 1 FROM product_availability WHERE product_id = p.id) -- 2. Si NO tiene reglas, mostrar todo
+        OR 
+        EXISTS ( -- 3. Si TIENE reglas, validar día y hora actual
+            SELECT 1 
+            FROM product_availability pa 
+            WHERE pa.product_id = p.id
+              AND pa.day_of_week = EXTRACT(DOW FROM CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City')::int
+              AND (CURRENT_TIME AT TIME ZONE 'America/Mexico_City') BETWEEN pa.start_time AND pa.end_time
+        )
+      )
 
-      FROM products p
-      JOIN categories c ON p.category_id = c.id
-
-      WHERE
-        p.deleted_at IS NULL
-        AND p.is_available = TRUE
-        AND ($2::boolean = TRUE OR p.is_active = TRUE)
-        AND ($1::int IS NULL OR c.restaurant_id = $1)
-        AND ($3::int IS NULL OR p.category_id = $3)
-
-      ORDER BY p.id
+    ORDER BY p.id
       `,
       [restaurantId, includeInactive, categoryId]
     );

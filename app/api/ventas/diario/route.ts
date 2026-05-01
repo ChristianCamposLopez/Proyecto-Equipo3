@@ -1,3 +1,4 @@
+// app/api/ventas/diario/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { VentasController } from '@/controllers/ventasController';
 
@@ -16,13 +17,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const idRest = restauranteId ? Number(restauranteId) : undefined;
-    if (restauranteId && isNaN(idRest!)) {
-      return NextResponse.json(
-        { error: 'restauranteId debe ser numérico' },
-        { status: 400 }
-      );
-    }
+    const idRest = 1;
 
     const reporte = await controller.getDailyReport(fecha, idRest);
 
@@ -34,7 +29,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Incluimos meta con el nombre del restaurante (igual que ranking)
-    const restaurantName = await controller.getRestaurantName(idRest ?? 0);
+    const restaurantName = await controller.getRestaurantName(idRest);
     return NextResponse.json({
       data: reporte,
       meta: { restaurantName },

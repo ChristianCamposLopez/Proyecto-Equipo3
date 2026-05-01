@@ -33,17 +33,12 @@ export const LoginForm = () => {
 
       // 1. Guardamos el token
       localStorage.setItem('token', data.token);
+      localStorage.setItem('userId', data.userId); // 👈 Guardamos el ID "en silencio"
 
-      // 2. Lógica de redirección dinámica basada en el Rol
       if (data.rol === 'restaurant_admin' || data.rol === 'admin') {
-        // Si es ADMIN: va a la carpeta admin
-        router.push(`/admin/dashboard/${data.userId}`);
-      } else if (data.rol === 'client' || data.rol === 'usuario') {
-        // Si es CLIENTE: va a la carpeta cliente
-        router.push(`/cliente/dashboard/${data.userId}`);
+        router.push('/admin/dashboard'); // 👈 URL limpia sin el ID
       } else {
-        // Caso por defecto o rol no identificado
-        router.push('/dashboard');
+        router.push('/cliente/dashboard');
       }
     } catch {
       setError('Error de conexión con el servidor');

@@ -1,49 +1,81 @@
 // app/admin/page.tsx (o tu ruta de menú principal)
 "use client"
 import React from 'react';
+import { useEffect, useState } from 'react';
 
 export default function AdminMenu() {
   const routes = [
     { 
-      name: 'Menu', 
-      path: '/cliente/menu', 
-      icon: '🍽️', 
+      name: 'Gestión de Órdenes', 
+      path: '/admin/ordenes', 
+      icon: '👨‍🍳', 
       category: 'Operaciones' 
     },
     { 
-      name: 'Mis pedidos', 
-      path: '/cliente/pedidos', 
+      name: 'Catálogo de Platos', 
+      path: '/admin/platos', 
       icon: '🍽️', 
       category: 'Menú' 
     },
     { 
-      name: 'Carrito', 
-      path: '/cliente/carrito', 
+      name: 'Ranking de Popularidad', 
+      path: '/admin/ranking', 
       icon: '🏆', 
       category: 'Analítica' 
     },
+    { 
+      name: 'Gestión de Reembolsos', 
+      path: '/admin/reembolsos', 
+      icon: '💸', 
+      category: 'Finanzas' 
+    },
+    { 
+      name: 'Reportes de Ventas', 
+      path: '/admin/ventas', 
+      icon: '📈', 
+      category: 'Finanzas' 
+    },
+    { 
+      name: 'Control de Repartidores', 
+      path: '/admin/repartidor', 
+      icon: '🛵', 
+      category: 'Logística' 
+    },
+    { 
+      name: 'Cambiar sesión', 
+      path: '/login', 
+      icon: '🔐', 
+      category: 'Usuario' 
+    },
   ];
+
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Recuperamos el ID que guardamos en el login
+    const savedId = localStorage.getItem('userId');
+    setUserId(savedId);
+  }, []);
 
   return (
     <>
       {/* Mantiene la referencia a los estilos definidos previamente */}
       <style dangerouslySetInnerHTML={{ __html: styles }} />
-      
       <div className="menu-root">
         <header className="menu-hero">
           <div className="menu-topbar">
             <div>
-              <p className="menu-label">Panel de Cliente</p>
+              <p className="menu-label">Panel de Administración</p>
               <h1 className="menu-title">Control <em>Central</em></h1>
               <p className="menu-subtitle">
-                Bienvenido, Cliente. Gestione el flujo operativo, financiero y logístico desde este portal.
+                Bienvenido, Administrador. Gestione el flujo operativo, financiero y logístico desde este portal.
               </p>
             </div>
             
             <div className="cart-chip">
               <p className="cart-chip-label">Sesión Activa</p>
-              <div className="cart-chip-total">Cliente</div>
-              <p className="cart-chip-meta">Disfruta de nuestros servicios</p>
+              <div className="cart-chip-total">Admin</div>
+              <p className="cart-chip-meta">Acceso total autorizado</p>
             </div>
           </div>
         </header>

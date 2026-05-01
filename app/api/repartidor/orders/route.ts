@@ -35,7 +35,7 @@ export async function GET() {
 
     return NextResponse.json(result.rows)
   } catch (error) {
-    console.error("[GET /api/kitchen/orders]", error)
-    return NextResponse.json({ error: "No se pudieron obtener los pedidos de cocina" }, { status: 500 })
+    console.error("[GET /api/repartidor/orders]", error)
+    return NextResponse.json({ error: "No se pudieron obtener los pedidos de repartidor" }, { status: 500 })
   }
 }

@@ -37,7 +37,7 @@ export class RepartidorDAO {
 
   async assignDeliverymanToOrder(orderId: number, deliverymanId: number): Promise<void> {
     await db.query(
-      `UPDATE orders SET deliveryman_id = $1, status = 'DELIVERY_ASSIGNED' WHERE id = $2`,
+      `UPDATE orders SET deliveryman_id = $1, status = 'ON_DELIVERY' WHERE id = $2`,
       [deliverymanId, orderId]
     );
   }

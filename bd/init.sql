@@ -460,6 +460,7 @@ SELECT og.id, 'Salsa verde', 3.00 FROM option_groups og WHERE og.name = 'Salsas 
 UNION ALL
 SELECT og.id, 'Salsa de aguacate', 5.00 FROM option_groups og WHERE og.name = 'Salsas extra';
 
+/*
 -- 11. CARRITOS
 WITH cliente1 AS (SELECT id FROM users WHERE email = 'cliente1@test.com'),
      rest1 AS (SELECT id FROM restaurants WHERE name = 'Tacos El Buen Sabor')
@@ -581,81 +582,5 @@ WITH item_bistec AS (
 INSERT INTO order_item_options (order_item_id, option_id, price_at_purchase)
 SELECT order_item_id, option_id, price_modifier FROM item_bistec;
 
--- 15. PAGOS Y REEMBOLSOS
--- Pago exitoso para pedido 1
-WITH pedido1 AS (SELECT id FROM orders WHERE status = 'PENDING' AND total_amount = 79.00)
-INSERT INTO payments (order_id, payment_method, status, transaction_id)
-SELECT id, 'CARD', 'SUCCESS', 'txn_123456789' FROM pedido1;
 
--- Pago fallido para pedido 2
-WITH pedido2 AS (SELECT id FROM orders WHERE status = 'PREPARING')
-INSERT INTO payments (order_id, payment_method, status, transaction_id)
-SELECT id, 'CARD', 'FAILED', 'txn_failed_001' FROM pedido2;
-
--- Reembolso asociado al pago fallido
-WITH pago_fallido AS (SELECT id FROM payments WHERE transaction_id = 'txn_failed_001')
-INSERT INTO refunds (payment_id, amount, reason)
-SELECT id, 130.00, 'Fallo en el cobro, se reembolsa el monto completo' FROM pago_fallido;
-
--- 16. HISTORIAL DE PEDIDOS (pedido_historial) y sus items
--- Pedido cancelado
-WITH cliente1 AS (SELECT id FROM users WHERE email = 'cliente1@test.com'),
-     rest_taco AS (SELECT id FROM restaurants WHERE name = 'Tacos El Buen Sabor')
-INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, refund_rejection_reason)
-SELECT c.id, r.id, 
-       jsonb_build_object('street', 'Calle Ejemplo', 'city', 'CDMX'),
-       'CANCELLED', 45.00, 'Cliente canceló por cambio de horario'
-FROM cliente1 c, rest_taco r;
-
--- Pedido completado
-WITH cliente2 AS (SELECT id FROM users WHERE email = 'cliente2@test.com'),
-     rest_taco AS (SELECT id FROM restaurants WHERE name = 'Tacos El Buen Sabor')
-INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, refund_rejection_reason)
-SELECT c.id, r.id, 
-       jsonb_build_object('street', 'Av. Siempre Viva', 'city', 'Guadalajara'),
-       'COMPLETED', 520.00, NULL
-FROM cliente2 c, rest_taco r;
-
--- Pedido reembolsado
-INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, refund_rejection_reason)
-SELECT u.id, r.id, 
-       jsonb_build_object('street', 'Zona reembolso', 'city', 'Monterrey'),
-       'REFUNDED', 99.00, NULL
-FROM users u, restaurants r
-WHERE u.email = 'cliente_inactivo@test.com' AND r.name = 'Tacos El Buen Sabor';
-
--- Pedido con reembolso rechazado
-INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, refund_rejection_reason)
-SELECT u.id, r.id, 
-       jsonb_build_object('street', 'Colonia Progreso', 'city', 'Puebla'),
-       'REFUND_REJECTED', 120.00, 'El producto ya fue consumido'
-FROM users u, restaurants r
-WHERE u.email = 'cliente1@test.com' AND r.name = 'Tacos El Buen Sabor';
-
--- Items para el pedido cancelado
-WITH hist_cancelado AS (SELECT id FROM pedido_historial WHERE status = 'CANCELLED' LIMIT 1),
-     prod_pastor AS (SELECT id, base_price FROM products WHERE name = 'Taco al pastor')
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
-SELECT h.id, p.id, 2, p.base_price FROM hist_cancelado h, prod_pastor p;
-
--- Items para el pedido completado
-WITH hist_completado AS (SELECT id FROM pedido_historial WHERE status = 'COMPLETED' LIMIT 1),
-     prod_bistec AS (SELECT id, base_price FROM products WHERE name = 'Taco de bistec'),
-     prod_horchata AS (SELECT id, base_price FROM products WHERE name = 'Horchata')
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
-SELECT h.id, p.id, 3, p.base_price FROM hist_completado h, prod_bistec p
-UNION ALL
-SELECT h.id, ph.id, 2, ph.base_price FROM hist_completado h, prod_horchata ph;
-
--- Items para el pedido reembolsado
-WITH hist_refunded AS (SELECT id FROM pedido_historial WHERE status = 'REFUNDED' LIMIT 1),
-     prod_flan AS (SELECT id, base_price FROM products WHERE name = 'Flan')
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
-SELECT h.id, p.id, 2, p.base_price FROM hist_refunded h, prod_flan p;
-
--- Items para el pedido con reembolso rechazado
-WITH hist_rejected AS (SELECT id FROM pedido_historial WHERE status = 'REFUND_REJECTED' LIMIT 1),
-     prod_carnitas AS (SELECT id, base_price FROM products WHERE name = 'Carnitas')
-INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
-SELECT h.id, p.id, 1, p.base_price FROM hist_rejected h, prod_carnitas p;
-
+*/

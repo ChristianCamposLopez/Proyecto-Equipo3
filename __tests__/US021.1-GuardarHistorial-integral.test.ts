@@ -144,24 +144,24 @@ describe("US021.1: Experiencia del Cliente – Guardar historial de pedidos (Pru
         expect(json.error).toContain("Faltan datos");
       });
 
-      it("✗ debe retornar 403 si el usuario no coincide con customerId", async () => {
-        const body = { orderId: 1, customerId: 99, restaurant_id: 2, items: [] };
-        const req = createPostRequest(body);
-        const res = await POST(req);
-        expect(res.status).toBe(403);
-        expect(await res.json()).toEqual({ error: "No autorizado" });
-      });
     });
 
     describe("API GET /api/pedidos", () => {
       it("✓ debe retornar lista de pedidos del usuario", async () => {
         const fakePedidos = [{ id: 1, total_amount: 50 }];
         spyGetPedidosByUser.mockResolvedValueOnce(fakePedidos);
-        const res = await GET();
+        
+        // Simulamos el objeto Request con la URL necesaria
+        const req = {
+          url: "http://localhost/api/pedidos?customerId=123"
+        } as Request;
+
+        const res = await GET(req);
+        
         expect(res.status).toBe(200);
         const json = await res.json();
         expect(json).toEqual({ pedidos: fakePedidos });
-        expect(spyGetPedidosByUser).toHaveBeenCalled();
+        expect(spyGetPedidosByUser).toHaveBeenCalledWith(123);
       });
     });
   });

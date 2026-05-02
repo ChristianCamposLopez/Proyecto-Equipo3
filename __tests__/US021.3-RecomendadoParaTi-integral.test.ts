@@ -99,7 +99,7 @@ describe("US021.3: Experiencia del Cliente – Mostrar 'Recomendado para ti' (Pr
       it("✓ debe retornar 200 con las recomendaciones (usuario autenticado)", async () => {
         const fakeRecs = [{ id: 2, name: "Burger", base_price: 8, image_display: "/burger.jpg" }];
         spyGetTop.mockResolvedValueOnce(fakeRecs);
-        const req = createGetRequest("http://localhost/api/recommendations?restaurantId=10");
+        const req = createGetRequest("http://localhost/api/recommendations?restaurantId=10&customerId=1");
         const res = await GET(req);
         const json = await res.json();
         expect(res.status).toBe(200);
@@ -109,10 +109,10 @@ describe("US021.3: Experiencia del Cliente – Mostrar 'Recomendado para ti' (Pr
       });
 
       it("✗ debe retornar 400 si falta restaurantId", async () => {
-        const req = createGetRequest("http://localhost/api/recommendations");
+        const req = createGetRequest("http://localhost/api/recommendations?customerId=123");
         const res = await GET(req);
         expect(res.status).toBe(400);
-        expect(await res.json()).toEqual({ error: "restaurantId required" });
+        expect(await res.json()).toEqual({ error: "restaurantId and customerId are required" });
         expect(spyGetTop).not.toHaveBeenCalled();
       });
     });

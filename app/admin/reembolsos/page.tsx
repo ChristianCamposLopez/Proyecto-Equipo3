@@ -237,7 +237,7 @@ export default function ReembolsosPage() {
 
   // 1. Recuperar el ID del administrador al cargar
   useEffect(() => {
-    const savedId = localStorage.getItem('userId');
+    const savedId = sessionStorage.getItem('userId');
     if (savedId) {
       setAdminId(parseInt(savedId));
     }
@@ -335,7 +335,7 @@ export default function ReembolsosPage() {
 
   useEffect(() => {
     // 🛡️ Guardia de seguridad
-    const role = localStorage.getItem('userRole');
+    const role = sessionStorage.getItem('userRole');
     if (role !== 'admin' && role !== 'restaurant_admin') {
       router.replace('/login');
     } else {

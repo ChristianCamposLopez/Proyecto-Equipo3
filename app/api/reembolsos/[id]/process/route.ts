@@ -13,7 +13,7 @@ export async function PATCH(
     const { action, reason, adminId } = body; // Recibimos adminId del body
 
     if (!adminId) {
-      return NextResponse.json({ error: "Acceso denegado" }, { status: 401 });
+      return NextResponse.json({ error: "Acceso denegado" }, { status: 400 });
     }
 
     if (isNaN(orderId)) {

@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     const adminId = searchParams.get("adminId"); // Se envía desde el panel de admin
 
     if (!adminId) {
-      return NextResponse.json({ error: "No autorizado. Se requiere adminId" }, { status: 401 });
+      return NextResponse.json({ error: "No autorizado. Se requiere adminId" }, { status: 400 });
     }
 
     const controller = new ReembolsoController();

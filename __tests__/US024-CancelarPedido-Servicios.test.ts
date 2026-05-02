@@ -41,24 +41,46 @@ describe("US024: Gestión de Pedidos – Cancelar pedido (Integral)", () => {
 
     describe("PedidoDAO.cancelPedido (Transaccional)", () => {
       it("✓ debe cancelar pedido en historial, revertir stock y eliminar de orders activas", async () => {
-        mockClient.query
-          .mockResolvedValueOnce({}) // BEGIN
-          .mockResolvedValueOnce({ rows: [{ status: 'PENDING' }], rowCount: 1 }) // verificar estado
-          .mockResolvedValueOnce({}) // UPDATE historial a CANCELLED
-          .mockResolvedValueOnce({ rows: [{ product_id: 1, quantity: 2 }] }) // items del pedido
-          .mockResolvedValueOnce({}) // UPDATE stock +2
-          .mockResolvedValueOnce({}) // DELETE order_items
-          .mockResolvedValueOnce({}) // DELETE orders
-          .mockResolvedValueOnce({}); // COMMIT
+        const pedidoId = 123;
+        const itemSimulado = { product_id: 1, quantity: 2 };
 
-        const result = await PedidoDAO.cancelPedido(123);
-        
+        // Definimos el comportamiento de cada llamada en orden:
+        mockClient.query
+          .mockResolvedValueOnce({}) // 1. BEGIN
+          .mockResolvedValueOnce({ 
+            rows: [{ status: 'PENDING' }], 
+            rowCount: 1 
+          }) // 2. SELECT status FROM pedido_historial
+          .mockResolvedValueOnce({}) // 3. UPDATE pedido_historial SET status = 'CANCELLED'
+          .mockResolvedValueOnce({ 
+            rows: [itemSimulado], 
+            rowCount: 1 
+          }) // 4. SELECT product_id, quantity FROM pedido_items_historial
+          .mockResolvedValueOnce({}) // 5. UPDATE products SET stock = stock + $1, is_available = TRUE
+          .mockResolvedValueOnce({}) // 6. DELETE FROM order_items
+          .mockResolvedValueOnce({}) // 7. DELETE FROM orders
+          .mockResolvedValueOnce({}); // 8. COMMIT
+
+        const result = await PedidoDAO.cancelPedido(pedidoId);
+
+        // Verificaciones
         expect(result).toEqual({ message: "Pedido cancelado. Stock revertido." });
         expect(mockClient.query).toHaveBeenCalledTimes(8);
+
+        // Validar que se actualizó el stock correctamente
         expect(mockClient.query).toHaveBeenCalledWith(
-          expect.stringMatching(/UPDATE products SET stock = stock \+ \$1/i), 
-          [2, 1]
+          expect.stringMatching(/UPDATE\s+products\s+SET\s+stock\s*=\s*stock\s*\+\s*\$1/i),
+          [itemSimulado.quantity, itemSimulado.product_id]
         );
+
+        // Validar que se usó el ID correcto para el historial
+        expect(mockClient.query).toHaveBeenCalledWith(
+          expect.stringMatching(/SELECT\s+status\s+FROM\s+pedido_historial/i),
+          [pedidoId]
+        );
+        
+        // Validar el COMMIT final
+        expect(mockClient.query).toHaveBeenLastCalledWith("COMMIT");
       });
 
       it("✗ debe lanzar error si el pedido no está en estado PENDING", async () => {

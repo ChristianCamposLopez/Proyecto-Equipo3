@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -134,6 +135,8 @@ interface FormState {
 }
 
 export default function AdminPlatosPage({ params }: { params: Promise<{ restaurantId: string }> }) {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -274,10 +277,24 @@ export default function AdminPlatosPage({ params }: { params: Promise<{ restaura
     }
   };
 
+  useEffect(() => {
+    // 🛡️ Guardia de seguridad
+    const role = sessionStorage.getItem('userRole');
+    if (role !== 'admin' && role !== 'restaurant_admin') {
+      router.replace('/login');
+    } else {
+      setAuthorized(true);
+      // Aquí puedes disparar tus fetch iniciales
+    }
+  }, [router]);
+
+  if (!authorized) return null; // 👈 Evita el parpadeo de contenido
+
   if (loading) return <div className="admin-root"><div className="admin-loading"><div className="loader-ring" /></div></div>;
 
   return (
     <>
+    <p>userRole: {sessionStorage.getItem('userRole')}</p>
       <style>{styles}</style>
       <div className="admin-root">
         <header className="admin-hero">

@@ -1,9 +1,12 @@
-// app/admin/page.tsx (o tu ruta de menú principal)
-"use client"
-import React from 'react';
-import { useEffect, useState } from 'react';
+// app/cliente/dashboard/page.tsx
+'use client'
+import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
 
 export default function AdminMenu() {
+  const router = useRouter();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const routes = [
     { 
       name: 'Menu', 
@@ -30,14 +33,24 @@ export default function AdminMenu() {
       category: 'Usuario' 
     },
   ];
-
-  const [userId, setUserId] = useState<string | null>(null);
   
   useEffect(() => {
-    // Recuperamos el ID que guardamos en el login
-    const savedId = localStorage.getItem('userId');
-    setUserId(savedId);
-  }, []);
+    // Verificamos si hay una sesión activa
+    const savedId = sessionStorage.getItem('userId');
+
+    if (!savedId) {
+      // Si no hay ID, lo mandamos al login
+      router.replace('/login');
+    } else {
+      setUserId(savedId);
+      setIsAuthorized(true);
+    }
+  }, [router]);
+
+  // Bloqueo de renderizado hasta confirmar autorización
+  if (!isAuthorized) {
+    return null; 
+  }
 
   return (
     <>

@@ -1,9 +1,11 @@
+// app/admin/ventas/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useRouter } from 'next/navigation';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -225,6 +227,8 @@ interface VentaDiaria {
 }
 
 export default function VentasPage() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
   const RESTAURANT_ID = 1; // Fijo por ahora
 
   // Estados
@@ -324,6 +328,19 @@ export default function VentasPage() {
       doc.save(`ventas_${fecha}.pdf`);
     }
   };
+
+  useEffect(() => {
+        // 🛡️ Guardia de seguridad
+        const role = sessionStorage.getItem('userRole');
+        if (role !== 'admin' && role !== 'restaurant_admin') {
+          router.replace('/login');
+        } else {
+          setAuthorized(true);
+          // Aquí puedes disparar tus fetch iniciales
+        }
+      }, [router]);
+    
+  if (!authorized) return null; 
 
   return (
     <>

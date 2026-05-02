@@ -295,7 +295,7 @@ export default function MisPedidosPage() {
 
   // 1. Cargar el ID real al montar el componente
   useEffect(() => {
-    const savedId = localStorage.getItem('userId');
+    const savedId = sessionStorage.getItem('userId');
     if (savedId) {
       setCustomerId(parseInt(savedId));
     } else {

@@ -1,5 +1,7 @@
+// app/admin/repartidor/page.tsx
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 type KitchenOrderItem = {
@@ -255,6 +257,8 @@ const assignStyles = `
 
 
 export default function KitchenPage() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
   const [orders, setOrders] = useState<KitchenOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -315,6 +319,19 @@ export default function KitchenPage() {
     }
   }
 
+  useEffect(() => {
+      // 🛡️ Guardia de seguridad
+      const role = sessionStorage.getItem('userRole');
+      if (role !== 'admin' && role !== 'restaurant_admin') {
+        router.replace('/login');
+      } else {
+        setAuthorized(true);
+        // Aquí puedes disparar tus fetch iniciales
+      }
+    }, [router]);
+  
+  if (!authorized) return null; // 👈 Evita el parpadeo de contenido
+
   return (
     <>
       <style>{pageStyles}</style>
@@ -337,9 +354,9 @@ export default function KitchenPage() {
           {error && <div className="empty-kitchen">{error}</div>}
 
           {!error && loading ? (
-            <div className="empty-kitchen">Cargando pedidos de cocina...</div>
+            <div className="empty-kitchen">Cargando pedidos de cocina a repartidores...</div>
           ) : !error && orders.length === 0 ? (
-            <div className="empty-kitchen">No hay pedidos activos para cocina.</div>
+            <div className="empty-kitchen">No hay pedidos listos para asignar.</div>
           ) : (
             <section className="orders-grid">
               {orders.map((order) => (

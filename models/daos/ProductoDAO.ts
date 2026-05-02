@@ -237,11 +237,18 @@ export class ProductoDAO {
     );
   }
 
+  // models/daos/ProductoDAO.ts
+
   static async updateStock(id: number, quantity: number): Promise<void> {
+    // Calculamos la disponibilidad basada en la cantidad
+    const isAvailable = quantity > 0;
 
     await db.query(
-      `UPDATE products SET stock = $1 WHERE id = $2`,
-      [quantity, id]
+      `UPDATE products 
+      SET stock = $1, 
+          is_available = $2 
+      WHERE id = $3`,
+      [quantity, isAvailable, id]
     );
   }
 

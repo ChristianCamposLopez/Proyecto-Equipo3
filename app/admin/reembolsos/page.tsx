@@ -1,6 +1,7 @@
 // app/reembolsos/page.tsx
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useState } from 'react';
 
 const styles = `
@@ -224,6 +225,8 @@ type PendingRefund = {
 };
 
 export default function ReembolsosPage() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
   const [adminId, setAdminId] = useState<number | null>(null); // ID real del admin
   const [refunds, setRefunds] = useState<PendingRefund[]>([]);
   const [loading, setLoading] = useState(true);
@@ -329,6 +332,19 @@ export default function ReembolsosPage() {
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('es-MX');
   };
+
+  useEffect(() => {
+    // 🛡️ Guardia de seguridad
+    const role = localStorage.getItem('userRole');
+    if (role !== 'admin' && role !== 'restaurant_admin') {
+      router.replace('/login');
+    } else {
+      setAuthorized(true);
+      // Aquí puedes disparar tus fetch iniciales
+    }
+  }, [router]);
+
+  if (!authorized) return null; // 👈 Evita el parpadeo de contenido
 
   if (loading) {
     return (

@@ -28,7 +28,7 @@ export async function GET() {
         LEFT JOIN users du ON du.id = o.deliveryman_id
         LEFT JOIN order_items oi ON oi.order_id = o.id
         LEFT JOIN products p ON p.id = oi.product_id
-        WHERE o.status IN ('PENDING', 'PREPARING', 'READY', 'DELIVERY_ASSIGNED', 'DELIVERED')
+        WHERE o.status IN ('READY', 'ON_DELIVERY', 'COMPLETED', 'CANCELLED')
         GROUP BY o.id, u.full_name, du.full_name
         ORDER BY o.created_at DESC`
     )

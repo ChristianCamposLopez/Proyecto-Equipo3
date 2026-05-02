@@ -19,7 +19,7 @@ export class RepartidorDAO {
         AND u.id NOT IN (
           SELECT DISTINCT deliveryman_id
           FROM orders
-          WHERE deliveryman_id IS NOT NULL AND status = 'DELIVERY_ASSIGNED'
+          WHERE deliveryman_id IS NOT NULL AND status = 'ON_DELIVERY'
         )
       LIMIT 1
     `;

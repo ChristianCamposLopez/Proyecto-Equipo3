@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react"
 
 const styles = `
@@ -403,6 +404,8 @@ type CartSummary = {
 const RESTAURANT_ID = "1";
 
 export default function MenuPage() {
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [customerId, setCustomerId] = useState<number | null>(null); // Estado para el ID real
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -419,12 +422,12 @@ export default function MenuPage() {
   const [pendingProductId, setPendingProductId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  useEffect(() => {
+  /*useEffect(() => {
     const savedId = localStorage.getItem('userId');
     if (savedId) {
       setCustomerId(parseInt(savedId));
     }
-  }, []);
+  }, []); */
 
   // 1. Cargar categorías
   useEffect(() => {
@@ -539,6 +542,22 @@ export default function MenuPage() {
   const hasValidImage = (url: string) => url && url.trim() !== "" && url !== "null" && url !== "undefined";
 
   const loading = loadingCategories || loadingProducts || loadingRecommendations;
+
+  // Hook 14: Auth check
+  useEffect(() => {
+    const savedId = sessionStorage.getItem('userId');
+    if (!savedId) {
+      router.replace('/login');
+    } else {
+      setCustomerId(parseInt(savedId));
+      setIsAuthorized(true);
+    }
+  }, [router]);
+
+
+  if (!isAuthorized) {
+    return null; 
+  }
 
   return (
     <>

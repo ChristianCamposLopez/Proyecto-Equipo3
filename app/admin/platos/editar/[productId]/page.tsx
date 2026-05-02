@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -321,6 +321,8 @@ type Availability = {
 };
 
 export default function EditarPlato() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
   const params = useParams();
   const productId = Number(params.productId);
 
@@ -640,9 +642,23 @@ export default function EditarPlato() {
     }
   };
 
+  useEffect(() => {
+      // 🛡️ Guardia de seguridad
+      const role = sessionStorage.getItem('userRole');
+      if (role !== 'admin' && role !== 'restaurant_admin') {
+        router.replace('/login');
+      } else {
+        setAuthorized(true);
+        // Aquí puedes disparar tus fetch iniciales
+      }
+    }, [router]);
+  
+    if (!authorized) return null; // 👈 Evita el parpadeo de contenido
+
   /* ===============================
      UI
   =============================== */
+  
 
   return (
     <>

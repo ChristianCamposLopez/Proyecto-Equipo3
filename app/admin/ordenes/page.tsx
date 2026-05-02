@@ -2,6 +2,7 @@
 // app/admin/ordenes/page.tsx — US011: Confirmación de Pedido
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -272,20 +273,99 @@ const styles = `
     .orders-container { padding: 24px 20px; }
     .orders-grid { grid-template-columns: 1fr; }
   }
-`
 
-type Order = {
-  id: number
-  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED'
-  total_amount: number
-  created_at: string
-  customer_id: number
-  restaurant_id: number
+  .order-items-section {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #2A2620;
+  }
+
+  .items-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #7A7268;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .items-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #F2EDE4;
+  }
+
+  .item-qty {
+    color: #C17A3A;
+    font-weight: 700;
+    margin-right: 8px;
+  }
+
+  .item-name {
+    flex: 1;
+    font-weight: 400;
+  }
+
+  .item-price {
+    color: #7A7268;
+    font-size: 12px;
+  }
+
+  .order-note-container {
+    background: rgba(193, 122, 58, 0.05);
+    border: 1px dashed #C17A3A;
+    padding: 12px;
+    margin-bottom: 16px;
+    border-radius: 2px;
+  }
+
+  .note-label {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: #C17A3A;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .note-text {
+    font-size: 13px;
+    font-style: italic;
+    color: #D1C7BC;
+    line-height: 1.4;
+  }
+`
+type OrderItem = {
+  product_name: string;
+  quantity: number;
+  unit_price: number;
 }
 
+type Order = {
+  id: number;
+  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+  total_amount: number;
+  created_at: string;
+  customer_id: number;
+  restaurant_id: number;
+  note?: string;      // 👈 Nueva
+  items: OrderItem[]; // 👈 Nueva
+}
 type Toast = { msg: string; type: "success" | "error" } | null
 
 export default function AdminOrdenesPage() {
+  const router = useRouter() 
+  const [authorized, setAuthorized] = useState(false)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<Toast>(null)
@@ -313,7 +393,11 @@ export default function AdminOrdenesPage() {
       const res = await fetch(`/api/orders/${order.id}/confirm`, { method: "POST" })
       if (!res.ok) throw new Error()
       const updated = await res.json()
-      setOrders(os => os.map(o => o.id === order.id ? updated : o))
+      setOrders(os => os.map(o => 
+        o.id === order.id 
+          ? { ...o, ...updated } // Conserva lo que tiene 'o' (items, note) y sobrescribe con 'updated' (nuevo status)
+          : o
+      ));
       showToast(`Pedido #${order.id} confirmado correctamente`, "success")
     } catch {
       showToast(`Error al confirmar el pedido #${order.id}`, "error")
@@ -331,7 +415,11 @@ export default function AdminOrdenesPage() {
       })
       if (!res.ok) throw new Error()
       const updated = await res.json()
-      setOrders(os => os.map(o => o.id === order.id ? updated : o))
+      setOrders(os => os.map(o => 
+        o.id === order.id 
+          ? { ...o, ...updated } // Conserva lo que tiene 'o' (items, note) y sobrescribe con 'updated' (nuevo status)
+          : o
+      ));
       showToast(`Pedido #${order.id} actualizado a ${newStatus}`, "success")
     } catch {
       showToast(`Error al actualizar el pedido #${order.id}`, "error")
@@ -347,8 +435,22 @@ export default function AdminOrdenesPage() {
     ready: orders.filter(o => o.status === 'READY').length,
   }
 
+  useEffect(() => {
+    // 🛡️ Guardia de seguridad
+    const role = sessionStorage.getItem('userRole');
+    if (role !== 'admin' && role !== 'restaurant_admin') {
+      router.replace('/login');
+    } else {
+      setAuthorized(true);
+      // Aquí puedes disparar tus fetch iniciales
+    }
+  }, [router]);
+
+  if (!authorized) return null; // 👈 Evita el parpadeo de contenido
+
   return (
     <>
+      <p>userRole: {sessionStorage.getItem('userRole')}</p>
       <style>{styles}</style>
       <div className="order-root">
         {/* Header */}
@@ -391,35 +493,53 @@ export default function AdminOrdenesPage() {
           ) : (
             <div className="orders-grid">
               {orders.map(order => (
-                <div key={order.id} className={`order-card ${order.status.toLowerCase()}`}>
-                  <div className="order-header-row">
-                    <div className="order-id">Pedido #{order.id}</div>
-                    <span className={`order-status status-${order.status.toLowerCase()}`}>
-                      <span className="status-dot" />
-                      {order.status}
+               <div key={order.id} className={`order-card ${order.status.toLowerCase()}`}>
+                <div className="order-header-row">
+                  <div className="order-id">Pedido #{order.id}</div>
+                  <span className={`order-status status-${order.status.toLowerCase()}`}>
+                    <span className="status-dot" />
+                    {order.status}
+                  </span>
+                </div>
+
+                <div className="order-details">
+                  <div className="detail-row">
+                    <span className="detail-label">Cliente ID:</span>
+                    <span className="detail-value">{order.customer_id}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Hora:</span>
+                    <span className="detail-value">
+                      {new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date(order.created_at))}
                     </span>
                   </div>
+                </div>
 
-                  <div className="order-details">
-                    <div className="detail-row">
-                      <span className="detail-label">Cliente ID:</span>
-                      <span className="detail-value">{order.customer_id}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Hora:</span>
-                      <span className="detail-value">
-                        {new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).format(new Date(order.created_at))}
-                      </span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Fecha:</span>
-                      <span className="detail-value">
-                        {new Intl.DateTimeFormat('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(order.created_at))}
-                      </span>
-                    </div>
+                {/* SECCIÓN DE PRODUCTOS */}
+                <div className="order-items-section">
+                  <span className="items-label">Comanda de Cocina</span>
+                  <ul className="items-list">
+                    {order.items && order.items.map((item, idx) => (
+                      <li key={idx} className="item-row">
+                        <div>
+                          <span className="item-qty">{item.quantity}x</span>
+                          <span className="item-name">{item.product_name}</span>
+                        </div>
+                        <span className="item-price">${Number(item.unit_price).toFixed(2)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* SECCIÓN DE NOTAS */}
+                {order.note && (
+                  <div className="order-note-container">
+                    <span className="note-label">Instrucciones Especiales</span>
+                    <p className="note-text">"{order.note}"</p>
                   </div>
+                )}
 
-                  <div className="order-total">${Number(order.total_amount).toFixed(2)}</div>
+                <div className="order-total">${Number(order.total_amount).toFixed(2)}</div>
 
                   <div className="order-actions">
                     {order.status === 'PENDING' && (

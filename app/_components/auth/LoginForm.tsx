@@ -33,7 +33,8 @@ export const LoginForm = () => {
 
       // 1. Guardamos el token
       localStorage.setItem('token', data.token);
-      localStorage.setItem('userId', data.userId); // 👈 Guardamos el ID "en silencio"
+      sessionStorage.setItem('userId', data.userId);
+      sessionStorage.setItem('userRole', data.rol); // 👈 Guardamos el rol
 
       if (data.rol === 'restaurant_admin' || data.rol === 'admin') {
         router.push('/admin/dashboard'); // 👈 URL limpia sin el ID

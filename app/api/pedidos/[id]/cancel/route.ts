@@ -20,6 +20,7 @@ export async function PUT(
 
     return NextResponse.json(result);
   } catch (error: any) {
+    console.error("Error canceling order:", error);
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

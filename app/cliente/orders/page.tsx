@@ -827,7 +827,7 @@ export default function OrdersPage() {
   const getOrderUniqueKey = (order: Order) => `${order.id}|${order.created_at}`;
 
   useEffect(() => {
-    const savedId = localStorage.getItem('userId');
+    const savedId = sessionStorage.getItem('userId');
     if (savedId) {
       setCustomerId(parseInt(savedId));
     } else {
@@ -1149,7 +1149,7 @@ export default function OrdersPage() {
     setMessage(null);
 
     try {
-      // --- PRIMERA LLAMADA: Cancelar en orders (activo) ---
+      /*// --- PRIMERA LLAMADA: Cancelar en orders (activo) ---
       const resOrders = await fetch("/api/orders/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1160,7 +1160,7 @@ export default function OrdersPage() {
         const errorData = await resOrders.json();
         console.warn("Error al cancelar en orders:", errorData.error);
         // No lanzamos error todavía, continuamos con la segunda llamada
-      }
+      }*/ 
 
       // --- SEGUNDA LLAMADA: Cancelar en historial (con reversión de stock y limpieza) ---
       const resHistorial = await fetch(`/api/pedidos/${id}/cancel`, {

@@ -1,5 +1,6 @@
-// app/admin/page.tsx (o tu ruta de menú principal)
+// app/admin/dashboard/page.tsx (o tu ruta de menú principal)
 "use client"
+import { useRouter } from 'next/navigation';
 import React from 'react';
 import { useEffect, useState } from 'react';
 
@@ -53,12 +54,35 @@ export default function AdminMenu() {
 
   useEffect(() => {
     // Recuperamos el ID que guardamos en el login
-    const savedId = localStorage.getItem('userId');
+    const savedId = sessionStorage.getItem('userId');
     setUserId(savedId);
   }, []);
 
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    const savedId = sessionStorage.getItem('userId');
+    const userRole = sessionStorage.getItem('userRole');
+
+    // 🛡️ VALIDACIÓN DE GUARDIA
+    const isAdmin = userRole === 'admin' || userRole === 'restaurant_admin';
+    
+    if (!savedId || !isAdmin) {
+      // Si no hay ID o el rol no es de admin, lo mandamos al login
+      router.replace('/login'); 
+    } else {
+      setAuthorized(true);
+    }
+  }, [router]);
+
+  // Si no está autorizado, no renderizamos el menú para evitar el "parpadeo" de la UI
+  if (!authorized) return null;
+
   return (
     <>
+    <p>userId: {userId}</p>
+    <p>userRole: {sessionStorage.getItem('userRole')}</p>
       {/* Mantiene la referencia a los estilos definidos previamente */}
       <style dangerouslySetInnerHTML={{ __html: styles }} />
       <div className="menu-root">

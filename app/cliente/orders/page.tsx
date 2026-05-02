@@ -802,7 +802,6 @@ const pageStyles = `
     }
   }
 `
-
 export default function OrdersPage() {
   const [customerId, setCustomerId] = useState<number | null>(null);
   const router = useRouter(); // 👈 Inicializa el router

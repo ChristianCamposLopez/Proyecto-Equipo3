@@ -197,42 +197,48 @@ type Image = {
   is_primary: boolean;
 };
 
-export default function ProductoDetallePage({
-  params,
-}: {
-  params: Promise<{ restaurantId: string; productId: string }>;
-}) {
+const DEFAULT_IMAGE = '/images/default-product.png'; // La misma que usas en el DAO
+
+export default function ProductoDetallePage({ params }: { params: Promise<{ productId: string }> }) {
   const [images, setImages] = useState<Image[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true); // 🔥 Estado para controlar el loader
 
   useEffect(() => {
     async function load() {
-      const { productId } = await params;
+      try {
+        const { productId } = await params;
+        const res = await fetch(`/api/platos/${productId}/images`);
+        const data = await res.json();
 
-      const res = await fetch(`/api/platos/${productId}/images`);
-      const data = await res.json();
+        const imgs = data.images || [];
 
-      const imgs = data.images || [];
-      setImages(imgs);
-
-      const primary = imgs.find((i: Image) => i.is_primary) || imgs[0];
-      setSelectedImage(primary?.image_path ?? null);
+        if (imgs.length === 0) {
+          // 💡 Si no hay imágenes, creamos una "falsa" para la vista
+          const fallback: Image = { id: 0, image_path: DEFAULT_IMAGE, is_primary: true };
+          setImages([fallback]);
+          setSelectedImage(DEFAULT_IMAGE);
+        } else {
+          setImages(imgs);
+          const primary = imgs.find((i: Image) => i.is_primary) || imgs[0];
+          setSelectedImage(primary?.image_path ?? DEFAULT_IMAGE);
+        }
+      } catch (error) {
+        console.error("Error cargando imágenes", error);
+        setSelectedImage(DEFAULT_IMAGE);
+      } finally {
+        setLoading(false); // 🔥 Pase lo que pase, dejamos de cargar
+      }
     }
-
     load();
   }, [params]);
 
-  if (!selectedImage) {
+  // 🚩 Cambiamos el check: ahora depende de 'loading', no de 'selectedImage'
+  if (loading) {
     return (
-      <>
-        <style>{styles}</style>
-        <div className="detail-root">
-          <div className="detail-loading">
-            <div className="loader-ring" />
-            Cargando imágenes…
-          </div>
-        </div>
-      </>
+      <div className="detail-root">
+        <div className="detail-loading">Cargando imágenes…</div>
+      </div>
     );
   }
 
@@ -252,7 +258,12 @@ export default function ProductoDetallePage({
 
         <div className="detail-content">
           <div className="main-image-container">
-            <img src={selectedImage} className="main-image" alt="Platillo" />
+            {/* Si selectedImage es null, usa el DEFAULT_IMAGE */}
+            <img 
+              src={selectedImage ?? DEFAULT_IMAGE} 
+              className="main-image" 
+              alt="Platillo" 
+            />
           </div>
 
           <h2 className="thumbnails-title">

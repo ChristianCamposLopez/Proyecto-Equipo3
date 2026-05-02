@@ -305,6 +305,20 @@ const styles = `
     .edit-input { width: 100%; }
     .edit-footer { padding: 20px 24px; flex-direction: column; gap: 8px; }
   }
+
+  .stock-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    display: inline-block;
+  }
+
+  /* Puedes usar estas clases si prefieres no usar estilos en línea */
+  .stock-none { color: #ff4d4f; border: 1px solid #ff4d4f; }
+  .stock-low { color: #ffa940; border: 1px solid #ffa940; }
+  .stock-medium { color: #ffec3d; border: 1px solid #ffec3d; }
+  .stock-high { color: #52c41a; border: 1px solid #52c41a; }
 `;
 
 type ProductImage = {
@@ -653,8 +667,22 @@ export default function EditarPlato() {
       }
     }, [router]);
   
-    if (!authorized) return null; // 👈 Evita el parpadeo de contenido
+  // 1. La función puede estar fuera o dentro. Mejor aquí para TS:
+  const getStockBadge = (quantity: string) => {
+    const q = parseInt(quantity) || 0;
+    if (q === 0) return { label: "Sin stock", color: "#e74c3c" };
+    if (q < 0) return { label: "Sin stock", color: "#e74c3c" };
+    if (q < 10) return { label: "Stock bajo", color: "#e67e22" };
+    if (q <= 30) return { label: "Stock medio", color: "#f1c40f" };
+    return { label: "Stock alto", color: "#2ecc71" };
+  };
 
+  // 2. IMPORTANTE: El "guardia" de seguridad
+  if (!authorized) return null;
+
+  // 3. DECLARAR stockInfo AQUÍ (Justo antes del return)
+  // Esto hace que se recalcule cada vez que el estado 'stock' cambie
+  const stockInfo = getStockBadge(stock);
   /* ===============================
      UI
   =============================== */
@@ -712,17 +740,38 @@ export default function EditarPlato() {
             </div>
 
             {/* STOCK */}
-            <div className="form-row">
-              <input
-                type="number"
-                placeholder="Nuevo stock"
-                value={stock}
-                onChange={(e) => setStock(e.target.value)}
-                className="edit-input"
-              />
-              <button onClick={updateStock} className="edit-btn primary">
-                Actualizar stock
-              </button>
+            <div
+              className="form-row"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '5px',
+                alignItems: 'stretch' // 👈 clave
+              }}
+            >
+              <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+                <input
+                  type="number"
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value)}
+                  className="edit-input"
+                  style={{ flex: 1 }} // 👈 para que no se encoja
+                />
+                <button onClick={updateStock} className="edit-btn primary">
+                  Actualizar stock
+                </button>
+              </div>
+
+              <div
+                style={{
+                  color: stockInfo.color,
+                  fontSize: '0.85rem',
+                  fontWeight: 'bold',
+                  textAlign: 'left' // 👈 evita que quede centrado
+                }}
+              >
+                ● {stockInfo.label} ({stock || 0} unidades)
+              </div>
             </div>
 
             <div className="form-row">

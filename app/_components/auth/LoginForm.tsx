@@ -31,16 +31,14 @@ export const LoginForm = () => {
         return;
       }
 
-      // 1. Guardamos el token
+      // 1. Guardamos el token y datos de sesión
       localStorage.setItem('token', data.token);
       sessionStorage.setItem('userId', data.userId);
-      sessionStorage.setItem('userRole', data.rol); // 👈 Guardamos el rol
+      sessionStorage.setItem('customerId', data.userId); // Sincronizado para componentes
+      sessionStorage.setItem('userRole', data.rol);
 
-      if (data.rol === 'restaurant_admin' || data.rol === 'admin') {
-        router.push('/admin/dashboard'); // 👈 URL limpia sin el ID
-      } else {
-        router.push('/cliente/dashboard');
-      }
+      // Redirección centralizada a la Isla de Navegación
+      router.push('/');
     } catch {
       setError('Error de conexión con el servidor');
     } finally {

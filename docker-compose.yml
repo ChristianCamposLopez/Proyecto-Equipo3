@@ -3,7 +3,7 @@ services:
   web:
     build: .
     # Permisos inteligentes: solo a la raíz y package.json para evitar lentitud
-    command: sh -c "chmod 777 . package.json && npm run dev"
+    command: sh -c "chmod 777 . package.json && node scripts/sync_db.js && npm run dev"
     ports:
       - "3000:3000"
     environment:
@@ -37,11 +37,15 @@ services:
       - ./bd/init.sql:/docker-entrypoint-initdb.d/01_init.sql:z
       - ./bd/seed_test_ivan.sql:/docker-entrypoint-initdb.d/02_seed.sql:z
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d restaurante_bd"]
+      test:
+        [
+          "CMD-SHELL",
+          "psql -U postgres -d restaurante_bd -c 'SELECT 1 FROM users LIMIT 1;'",
+        ]
       interval: 5s
       timeout: 5s
-      retries: 10
-      start_period: 10s
+      retries: 20
+      start_period: 15s
 
 volumes:
   pg_data:

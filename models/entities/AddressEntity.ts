@@ -1,6 +1,7 @@
 // models/entities/AddressEntity.ts
 export interface DeliveryAddress {
   id: number;
+  customer_id: number;
   street: string;
   exterior_number: string;
   interior_number: string | null;
@@ -8,7 +9,9 @@ export interface DeliveryAddress {
   city: string;
   state: string;
   postal_code: string;
-  references: string | null;
+  delivery_references: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AddressForm {

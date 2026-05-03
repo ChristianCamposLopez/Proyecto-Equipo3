@@ -13,10 +13,16 @@ export class DireccionService {
   }
 
   async registrarDireccion(customerId: number, datos: any) {
-    if (!datos.address_line || !datos.city) {
-      throw new Error("La dirección y ciudad son requeridas");
+    if (!datos.street || !datos.city) {
+      throw new Error("La calle y ciudad son requeridas");
     }
     return await DireccionDAO.crear(customerId, datos);
+  }
+
+  async actualizarDireccion(customerId: number, addressId: number, datos: any) {
+    // Por ahora redirigimos al DAO si tuviera update, o implementamos lógica aquí.
+    // Como no hay update en el DAO aún, vamos a crearlo.
+    return await DireccionDAO.actualizar(addressId, datos);
   }
 
   async eliminarDireccion(id: number) {

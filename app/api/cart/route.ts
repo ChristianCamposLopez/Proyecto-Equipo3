@@ -1,3 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
 import { CarritoService } from "@/services/CarritoService";
 
 const carritoService = new CarritoService();

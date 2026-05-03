@@ -8,23 +8,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const customerId = searchParams.get("customerId");
+    const deliverymanId = searchParams.get("deliverymanId");
+    const status = searchParams.get("status");
     
-    if (!customerId) {
-      // Si no hay customerId, tal vez sea para admin? 
-      // Por ahora mantenemos la lógica de DB directa para el listado si es necesario, 
-      // pero idealmente debería ir al service.
-      const result = await db.query(
-        `SELECT o.*, u.full_name AS deliveryman_name
-         FROM orders o
-         LEFT JOIN users u ON u.id = o.deliveryman_id
-         ORDER BY o.created_at DESC`
-      );
-      return NextResponse.json(result.rows);
-    }
-
-    const parsedCustomerId = parseInt(customerId);
-    const result = await db.query(
-      `SELECT
+    let query = `
+      SELECT
           o.id,
           o.customer_id,
           o.restaurant_id,
@@ -34,14 +22,35 @@ export async function GET(request: NextRequest) {
           o.total_amount::float8 AS total_amount,
           o.created_at,
           (o.created_at + INTERVAL '45 minutes') AS estimated_delivery_at,
-          u.full_name AS deliveryman_name
+          u.full_name AS deliveryman_name,
+          c.full_name AS customer_name,
+          o.delivery_address_json
       FROM orders o
       LEFT JOIN users u ON u.id = o.deliveryman_id
-      WHERE o.customer_id = $1
-      ORDER BY o.created_at DESC`,
-      [parsedCustomerId]
-    );
+      LEFT JOIN users c ON c.id = o.customer_id
+      WHERE 1=1
+    `;
+    
+    const params = [];
 
+    if (customerId) {
+      params.push(parseInt(customerId));
+      query += ` AND o.customer_id = $${params.length}`;
+    }
+
+    if (deliverymanId) {
+      params.push(parseInt(deliverymanId));
+      query += ` AND (o.deliveryman_id = $${params.length} OR o.deliveryman_id IS NULL)`;
+    }
+
+    if (status) {
+      params.push(status);
+      query += ` AND o.status = $${params.length}`;
+    }
+
+    query += ` ORDER BY o.created_at DESC`;
+
+    const result = await db.query(query, params);
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error("[GET /api/orders]", error);
@@ -58,7 +67,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "customerId inválido" }, { status: 400 });
     }
 
-    // US002 / US011: Checkout centralizado en el Service
     const result = await pedidoService.checkout(
       customerId, 
       body.note, 

@@ -5,7 +5,7 @@ export interface PedidoEntity {
   customer_id: number;
   restaurant_id: number;
   delivery_address_json: Record<string, any>;
-  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'ON_DELIVERY';
+  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'ON_DELIVERY' | 'DELIVERY_ASSIGNED';
   total_amount: number;
   created_at: string;
   confirmed_at?: string | null;

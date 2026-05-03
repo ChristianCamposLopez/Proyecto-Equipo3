@@ -1,30 +1,35 @@
 // app/api/orders/[id]/status/route.ts
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { PedidoService } from '@/services/PedidoService';
 
 const pedidoService = new PedidoService();
 
 interface Context {
-  params: { id: string } | Promise<{ id: string }>;
+  params: { id: string };
 }
 
-async function resolveId(context: Context) {
-  const { params } = context;
-  const resolved = typeof params === 'object' && 'then' in params ? await params : params;
-  return parseInt(resolved.id, 10);
-}
-
-// Actualizar estado de un pedido
-export async function PUT(req: NextRequest, context: Context) {
-  const orderId = await resolveId(context);
+async function handleStatusUpdate(req: NextRequest, { params }: Context) {
+  const orderId = parseInt(params.id, 10);
   if (isNaN(orderId)) {
-    return new Response(JSON.stringify({ error: 'ID inválido' }), { status: 400 });
+    return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   }
+
   try {
-    const { status } = await req.json();
+    const { status, deliverymanId } = await req.json();
+    
+    // Si se envía deliverymanId, primero asignarlo
+    if (deliverymanId) {
+      const { db } = await import("@/config/db");
+      await db.query("UPDATE orders SET deliveryman_id = $1 WHERE id = $2", [deliverymanId, orderId]);
+    }
+
     const updated = await pedidoService.updateOrderStatus(orderId, status);
-    return new Response(JSON.stringify(updated), { status: 200 });
+    return NextResponse.json(updated, { status: 200 });
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    console.error("[STATUS UPDATE ERROR]", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export const PUT = handleStatusUpdate;
+export const PATCH = handleStatusUpdate;

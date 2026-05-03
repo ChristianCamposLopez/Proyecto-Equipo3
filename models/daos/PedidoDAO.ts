@@ -27,6 +27,7 @@ export class PedidoDAO {
     customerId: number,
     restaurantId: number,
     items: { product_id: number; quantity: number }[],
+    addressJson: any,
     existingClient?: any
   ) {
     const client = existingClient || await db.connect();
@@ -57,10 +58,10 @@ export class PedidoDAO {
 
       // Insertar en historial (US027)
       await client.query(
-        `INSERT INTO pedido_historial (id, customer_id, restaurant_id, status, total_amount)
-        VALUES ($1, $2, $3, 'PENDING', $4)
+        `INSERT INTO pedido_historial (id, customer_id, restaurant_id, status, total_amount, delivery_address_json)
+        VALUES ($1, $2, $3, 'PENDING', $4, $5)
         ON CONFLICT (id) DO NOTHING`,
-        [orderId, customerId, restaurantId, total]
+        [orderId, customerId, restaurantId, total, addressJson]
       );
 
       for (const item of items) {

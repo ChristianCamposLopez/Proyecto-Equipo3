@@ -1,3 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
 import { DireccionService } from "@/services/DireccionService";
 
 const direccionService = new DireccionService();
@@ -28,18 +29,18 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const customerId = resolveCustomerId(body.customerId);
+    const customerId = parseInt(body.customerId || "1");
     const addressId = Number(body.id);
 
     if (!Number.isInteger(addressId) || addressId <= 0) {
       return NextResponse.json({ error: "Dirección inválida" }, { status: 400 });
     }
 
-    const address = await updateDeliveryAddress(customerId, addressId, body);
+    const address = await direccionService.actualizarDireccion(customerId, addressId, body);
     return NextResponse.json(address);
   } catch (error) {
+    console.error("[PATCH /api/delivery-addresses]", error);
     const message = error instanceof Error ? error.message : "No se pudo actualizar la dirección";
-    const status = message.includes("no encontrada") ? 404 : 400;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

@@ -18,7 +18,8 @@ INSERT INTO roles (name, permisos) VALUES
 ('client', '{"ver_menu","hacer_pedido","ver_historial"}'),
 ('restaurant_admin', '{"gestionar_restaurante","gestionar_menu","ver_reportes"}'),
 ('chef', '{"ver_pedidos_pendientes","actualizar_estado_cocina"}'),
-('repartidor', '{"ver_pedidos_asignados","actualizar_entrega"}');
+('repartidor', '{"ver_pedidos_asignados","actualizar_entrega"}')
+ON CONFLICT (name) DO NOTHING;
 
 -- 3. USUARIOS todas son hash_admin
 WITH inserted_users AS (
@@ -31,6 +32,7 @@ WITH inserted_users AS (
         ('repartidor1@test.com', 'admin_test_123', 'Luis Fernández', '5512345682', NULL, NULL),
         ('repartidor2@test.com', 'admin_test_123', 'Elena Torres', '5512345683', NULL, NULL),
         ('cliente_inactivo@test.com', 'admin_test_123', 'Pedro Infante', '5512345684', NULL, NULL)
+    ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email -- Esto fuerza el RETURNING incluso si ya existen
     RETURNING id, email
 )
 INSERT INTO user_roles (user_id, role_id)
@@ -45,7 +47,8 @@ WHERE (u.email = 'cliente1@test.com' AND r.name = 'client')
    OR (u.email = 'chef1@test.com' AND r.name = 'chef')
    OR (u.email = 'repartidor1@test.com' AND r.name = 'repartidor')
    OR (u.email = 'repartidor2@test.com' AND r.name = 'repartidor')
-   OR (u.email = 'cliente_inactivo@test.com' AND r.name = 'client');
+   OR (u.email = 'cliente_inactivo@test.com' AND r.name = 'client')
+ON CONFLICT DO NOTHING;
 
 -- 4. DIRECCIONES DE ENTREGA
 INSERT INTO delivery_addresses (customer_id, street, exterior_number, interior_number, neighborhood, city, state, postal_code, delivery_references)
@@ -124,7 +127,8 @@ WITH rest_tacos AS (SELECT id FROM restaurants WHERE name = 'Tacos El Buen Sabor
 INSERT INTO option_groups (restaurant_id, name, min_selection, max_selection)
 SELECT id, 'Tamaño de taco', 1, 1 FROM rest_tacos
 UNION ALL
-SELECT id, 'Salsas extra', 0, 3 FROM rest_tacos;
+SELECT id, 'Salsas extra', 0, 3 FROM rest_tacos
+ON CONFLICT DO NOTHING;
 
 -- Asociar grupos a productos
 WITH 
@@ -134,7 +138,8 @@ WITH
 INSERT INTO product_option_groups (product_id, option_group_id)
 SELECT t.id, gt.id FROM taco t, grupo_tamano gt
 UNION ALL
-SELECT t.id, gs.id FROM taco t, grupo_salsas gs;
+SELECT t.id, gs.id FROM taco t, grupo_salsas gs
+ON CONFLICT DO NOTHING;
 
 -- Opciones concretas
 INSERT INTO options (option_group_id, name, price_modifier)
@@ -148,18 +153,21 @@ SELECT og.id, 'Salsa roja', 3.00 FROM option_groups og WHERE og.name = 'Salsas e
 UNION ALL
 SELECT og.id, 'Salsa verde', 3.00 FROM option_groups og WHERE og.name = 'Salsas extra'
 UNION ALL
-SELECT og.id, 'Salsa de aguacate', 5.00 FROM option_groups og WHERE og.name = 'Salsas extra';
+SELECT og.id, 'Salsa de aguacate', 5.00 FROM option_groups og WHERE og.name = 'Salsas extra'
+ON CONFLICT DO NOTHING;
 
 -- 11. CARRITOS
 WITH cliente1 AS (SELECT id FROM users WHERE email = 'cliente1@test.com'),
      rest1 AS (SELECT id FROM restaurants WHERE name = 'Tacos El Buen Sabor')
 INSERT INTO carts (customer_id, restaurant_id, status)
-SELECT c.id, r.id, 'CHECKED_OUT' FROM cliente1 c, rest1 r;
+SELECT c.id, r.id, 'CHECKED_OUT' FROM cliente1 c, rest1 r
+ON CONFLICT DO NOTHING;
 
 WITH cliente2 AS (SELECT id FROM users WHERE email = 'cliente2@test.com'),
      rest2 AS (SELECT id FROM restaurants WHERE name = 'Tacos El Buen Sabor')
 INSERT INTO carts (customer_id, restaurant_id, status)
-SELECT c.id, r.id, 'ACTIVE' FROM cliente2 c, rest2 r;
+SELECT c.id, r.id, 'ACTIVE' FROM cliente2 c, rest2 r
+ON CONFLICT DO NOTHING;
 
 -- 12. ITEMS DEL CARRITO ACTIVO (cliente1)
 WITH cart_activo AS (

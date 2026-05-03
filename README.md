@@ -154,3 +154,5 @@ npm run dev
 # O todo junto en Docker
 docker-compose up --build
 ```
+
+docker exec -it proyecto-equipo3-web-1 node scripts/sync_db.js

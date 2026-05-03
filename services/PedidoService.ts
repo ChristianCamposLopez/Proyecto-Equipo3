@@ -22,7 +22,7 @@ export class PedidoService {
     if (!items || items.length === 0) {
       throw new Error("No hay items para registrar en historial");
     }
-    return await PedidoDAO.registrarHistorial(orderId, customerId, restaurantId, items);
+    return await PedidoDAO.registrarHistorial(orderId, customerId, restaurantId, items, {}); // Empty address if not provided
   }
 
   async cancelPedido(pedidoId: number) {
@@ -70,12 +70,30 @@ export class PedidoService {
     try {
       await client.query("BEGIN");
 
+      // 0. Obtener dirección si existe
+      let addressJson = {};
+      if (addressId) {
+        const addrRes = await client.query(`SELECT * FROM delivery_addresses WHERE id = $1`, [addressId]);
+        if (addrRes.rows.length > 0) {
+          const d = addrRes.rows[0];
+          addressJson = {
+            street: d.street,
+            ext_num: d.exterior_number,
+            neighborhood: d.neighborhood,
+            city: d.city,
+            state: d.state,
+            postal_code: d.postal_code,
+            references: d.delivery_references
+          };
+        }
+      }
+
       // 1. Crear la orden activa en tabla orders
       const orderRes = await client.query(
-        `INSERT INTO orders (customer_id, restaurant_id, status, total_amount, note, created_at)
-         VALUES ($1, $2, 'PENDING', $3, $4, NOW())
+        `INSERT INTO orders (customer_id, restaurant_id, status, total_amount, note, delivery_address_json, created_at)
+         VALUES ($1, $2, 'PENDING', $3, $4, $5, NOW())
          RETURNING id`,
-        [customerId, cart.restaurant_id, totalAmount, note || null]
+        [customerId, cart.restaurant_id, totalAmount, note || null, addressJson]
       );
       const orderId = orderRes.rows[0].id;
 
@@ -94,6 +112,7 @@ export class PedidoService {
         customerId, 
         cart.restaurant_id!, 
         items.map(i => ({ product_id: i.product_id, quantity: i.quantity })), 
+        addressJson,
         client
       );
 

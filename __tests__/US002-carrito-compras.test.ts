@@ -1,104 +1,83 @@
 /**
- * Carrito de compras
- * Pruebas unitarias sobre agregado de productos y resumen del carrito.
+ * US002: Carrito de compras
+ * Pruebas unitarias sobre agregado de productos y resumen del carrito utilizando CarritoService.
  */
 
-const mockDbQuery = jest.fn();
-const mockConnect = jest.fn();
+import { CarritoService } from "@/services/CarritoService";
+import { CarritoDAO } from "@/models/daos/CarritoDAO";
+import { ProductoDAO } from "@/models/daos/ProductoDAO";
+import { RestaurantDAO } from "@/models/daos/RestaurantDAO";
 
-jest.mock("@/config/db", () => ({
-  db: {
-    query: (...args: unknown[]) => mockDbQuery(...args),
-    connect: (...args: unknown[]) => mockConnect(...args),
-  },
-}));
+// Mocking the DAOs
+jest.mock("@/models/daos/CarritoDAO");
+jest.mock("@/models/daos/ProductoDAO");
+jest.mock("@/models/daos/RestaurantDAO");
 
-import { addItemToCart, updateCartItemQuantity } from "@/lib/cart";
+describe("US002: Carrito de compras (CarritoService)", () => {
+  let service: CarritoService;
 
-describe("Carrito de compras", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    service = new CarritoService();
   });
 
   it("agrega un producto disponible al carrito y devuelve el resumen actualizado", async () => {
-    const mockClientQuery = jest
-      .fn()
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({});
-    const mockRelease = jest.fn();
-
-    mockDbQuery
-      .mockResolvedValueOnce({
-        rows: [{ id: 10, customer_id: 1, restaurant_id: null }],
-      })
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: 7,
-            name: "Pizza especial",
-            base_price: 150,
-            stock: 5,
-            is_available: true,
-            restaurant_id: 3,
-          },
-        ],
-      })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({
-        rows: [{ id: 10, customer_id: 1, restaurant_id: 3 }],
-      })
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: 55,
-            product_id: 7,
-            product_name: "Pizza especial",
-            category_name: "Pizzas",
-            image_url: null,
-            quantity: 2,
-            available_stock: 5,
-            is_available: true,
-            unit_price: 150,
-            subtotal: 300,
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        rows: [{ name: "Pizzería Roma" }],
-      });
-
-    mockConnect.mockResolvedValue({
-      query: mockClientQuery,
-      release: mockRelease,
+    // 1. Mock de CarritoDAO para getOrCreateCart
+    (CarritoDAO.getActiveCart as jest.Mock).mockResolvedValue({ id: 10, customer_id: 1, restaurant_id: null });
+    
+    // 2. Mock de ProductoDAO
+    (ProductoDAO.findByIdIncludingInactive as jest.Mock).mockResolvedValue({
+      id: 7,
+      name: "Pizza especial",
+      base_price: 150,
+      stock: 5,
+      is_available: true
     });
 
-    const summary = await addItemToCart(1, 7, 2);
+    // 3. Mock de CarritoDAO.getItems (carrito vacío inicialmente)
+    (CarritoDAO.getItems as jest.Mock)
+      .mockResolvedValueOnce([]) // Al inicio de agregarProducto
+      .mockResolvedValueOnce([    // Al llamar a getSummary después de agregar
+        {
+          id: 55,
+          product_id: 7,
+          product_name: "Pizza especial",
+          quantity: 2,
+          subtotal: 300
+        }
+      ]);
 
-    expect(mockClientQuery).toHaveBeenCalledWith("BEGIN");
-    expect(mockClientQuery).toHaveBeenCalledWith(
-      expect.stringContaining("INSERT INTO cart_items"),
-      [10, 7, 2, 150]
-    );
+    // 4. Mock de RestaurantDAO
+    (RestaurantDAO.findById as jest.Mock).mockResolvedValue({ id: 3, name: "Pizzería Roma" });
+
+    // Ejecutar
+    const summary = await service.agregarProducto(1, 7, 2);
+
+    // Verificaciones
+    expect(CarritoDAO.addItem).toHaveBeenCalledWith(10, 7, 2, 150);
     expect(summary).toMatchObject({
       id: 10,
       customer_id: 1,
-      restaurant_id: 3,
       restaurant_name: "Pizzería Roma",
       item_count: 1,
       total_quantity: 2,
-      total_amount: 300,
+      total_amount: 348, // 300 + 16% IVA
     });
-    expect(summary.items).toHaveLength(1);
-    expect(mockRelease).toHaveBeenCalled();
   });
 
-  it("rechaza cantidades no enteras al actualizar un producto del carrito", async () => {
-    await expect(updateCartItemQuantity(1, 15, 1.5)).rejects.toThrow(
-      "La cantidad debe ser un entero"
-    );
-    expect(mockDbQuery).not.toHaveBeenCalled();
+  it("rechaza agregar un producto si no hay stock suficiente", async () => {
+    (CarritoDAO.getActiveCart as jest.Mock).mockResolvedValue({ id: 10, customer_id: 1 });
+    (ProductoDAO.findByIdIncludingInactive as jest.Mock).mockResolvedValue({
+      id: 7,
+      stock: 5,
+      is_available: true
+    });
+    (CarritoDAO.getItems as jest.Mock).mockResolvedValue([]);
+
+    await expect(service.agregarProducto(1, 7, 10)).rejects.toThrow("Stock insuficiente");
+  });
+
+  it("rechaza cantidades negativas", async () => {
+    await expect(service.agregarProducto(1, 7, -1)).rejects.toThrow("La cantidad debe ser mayor a cero");
   });
 });

@@ -243,7 +243,7 @@ export default function ConfirmationPage(){
           </div>
 
           <div className="note">
-            <strong>📍 Nota:</strong> Recibirás una notificación cuando tu pedido esté listo para entrega.
+            <strong>📍 Nota:</strong>
             Puedes seguir el estado de tu orden en la sección "Mis Órdenes".
           </div>
         </div>

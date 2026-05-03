@@ -1,5 +1,5 @@
 import { ProductoDAO } from "@/models/daos/ProductoDAO";
-import { MenuController } from "@/controllers/MenuController";
+import { MenuService } from "@/services/MenuService";
 import { db } from "@/config/db";
 import { PATCH as activateRoute } from "@/app/api/platos/[id]/activate/route";
 import { PATCH as deactivateRoute } from "@/app/api/platos/[id]/desactivate/route";
@@ -56,15 +56,15 @@ describe("US005.6: Gestión de Menú – Activar/Desactivar plato (Integral)", (
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller & API)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service & API)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
-    let controller: MenuController;
+    let controller: MenuService;
     let spyFindById: jest.SpyInstance;
     let spyUpdateActiveStatus: jest.SpyInstance;
 
     beforeEach(() => {
-      controller = new MenuController();
+      controller = new MenuService();
       // Espiamos ProductoDAO para aislar la lógica de servicios en esta sección
       spyFindById = jest.spyOn(ProductoDAO, 'findByIdIncludingInactive');
       spyUpdateActiveStatus = jest.spyOn(ProductoDAO, 'updateActiveStatus');
@@ -75,12 +75,12 @@ describe("US005.6: Gestión de Menú – Activar/Desactivar plato (Integral)", (
       spyUpdateActiveStatus.mockRestore();
     });
 
-    describe("MenuController.activateProduct / deactivateProduct", () => {
+    describe("MenuService.activateProductoEntity / deactivateProductoEntity", () => {
       it("✓ debe activar el producto si existe", async () => {
         spyFindById.mockResolvedValueOnce({ id: 1 });
         spyUpdateActiveStatus.mockResolvedValueOnce(true);
         
-        await controller.activateProduct(1);
+        await controller.activateProductoEntity(1);
         
         expect(spyUpdateActiveStatus).toHaveBeenCalledWith(1, true);
       });
@@ -89,7 +89,7 @@ describe("US005.6: Gestión de Menú – Activar/Desactivar plato (Integral)", (
         spyFindById.mockResolvedValueOnce({ id: 2 });
         spyUpdateActiveStatus.mockResolvedValueOnce(true);
         
-        await controller.deactivateProduct(2);
+        await controller.deactivateProductoEntity(2);
         
         expect(spyUpdateActiveStatus).toHaveBeenCalledWith(2, false);
       });
@@ -97,7 +97,7 @@ describe("US005.6: Gestión de Menú – Activar/Desactivar plato (Integral)", (
       it("✗ debe lanzar error si producto no existe al activar", async () => {
         spyFindById.mockResolvedValueOnce(null);
         
-        await expect(controller.activateProduct(99)).rejects.toThrow("Producto no encontrado");
+        await expect(controller.activateProductoEntity(99)).rejects.toThrow("Producto no encontrado");
         expect(spyUpdateActiveStatus).not.toHaveBeenCalled();
       });
 
@@ -105,7 +105,7 @@ describe("US005.6: Gestión de Menú – Activar/Desactivar plato (Integral)", (
         spyFindById.mockResolvedValueOnce({ id: 1 });
         spyUpdateActiveStatus.mockResolvedValueOnce(false);
         
-        await expect(controller.deactivateProduct(1)).rejects.toThrow("No se pudo desactivar el producto");
+        await expect(controller.deactivateProductoEntity(1)).rejects.toThrow("No se pudo desactivar el producto");
       });
     });
 

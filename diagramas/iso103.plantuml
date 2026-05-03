@@ -1,0 +1,68 @@
+@startuml
+skinparam style strictuml
+autonumber
+title Diagrama de Secuencia - Recuperación de Cuenta (US010.3)
+
+' Ajuste de estilo para simpleza visual
+skinparam sequenceGroupHeaderFontSize 0
+skinparam sequenceGroupBorderThickness 1
+
+actor "Administrador" as Admin
+participant "recoveryPage: Next.js" as View
+participant "authCtrl: AuthControlador" as Ctrl
+participant "authRepo: AuthRepositorio" as Repo
+participant "u: Usuario" as User
+database "Base de Datos" as DB
+
+Admin -> View : ingresarEmail(email)
+activate View
+
+View -> Ctrl : solicitarRecuperacion(email)
+activate Ctrl
+
+' Fase 1: Identificación
+Ctrl -> Repo : buscarPorEmail(email)
+activate Repo
+Repo -> DB : SELECT * FROM usuarios WHERE email =?
+activate DB
+DB --> Repo : registro_encontrado / null
+deactivate DB
+Repo --> Ctrl : u (instancia Usuario) / null
+deactivate Repo
+
+' Fase 2: Generación de Token y Persistencia
+alt
+    note right of Ctrl : **Caso: Usuario Existe**
+    
+    Ctrl -> Ctrl : generarTokenTemporal()
+    
+    ' Actualización de la instancia según el diagrama de clases
+    Ctrl -> User : setResetToken(token, expiracion)
+    activate User
+    User --> Ctrl : void
+    deactivate User
+    
+    Ctrl -> Repo : guardar(u)
+    activate Repo
+    Repo -> DB : UPDATE usuarios SET reset_token, expiracion...
+    activate DB
+    DB --> Repo : ok
+    deactivate DB
+    Repo --> Ctrl : void
+    deactivate Repo
+    
+    note right of Ctrl : Enviar correo electrónico con el enlace
+    
+    Ctrl --> View : confirmacionEnvio()
+    View --> Admin : mostrarMensajeExito()
+    
+else
+    ' Rama de Usuario no encontrado
+    note right of Ctrl : **Caso: Email No Registrado**
+    Ctrl --> View : errorEmailNoEncontrado()
+    deactivate Ctrl
+    View --> Admin : mostrarNotificacionError()
+End
+
+deactivate View
+@enduml

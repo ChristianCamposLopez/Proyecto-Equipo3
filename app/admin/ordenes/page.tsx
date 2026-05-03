@@ -1,5 +1,5 @@
 "use client"
-// app/admin/ordenes/page.tsx — US011: Confirmación de Pedido
+// app/admin/ordenes/page.tsx — US011: Confirmación de PedidoEntity
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -371,16 +371,26 @@ export default function AdminOrdenesPage() {
   const [toast, setToast] = useState<Toast>(null)
   const [processing, setProcessing] = useState<number | null>(null)
 
+  const fetchOrders = async () => {
+    try {
+      const res = await fetch("/api/orders/pending?restaurantId=1");
+      const data = await res.json();
+      setOrders(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Obtener órdenes pendientes
-    fetch("/api/orders/pending?restaurantId=1")
-      .then(r => r.json())
-      .then(data => {
-        setOrders(Array.isArray(data) ? data : [])
-      })
-      .catch(() => setOrders([]))
-      .finally(() => setLoading(false))
-  }, [])
+    // Carga inicial
+    fetchOrders();
+
+    // US004: Dashboard Chef con Polling cada 10 segundos
+    const interval = setInterval(fetchOrders, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   function showToast(msg: string, type: "success" | "error") {
     setToast({ msg, type })
@@ -398,7 +408,7 @@ export default function AdminOrdenesPage() {
           ? { ...o, ...updated } // Conserva lo que tiene 'o' (items, note) y sobrescribe con 'updated' (nuevo status)
           : o
       ));
-      showToast(`Pedido #${order.id} confirmado correctamente`, "success")
+      showToast(`PedidoEntity #${order.id} confirmado correctamente`, "success")
     } catch {
       showToast(`Error al confirmar el pedido #${order.id}`, "error")
     } finally {
@@ -420,7 +430,7 @@ export default function AdminOrdenesPage() {
           ? { ...o, ...updated } // Conserva lo que tiene 'o' (items, note) y sobrescribe con 'updated' (nuevo status)
           : o
       ));
-      showToast(`Pedido #${order.id} actualizado a ${newStatus}`, "success")
+      showToast(`PedidoEntity #${order.id} actualizado a ${newStatus}`, "success")
     } catch {
       showToast(`Error al actualizar el pedido #${order.id}`, "error")
     } finally {
@@ -495,7 +505,7 @@ export default function AdminOrdenesPage() {
               {orders.map(order => (
                <div key={order.id} className={`order-card ${order.status.toLowerCase()}`}>
                 <div className="order-header-row">
-                  <div className="order-id">Pedido #{order.id}</div>
+                  <div className="order-id">PedidoEntity #{order.id}</div>
                   <span className={`order-status status-${order.status.toLowerCase()}`}>
                     <span className="status-dot" />
                     {order.status}

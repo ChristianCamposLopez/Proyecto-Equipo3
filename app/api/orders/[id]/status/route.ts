@@ -1,6 +1,8 @@
 // app/api/orders/[id]/status/route.ts
 import { NextRequest } from 'next/server';
-import { updateOrderStatus } from '@/controllers/orderController';
+import { PedidoService } from '@/services/PedidoService';
+
+const pedidoService = new PedidoService();
 
 interface Context {
   params: { id: string } | Promise<{ id: string }>;
@@ -18,5 +20,11 @@ export async function PUT(req: NextRequest, context: Context) {
   if (isNaN(orderId)) {
     return new Response(JSON.stringify({ error: 'ID inválido' }), { status: 400 });
   }
-  return updateOrderStatus(req, orderId);
+  try {
+    const { status } = await req.json();
+    const updated = await pedidoService.updateOrderStatus(orderId, status);
+    return new Response(JSON.stringify(updated), { status: 200 });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
 }

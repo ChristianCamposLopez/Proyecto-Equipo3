@@ -1,4 +1,4 @@
-import { RankingController } from '@/controllers/RankingController';
+import { RankingService } from '@/services/RankingService';
 import { GET } from '@/app/api/ranking/route';
 import { NextRequest } from 'next/server';
 import { db } from '@/config/db';
@@ -17,7 +17,7 @@ describe('US019.3 – Filtrar por rango de fechas (API y validaciones)', () => {
 
   describe('API Endpoint (GET /api/ranking)', () => {
     it('debe parsear correctamente los parámetros startDate, endDate y topN', async () => {
-      const spyController = jest.spyOn(RankingController.prototype, 'getTopSellingProducts')
+      const spyService = jest.spyOn(RankingService.prototype, 'getTopSellingProducts')
         .mockResolvedValue({ ranking: [], restaurantName: 'Test' });
 
       const req = new NextRequest(
@@ -25,19 +25,19 @@ describe('US019.3 – Filtrar por rango de fechas (API y validaciones)', () => {
       );
       await GET(req);
 
-      expect(spyController).toHaveBeenCalledWith(
+      expect(spyService).toHaveBeenCalledWith(
         1,
         expect.any(Date),
         expect.any(Date),
         3
       );
-      spyController.mockRestore();
+      spyService.mockRestore();
     });
 
   });
 
   describe('Validaciones de fechas en el controlador', () => {
-    const controller = new RankingController();
+    const controller = new RankingService();
 
     it('debe rechazar si la fecha de inicio es posterior o igual a la fecha de fin', async () => {
       const start = new Date('2024-02-01');

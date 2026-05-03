@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react"
+import { ProductoEntity, CategoriaEntity, RecomendacionEntity, CartSummary } from "@/models/entities";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;700&display=swap');
@@ -375,31 +376,7 @@ const styles = `
   }
 `
 
-type Product = {
-  id: number;
-  name: string;
-  base_price: number;
-  stock: number;          // valor por defecto
-  is_available: boolean;  // valor por defecto
-  image_url: string | null;
-  category_name: string;
-  category_id?: number;
-};
 
-type Recommendation = {
-  id: number;
-  name: string;
-  base_price: string;     // viene como string desde la API
-  image_display: string;
-};
-
-type Category = { id: number; name: string };
-
-type CartSummary = {
-  item_count: number;
-  total_quantity: number;
-  total_amount: number;
-};
 
 const RESTAURANT_ID = "1";
 
@@ -407,17 +384,22 @@ export default function MenuPage() {
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [customerId, setCustomerId] = useState<number | null>(null); // Estado para el ID real
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<ProductoEntity[]>([]);
+  const [categories, setCategories] = useState<CategoriaEntity[]>([]);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [recommendations, setRecommendations] = useState<RecomendacionEntity[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingRecommendations, setLoadingRecommendations] = useState(true);
   const [cart, setCart] = useState<CartSummary>({
+    id: 0,
+    restaurant_name: null,
     item_count: 0,
     total_quantity: 0,
+    subtotal: 0,
+    iva: 0,
     total_amount: 0,
+    items: [],
   });
   const [pendingProductId, setPendingProductId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -452,7 +434,7 @@ export default function MenuPage() {
       .then((res) => res.json())
       .then((data) => {
         const rawProducts = data.products || [];
-        const mappedProducts: Product[] = rawProducts.map((p: any) => {
+        const mappedProducts: ProductoEntity[] = rawProducts.map((p: any) => {
           let categoryName = "Sin categoría";
           if (p.category_name) {
             categoryName = p.category_name;

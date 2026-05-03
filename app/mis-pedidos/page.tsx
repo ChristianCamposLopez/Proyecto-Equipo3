@@ -336,7 +336,7 @@ export default function MisPedidosPage() {
             
             if (prevActiveStatus !== currentActiveStatus) {
               if (currentActiveStatus === 'CONFIRMED') {
-                alert(`✅ Pedido #${newOrder.id} ha sido confirmado`);
+                alert(`✅ PedidoEntity #${newOrder.id} ha sido confirmado`);
               }
               prevActiveStatusRef.current.set(newOrder.id, currentActiveStatus);
             }
@@ -497,7 +497,7 @@ export default function MisPedidosPage() {
                 >
                   <div style={{ flex: 1 }}>
                     <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 'bold' }}>
-                      Pedido #{order.id}
+                      PedidoEntity #{order.id}
                     </div>
                     <div style={{ fontSize: '14px', color: '#7A7268', marginTop: '4px' }}>
                       {formatDate(order.created_at)}

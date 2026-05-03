@@ -1,15 +1,19 @@
 // models/daos/RankingDAO.ts
+/**
+ * Capa de Persistencia para Ranking de Ventas
+ * US019: Calcular ranking de los platos más vendidos
+ */
 import { db } from '@/config/db';
-import { RankedProduct } from '../entities/RankingEntities';
+import { RankedProductoEntity } from '@/models/entities';
 
 export class RankingDAO {
 
-  async getTopSellingProducts(
+  static async getTopSellingProducts(
     restaurantId: number,
     startDate: Date,
     endDate: Date,
     limit: number
-  ): Promise<RankedProduct[]> {
+  ): Promise<RankedProductoEntity[]> {
 
     const query = `
       SELECT 
@@ -42,7 +46,7 @@ export class RankingDAO {
     return result.rows;
   }
 
-  async getRestaurantName(restaurantId: number): Promise<string | null> {
+  static async getRestaurantName(restaurantId: number): Promise<string | null> {
     const query = `SELECT name FROM restaurants WHERE id = $1`;
     const result = await db.query(query, [restaurantId]);
     return result.rows[0]?.name || null;

@@ -1,0 +1,53 @@
+@startuml
+skinparam style strictuml
+autonumber
+title Diagrama de Secuencia - Registro de Administrador (US010.1)
+
+actor "Administrador" as Admin
+participant "vista: Next.js" as View
+participant "authCtrl: AuthControlador" as Ctrl
+participant "authRepo: AuthRepositorio" as Repo
+participant "u: Usuario" as User
+database "Base de Datos" as DB
+
+Admin -> View : ingresarDatos(email, pass, nombre)
+activate View
+
+View -> Ctrl : registrar(AutenticacionDTO)
+activate Ctrl
+
+note over Ctrl : Validar disponibilidad de correo
+
+Ctrl -> Repo : buscarPorEmail(email)
+activate Repo
+Repo -> DB : SELECT * FROM usuarios WHERE email...
+activate DB
+DB --> Repo : null
+deactivate DB
+Repo --> Ctrl : disponible
+deactivate Repo
+
+note right of Ctrl : **US010.1**: Cifrado de clave\n(password -> passwordHash)
+
+' Llamada al constructor definido en el diagrama de clases
+Ctrl -> User ** : create(id, email, passwordHash, nombre)
+activate User
+User --> Ctrl : instancia de usuario
+deactivate User
+
+Ctrl -> Repo : guardar(u)
+activate Repo
+Repo -> DB : INSERT INTO usuarios (id, email, pass_hash, nombre...)
+activate DB
+DB --> Repo : ok
+deactivate DB
+Repo --> Ctrl : void
+deactivate Repo
+
+Ctrl --> View : mensajeExito()
+deactivate Ctrl
+
+View --> Admin : mostrarConfirmacion()
+deactivate View
+
+@enduml

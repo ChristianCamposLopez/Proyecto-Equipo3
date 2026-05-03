@@ -1,0 +1,67 @@
+@startuml
+skinparam style strictuml
+autonumber
+title Diagrama de Secuencia - Modificación de Perfil de Restaurante (US025.2)
+
+' Estilo para simpleza y elegancia visual
+skinparam sequenceGroupHeaderFontSize 0
+skinparam sequenceGroupBorderThickness 1
+
+actor "Administrador" as Admin
+participant "editPage: Next.js" as View
+participant "restCtrl: RestauranteControlador" as Ctrl
+participant "restRepo: RestauranteRepositorio" as Repo
+participant "r: Restaurante" as Rest
+database "Base de Datos" as DB
+
+Admin -> View : editarDatos(nombre, direccion, contacto)
+activate View
+
+View -> Ctrl : actualizarPerfil(RestauranteDTO)
+activate Ctrl
+
+' Fase 1: Recuperación de la entidad desde persistencia
+note over Ctrl, Repo : Recuperar datos actuales para actualización
+
+Ctrl -> Repo : buscarPorId(id)
+activate Repo
+Repo -> DB : SELECT * FROM restaurantes WHERE id=?
+activate DB
+DB --> Repo : datos_actuales
+deactivate DB
+Repo --> Ctrl : r (instancia Restaurante)
+deactivate Repo
+
+' Fase 2: Validación de negocio (Regex)
+note right of Ctrl : **US025.2**: Validación Regex\n(Nombre y Teléfono)
+
+alt Formatos Válidos
+    
+    ' Actualización del estado interno de la entidad
+    Ctrl -> Rest : setDatos(nombre, direccion, contacto)
+    activate Rest
+    Rest --> Ctrl : void
+    deactivate Rest
+    
+    ' Persistencia de cambios
+    Ctrl -> Repo : actualizar(r)
+    activate Repo
+    Repo -> DB : UPDATE restaurantes SET nombre=?, direccion=?, contacto=?...
+    activate DB
+    DB --> Repo : ok
+    deactivate DB
+    Repo --> Ctrl : void
+    deactivate Repo
+    
+    Ctrl --> View : confirmacionCambio()
+    View --> Admin : mostrarNotificacionExito()
+    
+else Formato Inválido
+    ' Flujo de error por validación Regex
+    Ctrl --> View : errorValidacionFormato()
+    deactivate Ctrl
+    View --> Admin : resaltarCamposIncorrectos()
+end
+
+deactivate View
+@enduml

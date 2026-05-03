@@ -1,8 +1,8 @@
 // app/api/platos/[id]/images/[imageId]/route.ts
 import { NextResponse } from 'next/server';
-import { ImagenController } from '@/controllers/ImagenController';
+import { ImagenService } from '@/services/ImagenService';
 
-const controller = new ImagenController();
+const controller = new ImagenService();
 
 export async function DELETE(
   request: Request,

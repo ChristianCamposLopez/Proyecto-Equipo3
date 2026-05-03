@@ -374,7 +374,7 @@ const styles = `
   }
 `
 
-type Product = {
+type ProductoEntity = {
   id: number;
   name: string;
   base_price: number;
@@ -404,7 +404,7 @@ const DEMO_CUSTOMER_ID = 1;
 const RESTAURANT_ID = "1";
 
 export default function MenuPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductoEntity[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -442,7 +442,7 @@ export default function MenuPage() {
       .then((res) => res.json())
       .then((data) => {
         const rawProducts = data.products || [];
-        const mappedProducts: Product[] = rawProducts.map((p: any) => {
+        const mappedProducts: ProductoEntity[] = rawProducts.map((p: any) => {
           let categoryName = "Sin categoría";
           if (p.category_name) {
             categoryName = p.category_name;

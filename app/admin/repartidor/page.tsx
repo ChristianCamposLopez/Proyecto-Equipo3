@@ -26,7 +26,7 @@ const statusLabels: Record<string, string> = {
   PENDING: "Pendiente",
   PREPARING: "En preparacion",
   READY: "Listo",
-  DELIVERY_ASSIGNED: "Repartidor asignado",
+  DELIVERY_ASSIGNED: "RepartidorEntity asignado",
   DELIVERED: "Entregado",
 }
 
@@ -363,7 +363,7 @@ export default function KitchenPage() {
                 <article className="kitchen-ticket" key={order.id}>
                   <div className="ticket-head">
                     <div>
-                      <div className="ticket-id">Pedido #{order.id}</div>
+                      <div className="ticket-id">PedidoEntity #{order.id}</div>
                       <div className="ticket-meta">
                         {order.customer_name ?? "Cliente"} · ${Number(order.total_amount).toFixed(2)}
                       </div>
@@ -392,7 +392,7 @@ export default function KitchenPage() {
                   {/* ✅ Mostrar repartidor si ya está asignado */}
                   {order.deliveryman_name && (
                     <div className="deliveryman-info">
-                      Repartidor: {order.deliveryman_name}
+                      RepartidorEntity: {order.deliveryman_name}
                     </div>
                   )}
 

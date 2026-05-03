@@ -24,13 +24,13 @@ INSERT INTO roles (name, permisos) VALUES
 WITH inserted_users AS (
     INSERT INTO users (email, password_hash, full_name, phone_number, reset_token, token_expiracion)
     VALUES
-        ('cliente1@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Carlos López', '5512345678', NULL, NULL),
-        ('cliente2@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'María García', '5512345679', NULL, NULL),
-        ('admin_rest@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Javier Martínez', '5512345680', NULL, NULL),
-        ('chef1@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Ana Rodríguez', '5512345681', NULL, NULL),
-        ('repartidor1@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Luis Fernández', '5512345682', NULL, NULL),
-        ('repartidor2@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Elena Torres', '5512345683', NULL, NULL),
-        ('cliente_inactivo@test.com', '$2a$10$FjsdCV80U./ghLrSBmawOuOA/ji5spI2ykmNI/geI2xizBx3vAC7a', 'Pedro Infante', '5512345684', NULL, NULL)
+        ('cliente1@test.com', 'admin_test_123', 'Carlos López', '5512345678', NULL, NULL),
+        ('cliente2@test.com', 'admin_test_123', 'María García', '5512345679', NULL, NULL),
+        ('admin_rest@test.com', 'admin_test_123', 'Javier Martínez', '5512345680', NULL, NULL),
+        ('chef1@test.com', 'admin_test_123', 'Ana Rodríguez', '5512345681', NULL, NULL),
+        ('repartidor1@test.com', 'admin_test_123', 'Luis Fernández', '5512345682', NULL, NULL),
+        ('repartidor2@test.com', 'admin_test_123', 'Elena Torres', '5512345683', NULL, NULL),
+        ('cliente_inactivo@test.com', 'admin_test_123', 'Pedro Infante', '5512345684', NULL, NULL)
     RETURNING id, email
 )
 INSERT INTO user_roles (user_id, role_id)

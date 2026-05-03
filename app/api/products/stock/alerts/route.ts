@@ -1,6 +1,8 @@
 // app/api/products/stock/alerts/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getStockAlerts } from '@/controllers/stockController';
+import { StockService } from '@/services/StockService';
+
+const stockService = new StockService();
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,7 +16,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    return getStockAlerts(req, parseInt(restaurantId, 10));
+    const alerts = await stockService.getStockAlerts(parseInt(restaurantId, 10));
+    return NextResponse.json(alerts);
   } catch (error) {
     console.error('[GET /api/products/stock/alerts]', error);
     return NextResponse.json(

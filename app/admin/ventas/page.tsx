@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useRouter } from 'next/navigation';
+import { VentaDiaria } from '@/models/entities';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -220,11 +221,7 @@ const styles = `
   }
 `;
 
-interface VentaDiaria {
-  fecha: string;
-  total_ventas: number;
-  numero_pedidos: number;
-}
+
 
 export default function VentasPage() {
   const router = useRouter();
@@ -284,10 +281,13 @@ export default function VentasPage() {
         [
           reporte.numero_pedidos.toString(),
           `$${reporte.total_ventas.toFixed(2)}`,
+          `$${(reporte.average_ticket || 0).toFixed(2)}`,
+          `$${(reporte.max_sale || 0).toFixed(2)}`,
+          `$${(reporte.min_sale || 0).toFixed(2)}`,
         ],
       ];
       const ws = XLSX.utils.aoa_to_sheet(excelData);
-      ws['!cols'] = [{ wch: 20 }, { wch: 20 }];
+      ws['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Ventas');
       XLSX.writeFile(wb, `ventas_${fecha}.xlsx`);
@@ -493,6 +493,48 @@ export default function VentasPage() {
                       }}
                     >
                       ${reporte.total_ventas.toFixed(2)}
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #1E1C19' }}>
+                    <td style={{ padding: '12px 8px', fontWeight: 500 }}>
+                      Ticket Promedio
+                    </td>
+                    <td
+                      style={{
+                        padding: '12px 8px',
+                        textAlign: 'right',
+                        fontWeight: 500,
+                      }}
+                    >
+                      ${(reporte.average_ticket || 0).toFixed(2)}
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #1E1C19' }}>
+                    <td style={{ padding: '12px 8px', fontWeight: 500 }}>
+                      Venta Máxima
+                    </td>
+                    <td
+                      style={{
+                        padding: '12px 8px',
+                        textAlign: 'right',
+                        fontWeight: 500,
+                      }}
+                    >
+                      ${(reporte.max_sale || 0).toFixed(2)}
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #1E1C19' }}>
+                    <td style={{ padding: '12px 8px', fontWeight: 500 }}>
+                      Venta Mínima
+                    </td>
+                    <td
+                      style={{
+                        padding: '12px 8px',
+                        textAlign: 'right',
+                        fontWeight: 500,
+                      }}
+                    >
+                      ${(reporte.min_sale || 0).toFixed(2)}
                     </td>
                   </tr>
                 </tbody>

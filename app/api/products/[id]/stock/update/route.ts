@@ -1,6 +1,8 @@
 // app/api/products/[id]/stock/update/route.ts
 import { NextRequest } from 'next/server';
-import { updateProductStock } from '@/controllers/stockController';
+import { StockService } from '@/services/StockService';
+
+const stockService = new StockService();
 
 interface Context {
   params: { id: string } | Promise<{ id: string }>;
@@ -18,5 +20,11 @@ export async function POST(req: NextRequest, context: Context) {
   if (isNaN(productId)) {
     return new Response(JSON.stringify({ error: 'ID inválido' }), { status: 400 });
   }
-  return updateProductStock(req, productId);
+  try {
+    const { quantity, reason } = await req.json();
+    const updated = await stockService.updateProductStock(productId, quantity, reason);
+    return new Response(JSON.stringify(updated), { status: 200 });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
 }

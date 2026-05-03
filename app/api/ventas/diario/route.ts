@@ -1,8 +1,8 @@
 // app/api/ventas/diario/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { VentasController } from '@/controllers/ventasController';
+import { VentasService } from '@/services/VentasService';
 
-const controller = new VentasController();
+const ventasService = new VentasService();
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
     const idRest = 1;
 
-    const reporte = await controller.getDailyReport(fecha, idRest);
+    const reporte = await ventasService.getDailyReport(fecha, idRest);
 
     if (!reporte) {
       return NextResponse.json(
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Incluimos meta con el nombre del restaurante (igual que ranking)
-    const restaurantName = await controller.getRestaurantName(idRest);
+    const restaurantName = await ventasService.getRestaurantName(idRest);
     return NextResponse.json({
       data: reporte,
       meta: { restaurantName },

@@ -1,0 +1,67 @@
+@startuml
+skinparam style strictuml
+autonumber
+title Diagrama de Secuencia - Definir Horario de Atención (US025.4)
+
+' Estilo para simpleza visual (oculta cabeceras de fragmentos)
+skinparam sequenceGroupHeaderFontSize 0
+skinparam sequenceGroupBorderThickness 1
+
+actor "Administrador" as Admin
+participant "horarioPage: Next.js" as View
+participant "restCtrl: RestauranteControlador" as Ctrl
+participant "restRepo: RestauranteRepositorio" as Repo
+participant "h: HorarioAtencion" as Schedule
+database "Base de Datos" as DB
+
+Admin -> View : ingresarHorarios(lista_dias)
+activate View
+
+View -> Ctrl : establecerHorarios(HorarioDTO)
+activate Ctrl
+
+' Fase 1: Validación de lógica de negocio (US025.4)
+note over Ctrl : **Validación US025.4**: \nVerificar Formato 24h y \nque Hora Cierre > Hora Apertura
+
+alt Horarios Lógicamente Válidos
+    
+    ' Fase 2: Sincronización con Persistencia
+    Ctrl -> Repo : buscarPorId(idRestaurante)
+    activate Repo
+    Repo -> DB : SELECT * FROM restaurantes WHERE...
+    activate DB
+    DB --> Repo : restaurante_encontrado
+    deactivate DB
+    Repo --> Ctrl : r (instancia Restaurante)
+    deactivate Repo
+    
+    ' Creación de instancias según el diagrama de clases
+    loop Por cada día de la semana definido
+        Ctrl -> Schedule ** : create(dia, apertura, cierre)
+        activate Schedule
+        Schedule --> Ctrl : instancia horario
+        deactivate Schedule
+    end
+    
+    ' Fase 3: Persistencia masiva de la nueva configuración
+    Ctrl -> Repo : guardarHorarios(lista_instancias)
+    activate Repo
+    Repo -> DB : DELETE FROM horarios WHERE rest_id=?\nINSERT INTO horarios (rest_id, dia, ap, cier)...
+    activate DB
+    DB --> Repo : transaccion_ok
+    deactivate DB
+    Repo --> Ctrl : void
+    deactivate Repo
+    
+    Ctrl --> View : confirmacionHorario()
+    View --> Admin : mostrarCalendarioActualizado()
+    
+else Datos con Conflicto Temporal
+    ' Rama de error: Cierre <= Apertura
+    Ctrl --> View : errorRangoInvalido()
+    deactivate Ctrl
+    View --> Admin : resaltarConflictos()
+End
+
+deactivate View
+@enduml

@@ -1,15 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import {
-  addItemToCart,
-  buildCartSummary,
-  clearCart,
-  resolveCustomerId,
-} from "@/lib/cart";
+import { CarritoService } from "@/services/CarritoService";
+
+const carritoService = new CarritoService();
 
 export async function GET(request: NextRequest) {
   try {
-    const customerId = resolveCustomerId(request.nextUrl.searchParams.get("customerId"));
-    const cart = await buildCartSummary(customerId);
+    const customerId = parseInt(request.nextUrl.searchParams.get("customerId") || "1");
+    const cart = await carritoService.getSummary(customerId);
     return NextResponse.json(cart);
   } catch (error) {
     console.error("[GET /api/cart]", error);
@@ -20,7 +16,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const customerId = resolveCustomerId(body.customerId);
+    const customerId = parseInt(body.customerId || "1");
     const productId = Number(body.productId);
     const quantity = Number(body.quantity ?? 1);
 
@@ -28,19 +24,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "productId inválido" }, { status: 400 });
     }
 
-    const cart = await addItemToCart(customerId, productId, quantity);
+    const cart = await carritoService.agregarProducto(customerId, productId, quantity);
     return NextResponse.json(cart, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "No se pudo agregar el producto";
-    const status = message.includes("no encontrado") || message.includes("inválido") ? 400 : 409;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const customerId = resolveCustomerId(request.nextUrl.searchParams.get("customerId"));
-    const cart = await clearCart(customerId);
+    const customerId = parseInt(request.nextUrl.searchParams.get("customerId") || "1");
+    const cart = await carritoService.vaciarCarrito(customerId);
     return NextResponse.json(cart);
   } catch (error) {
     console.error("[DELETE /api/cart]", error);

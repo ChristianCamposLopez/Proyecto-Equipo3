@@ -1,6 +1,6 @@
 import { DisponibilidadDAO } from "@/models/daos/DisponibilidadDAO";
 import { db } from "@/config/db";
-import { DisponibilidadController } from "@/controllers/DisponibilidadController";
+import { DisponibilidadService } from "@/services/DisponibilidadService";
 import { PATCH } from "@/app/api/platos/[id]/availability/[availabilityId]/route";
 import { NextRequest } from "next/server";
 
@@ -79,7 +79,7 @@ describe("US020.2: Gestión de Menú – Editar horario (Pruebas Integrales)", (
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller + API Route)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service + API Route)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
     // Espías para interceptar los métodos del DAO sin mockear el módulo completo
@@ -99,7 +99,7 @@ describe("US020.2: Gestión de Menú – Editar horario (Pruebas Integrales)", (
       spyHasOverlap.mockRestore();
     });
 
-    describe("DisponibilidadController.update", () => {
+    describe("DisponibilidadService.update", () => {
       it("✓ debe actualizar horario cuando existe, tiempos válidos y sin solapamiento", async () => {
         const existing = { id: 10, product_id: 1, day_of_week: 1, start_time: "08:00", end_time: "12:00" };
         spyGetById.mockResolvedValueOnce(existing);
@@ -107,7 +107,7 @@ describe("US020.2: Gestión de Menú – Editar horario (Pruebas Integrales)", (
         const updated = { ...existing, day_of_week: 2, start_time: "09:00", end_time: "13:00" };
         spyUpdate.mockResolvedValueOnce(updated);
 
-        const controller = new DisponibilidadController();
+        const controller = new DisponibilidadService();
         const result = await controller.update(10, { dayOfWeek: 2, startTime: "09:00", endTime: "13:00" });
 
         expect(spyGetById).toHaveBeenCalledWith(10);
@@ -117,7 +117,7 @@ describe("US020.2: Gestión de Menú – Editar horario (Pruebas Integrales)", (
       });
 
       it("✗ debe lanzar error si startTime >= endTime", async () => {
-        const controller = new DisponibilidadController();
+        const controller = new DisponibilidadService();
         await expect(controller.update(1, { dayOfWeek: 1, startTime: "14:00", endTime: "12:00" }))
           .rejects.toThrow("startTime must be less than endTime");
         expect(spyGetById).not.toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe("US020.2: Gestión de Menú – Editar horario (Pruebas Integrales)", (
 
       it("✗ debe lanzar 'Not found' si el horario no existe", async () => {
         spyGetById.mockResolvedValueOnce(null);
-        const controller = new DisponibilidadController();
+        const controller = new DisponibilidadService();
         await expect(controller.update(99, { dayOfWeek: 1, startTime: "09:00", endTime: "10:00" }))
           .rejects.toThrow("Not found");
         expect(spyUpdate).not.toHaveBeenCalled();
@@ -134,7 +134,7 @@ describe("US020.2: Gestión de Menú – Editar horario (Pruebas Integrales)", (
       it("✗ debe lanzar error si hay solapamiento (excluyendo el mismo ID)", async () => {
         spyGetById.mockResolvedValueOnce({ id: 5, product_id: 2 });
         spyHasOverlap.mockResolvedValueOnce(true);
-        const controller = new DisponibilidadController();
+        const controller = new DisponibilidadService();
         await expect(controller.update(5, { dayOfWeek: 1, startTime: "10:00", endTime: "12:00" }))
           .rejects.toThrow("Schedule overlaps with existing one");
         expect(spyUpdate).not.toHaveBeenCalled();

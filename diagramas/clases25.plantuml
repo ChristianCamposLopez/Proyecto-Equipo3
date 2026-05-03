@@ -1,0 +1,69 @@
+@startuml
+skinparam classAttributeIconSize 0
+hide empty members
+title Diagrama de Clases Integral - Gestión de Restaurante (US025)
+
+class RestauranteDTO {
+    + nombre : String
+    + direccion : String
+    + contacto : String
+    + rfc : String
+    + horarioData : List<HorarioDTO>
+}
+
+class RestauranteControlador {
+    + registrarRestaurante(datos : RestauranteDTO) : void
+    + actualizarPerfil(datos : RestauranteDTO) : void
+    + gestionarImagen(rutaLogo : String) : void
+    + establecerHorarios(horarios : List) : void
+    + alternarEstadoCierre(abierto : boolean) : void
+    + darDeBaja() : void
+    + obtenerResumenPerfil() : RestauranteDTO
+}
+
+class Restaurante {
+    - id : String <<PK>>
+    - nombre : String
+    - direccion : String
+    - contacto : String
+    - rfc : String
+    - logoUrl : String
+    - estaAbierto : boolean
+    - activo : boolean
+    + <<constructor>> Restaurante(id, nombre, rfc)
+    + validarDisponibilidad() : boolean
+    + tienePedidosPendientes() : boolean
+}
+
+class HorarioAtencion {
+    - dia : String
+    - apertura : Time
+    - cierre : Time
+    + esHorarioValido() : boolean
+}
+
+class RestauranteRepositorio {
+    + guardar(r : Restaurante) : void
+    + actualizar(r : Restaurante) : void
+    + buscarPorId(id : String) : Restaurante
+    + existeRfc(rfc : String) : boolean
+}
+
+' Relaciones y Multiplicidad
+RestauranteControlador "1"..> "1" RestauranteDTO : "procesa"
+RestauranteControlador "1" --> "1" RestauranteRepositorio : "persiste"
+RestauranteRepositorio "1" -- "0..*" Restaurante : "gestiona"
+Restaurante "1" *-- "1..7" HorarioAtencion : "posee"
+
+note bottom of Restaurante
+  Cubre:
+  - US025.1 (RFC Único)
+  - US025.5 (estaAbierto)
+  - US025.6 (Baja lógica: activo=false)
+end note
+
+note bottom of HorarioAtencion
+  Cubre US025.4: 
+  Validación cierre > apertura.
+end note
+@enduml

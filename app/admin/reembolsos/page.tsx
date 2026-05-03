@@ -392,7 +392,7 @@ export default function ReembolsosPage() {
             {refunds.map(refund => (
               <div key={refund.order_id} className="refund-card">
                 <div className="refund-header">
-                  <span className="refund-id">Pedido #{refund.order_id}</span>
+                  <span className="refund-id">PedidoEntity #{refund.order_id}</span>
                   <span className="refund-date">{formatDate(refund.created_at)}</span>
                 </div>
                 <div className="refund-customer">Cliente: {refund.customer_name}</div>

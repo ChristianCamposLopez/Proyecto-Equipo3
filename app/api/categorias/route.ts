@@ -1,8 +1,8 @@
 // app/api/categorias/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { CategoriaController } from "../../../controllers/CategoriaController";
+import { CategoriaService } from "@/services/CategoriaService";
 
-const categoriaController = new CategoriaController();
+const categoriaService = new CategoriaService();
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = await categoriaController.getCategoriesByRestaurant(
+    const result = await categoriaService.getCategoriesByRestaurant(
       Number(restaurantId)
     );
 

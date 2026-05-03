@@ -1,6 +1,6 @@
 // hooks/useSales.ts
 import { useEffect, useState } from "react";
-import { Sale } from "@/models/entities/Sale";
+import { Sale } from "@/models/entities/VentaEntity";
 
 export const useSales = () => {
   const [sales, setSales] = useState<Sale[]>([]);

@@ -1,8 +1,8 @@
 // app/api/platos/[id]/images/route.ts
 import { NextResponse } from 'next/server';
-import { ImagenController } from '@/controllers/ImagenController';
+import { ImagenService } from '@/services/ImagenService';
 
-const imagenController = new ImagenController();
+const imagenController = new ImagenService();
 
 export async function GET(
   request: Request,

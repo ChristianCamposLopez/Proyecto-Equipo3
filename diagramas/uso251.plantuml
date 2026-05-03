@@ -1,0 +1,66 @@
+@startuml
+skinparam style strictuml
+autonumber
+title Diagrama de Secuencia - Registro de Restaurante (US025.1)
+
+' Estilo basado en tu imagen de referencia
+skinparam sequenceGroupHeaderFontSize 0
+skinparam sequenceGroupBorderThickness 1
+
+actor "Administrador" as Admin
+participant "altaPage: Next.js" as View
+participant "restCtrl: RestauranteControlador" as Ctrl
+participant "restRepo: RestauranteRepositorio" as Repo
+participant "r: Restaurante" as Rest
+database "Base de Datos" as DB
+
+Admin -> View : ingresarDatos(nombre, rfc, direccion, contacto)
+activate View
+
+View -> Ctrl : registrarRestaurante(RestauranteDTO)
+activate Ctrl
+
+' Fase 1: Validación de Identidad Fiscal Única
+note over Ctrl, Repo : **US025.1**: Validación de RFC obligatorio y único
+
+Ctrl -> Repo : existeRfc(rfc)
+activate Repo
+Repo -> DB : SELECT count(*) FROM restaurantes WHERE rfc =?
+activate DB
+DB --> Repo : 0
+deactivate DB
+Repo --> Ctrl : false (RFC disponible)
+deactivate Repo
+
+' Fase 2: Creación y Persistencia
+alt
+    note right of Ctrl : **Caso: Datos Válidos**
+    
+    ' Instanciación basada en el diagrama de clases
+    Ctrl -> Rest ** : create(id, nombre, rfc, direccion, contacto)
+    activate Rest
+    Rest --> Ctrl : instancia de Restaurante
+    deactivate Rest
+    
+    Ctrl -> Repo : guardar(r)
+    activate Repo
+    Repo -> DB : INSERT INTO restaurantes (id, nombre, rfc,...)
+    activate DB
+    DB --> Repo : ok
+    deactivate DB
+    Repo --> Ctrl : void
+    deactivate Repo
+    
+    Ctrl --> View : mensajeExito()
+    View --> Admin : mostrarConfirmacion()
+    
+else
+    ' Rama de Error por RFC Duplicado
+    note right of Ctrl : **Caso: RFC ya registrado**
+    Ctrl --> View : errorRfcDuplicado()
+    deactivate Ctrl
+    View --> Admin : mostrarNotificacionError()
+end
+
+deactivate View
+@enduml

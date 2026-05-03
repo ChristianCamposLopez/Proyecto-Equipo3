@@ -1,5 +1,5 @@
 import { ImagenDAO } from "@/models/daos/ImagenDAO";
-import { ImagenController } from "@/controllers/ImagenController";
+import { ImagenService } from "@/services/ImagenService";
 import { db } from "@/config/db";
 import { POST } from "@/app/api/platos/[id]/images/route";
 import { NextRequest } from "next/server";
@@ -92,15 +92,15 @@ describe("US009.2: Gestión de Menú – Subir imagen (Integral)", () => {
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller & API)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service & API)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
-    let controller: ImagenController;
+    let controller: ImagenService;
     let spyUnsetPrimary: jest.SpyInstance;
     let spyInsertImage: jest.SpyInstance;
 
     beforeEach(() => {
-      controller = new ImagenController();
+      controller = new ImagenService();
       spyUnsetPrimary = jest.spyOn(ImagenDAO, 'unsetPrimaryFlag');
       spyInsertImage = jest.spyOn(ImagenDAO, 'insertImage');
     });
@@ -110,7 +110,7 @@ describe("US009.2: Gestión de Menú – Subir imagen (Integral)", () => {
       spyInsertImage.mockRestore();
     });
 
-    describe("ImagenController.uploadImage", () => {
+    describe("ImagenService.uploadImage", () => {
       it("✓ debe subir una imagen válida (formato, tamaño <2MB, base64) y guardar en BD", async () => {
         const fakeInserted = { id: 99, image_path: "/uploads/test.png" };
         spyInsertImage.mockResolvedValueOnce(fakeInserted);

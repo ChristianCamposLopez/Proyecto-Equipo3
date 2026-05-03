@@ -1,0 +1,49 @@
+@startuml
+skinparam style strictuml
+autonumber
+title Diagrama de Secuencia - Consulta de Perfil de Restaurante (US025.7)
+
+' Ajustes de estilo para elegancia y limpieza visual
+skinparam sequenceGroupHeaderFontSize 0
+skinparam sequenceGroupBorderThickness 1
+
+actor "Administrador" as Admin
+participant "profilePage: Next.js" as View
+participant "restCtrl: RestauranteControlador" as Ctrl
+participant "restRepo: RestauranteRepositorio" as Repo
+participant "r: Restaurante" as Rest
+database "Base de Datos" as DB
+
+Admin -> View : navegarAPerfil()
+activate View
+
+View -> Ctrl : obtenerResumenPerfil()
+activate Ctrl
+
+' Fase 1: Recuperación de datos (Solo lectura)
+note over Ctrl, Repo : **US025.7**: Se usara la cache
+
+Ctrl -> Repo : buscarPorId(idRestaurante)
+activate Repo
+Repo -> DB : SELECT * FROM restaurantes WHERE id=?
+activate DB
+DB --> Repo : registro_encontrado
+deactivate DB
+Repo --> Ctrl : r (instancia Restaurante)
+deactivate Repo
+
+' Fase 2: Mapeo a DTO para transferencia segura
+Ctrl -> Rest : obtenerDatosResumen()
+activate Rest
+note right of Rest : Transforma la entidad en un DTO\npara no exponer campos sensibles.
+Rest --> Ctrl : RestauranteDTO
+deactivate Rest
+
+' Fase 3: Respuesta a la interfaz de usuario
+Ctrl --> View : datosResumen (DTO)
+deactivate Ctrl
+
+View --> Admin : mostrarInformacionPerfil()
+deactivate View
+
+@enduml

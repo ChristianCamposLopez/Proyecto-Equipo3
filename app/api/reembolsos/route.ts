@@ -1,20 +1,42 @@
 // app/api/reembolsos/route.ts
-import { NextResponse } from "next/server";
-import { ReembolsoController } from "@/controllers/ReembolsoController";
+// US026: Gestión de Reembolsos
+import { NextRequest, NextResponse } from "next/server";
+import { ReembolsoService } from "@/services/ReembolsoService";
 
-export async function GET(request: Request) {
+const reembolsoService = new ReembolsoService();
+
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const adminId = searchParams.get("adminId"); // Se envía desde el panel de admin
+    const restaurantId = parseInt(searchParams.get("restaurantId") || "1");
+    const type = searchParams.get("type") || "pending";
+    const limit = parseInt(searchParams.get("limit") || "50");
 
-    if (!adminId) {
-      return NextResponse.json({ error: "No autorizado. Se requiere adminId" }, { status: 400 });
+    let result;
+    if (type === "pending") {
+      result = await reembolsoService.getPendingRefunds(restaurantId);
+    } else if (type === "history") {
+      result = await reembolsoService.getRefundHistory(restaurantId, limit);
+    } else if (type === "stats") {
+      result = await reembolsoService.getRefundStats(restaurantId);
+    } else {
+      return NextResponse.json({ error: "Tipo no válido" }, { status: 400 });
     }
 
-    const controller = new ReembolsoController();
-    const result = await controller.getPendingRefunds();
     return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Error interno" }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { orderId, amount, reason } = body;
+
+    const refund = await reembolsoService.initiateRefund(orderId, amount, reason);
+    return NextResponse.json(refund, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Error al iniciar reembolso" }, { status: 500 });
   }
 }

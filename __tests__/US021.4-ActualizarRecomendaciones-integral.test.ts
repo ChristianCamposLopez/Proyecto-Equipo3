@@ -1,9 +1,9 @@
 import { PedidoDAO } from "@/models/daos/PedidoDAO";
 import { RecomendacionDAO } from "@/models/daos/RecomendacionDAO";
 import { db } from "@/config/db";
-import { PedidoController } from "@/controllers/pedidoController";
-import { RecomendacionController } from "@/controllers/RecomendacionController";
-import { POST as registrarPedido } from "@/app/api/pedidos/route";
+import { PedidoService } from "@/services/PedidoService";
+import { RecomendacionService } from "@/services/RecomendacionService";
+import { POST as registrarPedidoEntity } from "@/app/api/pedidos/route";
 import { GET as obtenerRecomendaciones } from "@/app/api/recommendations/route";
 import { NextRequest } from "next/server";
 
@@ -104,7 +104,7 @@ describe("US021.4: Experiencia del Cliente – Actualizar recomendaciones (Prueb
         items: [{ product_id: 5, quantity: 1 }],
       };
       const reqPost = createPostRequest(pedidoBody);
-      const resPost = await registrarPedido(reqPost);
+      const resPost = await registrarPedidoEntity(reqPost);
       expect(resPost.status).toBe(200);
       expect(spyRegistrarHistorial).toHaveBeenCalledWith(100, 1, 2, pedidoBody.items);
 
@@ -132,7 +132,7 @@ describe("US021.4: Experiencia del Cliente – Actualizar recomendaciones (Prueb
         items: [{ product_id: 5, quantity: 1 }],
       };
       const reqPost = createPostRequest(pedidoBody);
-      const resPost = await registrarPedido(reqPost);
+      const resPost = await registrarPedidoEntity(reqPost);
       expect(resPost.status).toBe(500); // o 400 según la implementación
       expect(spyGetTop).not.toHaveBeenCalled(); // No se intentó obtener nuevas recos porque falló el guardado
     });

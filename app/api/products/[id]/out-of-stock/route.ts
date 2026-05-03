@@ -1,6 +1,8 @@
 // app/api/products/[id]/out-of-stock/route.ts
 import { NextRequest } from 'next/server';
-import { markOutOfStock } from '@/controllers/stockController';
+import { StockService } from '@/services/StockService';
+
+const stockService = new StockService();
 
 interface Context {
   params: { id: string } | Promise<{ id: string }>;
@@ -17,5 +19,10 @@ export async function POST(req: NextRequest, context: Context) {
   if (isNaN(productId)) {
     return new Response(JSON.stringify({ error: 'ID inválido' }), { status: 400 });
   }
-  return markOutOfStock(req, productId);
+  try {
+    const updated = await stockService.markOutOfStock(productId);
+    return new Response(JSON.stringify(updated), { status: 200 });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
 }

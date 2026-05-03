@@ -3,62 +3,9 @@
 import Image from "next/image"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"; // 👈 Importa el router
+import { PedidoEntity, CartItem, CartSummary, DeliveryAddress, AddressForm } from "@/models/entities";
 
-interface Order {
-  id: number
-  status: string
-  note: string | null
-  total_amount: number
-  deliveryman_id: number | null
-  deliveryman_name: string | null
-  created_at: string
-  estimated_delivery_at: string
-}
 
-interface CartItem {
-  id: number
-  product_id: number
-  product_name: string
-  category_name: string
-  image_url: string | null
-  quantity: number
-  available_stock: number
-  is_available: boolean
-  unit_price: number
-  subtotal: number
-}
-
-interface CartSummary {
-  id: number
-  item_count: number
-  total_quantity: number
-  total_amount: number
-  restaurant_name: string | null
-  items: CartItem[]
-}
-
-interface DeliveryAddress {
-  id: number
-  street: string
-  exterior_number: string
-  interior_number: string | null
-  neighborhood: string | null
-  city: string
-  state: string
-  postal_code: string
-  references: string | null
-}
-
-interface AddressForm {
-  street: string
-  exteriorNumber: string
-  interiorNumber: string
-  neighborhood: string
-  city: string
-  state: string
-  postalCode: string
-  references: string
-}
 
 const DEMO_CUSTOMER_ID = 1
 const ORDER_REFRESH_MS = 10000
@@ -67,7 +14,7 @@ const statusLabels: Record<string, string> = {
   PENDING: "Pendiente",
   PREPARING: "Preparando",
   READY: "Listo",
-  DELIVERY_ASSIGNED: "Repartidor asignado",
+  DELIVERY_ASSIGNED: "RepartidorEntity asignado",
   ON_DELIVERY: "En camino",
   COMPLETED: "Completado",
   DELIVERED: "Entregado",
@@ -103,6 +50,8 @@ const emptyCart: CartSummary = {
   id: 0,
   item_count: 0,
   total_quantity: 0,
+  subtotal: 0,
+  iva: 0,
   total_amount: 0,
   restaurant_name: null,
   items: [],
@@ -122,17 +71,21 @@ async function readJsonResponse(response: Response) {
   }
 }
 
-function getCustomerStatus(order: Order) {
+function getCustomerStatus(order: PedidoEntity) {
   return statusLabels[order.status] ?? order.status
 }
 
-function getEstimatedDeliveryText(order: Order) {
+function getEstimatedDeliveryText(order: PedidoEntity) {
   if (["COMPLETED", "DELIVERED"].includes(order.status)) {
     return "Entregado"
   }
 
   if (order.status === "CANCELLED") {
     return "Cancelado"
+  }
+
+  if (!order.estimated_delivery_at) {
+    return "Calculando tiempo estimado"
   }
 
   const eta = new Date(order.estimated_delivery_at)
@@ -144,6 +97,7 @@ function getEstimatedDeliveryText(order: Order) {
   const etaTime = eta.toLocaleTimeString("es-MX", {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: true,
   })
 
   if (remainingMinutes <= 0) {
@@ -161,6 +115,7 @@ function formatSyncTime(date: Date | null) {
   return date.toLocaleTimeString("es-MX", {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: true,
   })
 }
 
@@ -805,7 +760,7 @@ const pageStyles = `
 export default function OrdersPage() {
   const [customerId, setCustomerId] = useState<number | null>(null);
   const router = useRouter(); // 👈 Inicializa el router
-  const [orders, setOrders] = useState<Order[]>([])
+  const [orders, setOrders] = useState<PedidoEntity[]>([])
   const [cart, setCart] = useState<CartSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -823,7 +778,7 @@ export default function OrdersPage() {
   const prevStatusRef = useRef<Map<number, string>>(new Map());
   // Ref para claves únicas de pedidos ya redirigidos
   const redirectedKeys = useRef<Set<string>>(new Set());
-  const getOrderUniqueKey = (order: Order) => `${order.id}|${order.created_at}`;
+  const getOrderUniqueKey = (order: PedidoEntity) => `${order.id}|${order.created_at}`;
 
   useEffect(() => {
     const savedId = sessionStorage.getItem('userId');
@@ -1102,33 +1057,7 @@ export default function OrdersPage() {
       if (!response.ok) throw new Error(data?.error || "No se pudo confirmar el pedido");
 
       const newOrderId = data.id; // ID del pedido recién creado
-
-      // 2. Registrar el pedido en el historial (sin modificar stock ni active tables)
-      //    Necesitamos los items del carrito y el restaurant_id.
-      //    Asumiendo que el cart contiene los items con product_id y quantity.
-      const itemsForHistory = cart.items.map(item => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-      }));
-
-      const historyRes = await fetch(`/api/pedidos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderId: newOrderId,
-          customerId: customerId,
-          restaurant_id: 1,  // Asegúrate de tener restaurant_id en cart
-          items: itemsForHistory,
-        }),
-      });
-
-      if (!historyRes.ok) {
-        // Solo loguear error, no fallar el pedido principal
-        console.error("Error al registrar historial:", await historyRes.text());
-      } else {
-        setMessage({ type: "success", text: `Pedido #${newOrderId} confirmado y enviado a cocina` });
-      }
-
+      setMessage({ type: "success", text: `Pedido #${newOrderId} confirmado y enviado a cocina` });
       setOrderNote("");
       await loadData(); // recargar pedidos y carrito
     } catch (error) {
@@ -1182,7 +1111,7 @@ export default function OrdersPage() {
         )
       );
 
-      setMessage({ type: "success", text: `Pedido #${id} cancelado correctamente` });
+      setMessage({ type: "success", text: `PedidoEntity #${id} cancelado correctamente` });
     } catch (error: any) {
       setMessage({ type: "error", text: error.message });
     } finally {
@@ -1199,7 +1128,7 @@ export default function OrdersPage() {
 
     const data = await res.json()
     if (data.success) {
-      alert("Repartidor asignado: " + (data.deliveryman?.full_name || ""))
+      alert("RepartidorEntity asignado: " + (data.deliveryman?.full_name || ""))
       loadData()
       return
     }
@@ -1546,12 +1475,12 @@ export default function OrdersPage() {
                         <div>
                           <div className="order-status-head">
                             <div>
-                              <h3 className="order-status-title">Pedido #{order.id}</h3>
+                              <h3 className="order-status-title">PedidoEntity #{order.id}</h3>
                               <p className="order-status-meta">
                                 Total ${Number(order.total_amount).toFixed(2)} · {order.note || "Sin nota especial"}
                               </p>
                               <p className="order-status-meta">
-                                Repartidor: {order.deliveryman_name ?? "Pendiente de asignación"}
+                                RepartidorEntity: {order.deliveryman_name ?? "Pendiente de asignación"}
                               </p>
                             </div>
                             <span className={`order-status-pill ${isCancelled ? "cancelled" : ""}`}>
@@ -1584,10 +1513,11 @@ export default function OrdersPage() {
                   <thead>
                     <tr>
                       <th>ID</th>
+                      <th>Fecha</th>
                       <th>Estado</th>
                       <th>Nota</th>
                       <th>Total</th>
-                      <th>Repartidor</th>
+                      <th>RepartidorEntity</th>
                       <th>Acción</th>
                     </tr>
                   </thead>
@@ -1595,6 +1525,13 @@ export default function OrdersPage() {
                     {orders.map((order) => (
                       <tr key={order.id}>
                         <td>{order.id}</td>
+                        <td style={{ fontSize: '13px' }}>
+                          {new Date(order.created_at).toLocaleDateString('es-MX', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </td>
                         <td>{getCustomerStatus(order)}</td>
                         <td>{order.note || "Sin nota"}</td>
                         <td>${Number(order.total_amount).toFixed(2)}</td>
@@ -1613,7 +1550,7 @@ export default function OrdersPage() {
                             )} */
                             }
                             {["DELIVERY_ASSIGNED", "ON_DELIVERY"].includes(order.status) && (
-                              <span style={{ color: "#24633a", fontWeight: 700 }}>Repartidor asignado</span>
+                              <span style={{ color: "#24633a", fontWeight: 700 }}>RepartidorEntity asignado</span>
                             )}
                             {["COMPLETED", "DELIVERED"].includes(order.status) && (
                               <span style={{ color: "#24633a", fontWeight: 700 }}>Entregado</span>

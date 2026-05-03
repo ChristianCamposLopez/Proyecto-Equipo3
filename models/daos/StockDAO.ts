@@ -1,240 +1,156 @@
 // models/daos/StockDAO.ts
+/**
+ * Capa de persistencia para Gestión de Stock y Productos
+ * 
+ * Historias de Usuario integradas:
+ * - US008: Gestión de stock (actualizar, agregar, descontar)
+ * - US009: Gestión de imágenes de productos
+ * - US020: Disponibilidad horaria de productos
+ */
+
 import { db } from '@/config/db';
-import { Product, StockAlert } from '../entities/Stock';
+import { ProductoEntity } from '@/models/entities';
 
 export class StockDAO {
-  // ─── US008: GET producto con stock ────────────────────────────────────
-  async getProductWithStock(productId: number): Promise<Product | null> {
-    const result = await db.query(
-      `SELECT 
-        id, category_id, name, base_price, is_available, image_url, 
-        stock_quantity, low_stock_threshold, last_stock_update
-       FROM products
-       WHERE id = $1`,
-      [productId]
-    );
-    if (result.rowCount === 0) return null;
-    return result.rows[0] as Product;
+  
+  /**
+   * Obtiene un producto con su stock actual
+   * US008: Gestión de stock
+   */
+  static async getProductWithStock(productId: number): Promise<ProductoEntity | null> {
+    const result = await db.query(`SELECT * FROM products WHERE id = $1`, [productId]);
+    return result.rowCount === 0 ? null : result.rows[0];
   }
 
-  // Obtener todos los productos con stock de un restaurante
-  async getProductsWithStock(restaurantId: number): Promise<Product[]> {
+  /**
+   * Obtiene todos los productos de un restaurante con su stock
+   * US008
+   */
+  static async getProductsWithStock(restaurantId: number): Promise<ProductoEntity[]> {
     const result = await db.query(
-      `SELECT 
-        p.id, p.category_id, p.name, p.base_price, p.is_available, p.image_url,
-        p.stock_quantity, p.low_stock_threshold, p.last_stock_update
-       FROM products p
-       JOIN categories c ON p.category_id = c.id
-       WHERE c.restaurant_id = $1
+      `SELECT p.* 
+       FROM products p 
+       JOIN categories c ON p.category_id = c.id 
+       WHERE c.restaurant_id = $1 AND p.deleted_at IS NULL
        ORDER BY p.name`,
       [restaurantId]
     );
-    return result.rows as Product[];
+    return result.rows;
   }
 
-  // ─── US008: Actualizar stock de un producto ──────────────────────────
   /**
-   * Actualiza el stock de un producto y ajusta is_available automáticamente
-   * Si stock llega a 0: is_available = false
-   * Si stock > 0: is_available = true (si estaba marcado como agotado)
+   * Actualiza el stock manualmente
+   * US008.1: Actualizar stock
    */
-  async updateStock(productId: number, newQuantity: number, reason?: string): Promise<Product> {
-    if (newQuantity < 0) {
-      throw new Error('La cantidad de stock no puede ser negativa');
-    }
-
-    // Determinar is_available basado en stock
-    const shouldBeAvailable = newQuantity > 0;
-
+  static async updateStock(productId: number, newQuantity: number, reason?: string): Promise<ProductoEntity> {
     const result = await db.query(
-      `UPDATE products
-       SET 
-        stock_quantity = $1,
-        is_available = $2,
-        last_stock_update = NOW()
-       WHERE id = $3
-       RETURNING id, category_id, name, base_price, is_available, image_url,
-                 stock_quantity, low_stock_threshold, last_stock_update`,
-      [newQuantity, shouldBeAvailable, productId]
+      `UPDATE products 
+       SET stock = $1, is_available = CASE WHEN $1 > 0 THEN true ELSE false END 
+       WHERE id = $2 RETURNING *`,
+      [newQuantity, productId]
     );
-
-    if (result.rowCount === 0) {
-      throw new Error(`Producto con id ${productId} no encontrado`);
-    }
-
-    const updated = result.rows[0] as Product;
-    console.log(`[updateStock] Producto ${productId}: stock actualizado a ${newQuantity}. Disponible: ${shouldBeAvailable}`);
-
-    return updated;
+    if (result.rowCount === 0) throw new Error(`Producto no encontrado`);
+    return result.rows[0];
   }
 
-  // ─── US008: Marcar como agotado ──────────────────────────────────────
-  async markOutOfStock(productId: number): Promise<Product> {
+  /**
+   * Incrementa el stock (reabastecimiento)
+   * US008.2: Agregar stock
+   */
+  static async addStock(productId: number, quantity: number): Promise<ProductoEntity> {
     const result = await db.query(
-      `UPDATE products
-       SET 
-        stock_quantity = 0,
-        is_available = false,
-        last_stock_update = NOW()
-       WHERE id = $1
-       RETURNING id, category_id, name, base_price, is_available, image_url,
-                 stock_quantity, low_stock_threshold, last_stock_update`,
-      [productId]
-    );
-
-    if (result.rowCount === 0) {
-      throw new Error(`Producto con id ${productId} no encontrado`);
-    }
-
-    return result.rows[0] as Product;
-  }
-
-  // Marcar como disponible (restaurar de agotado)
-  async markAvailable(productId: number, initialStock: number = 10): Promise<Product> {
-    if (initialStock <= 0) {
-      throw new Error('El stock inicial debe ser mayor a 0');
-    }
-
-    const result = await db.query(
-      `UPDATE products
-       SET 
-        stock_quantity = $1,
-        is_available = true,
-        last_stock_update = NOW()
-       WHERE id = $2
-       RETURNING id, category_id, name, base_price, is_available, image_url,
-                 stock_quantity, low_stock_threshold, last_stock_update`,
-      [initialStock, productId]
-    );
-
-    if (result.rowCount === 0) {
-      throw new Error(`Producto con id ${productId} no encontrado`);
-    }
-
-    return result.rows[0] as Product;
-  }
-
-  // Aumentar stock (reabastecimiento)
-  async addStock(productId: number, quantity: number): Promise<Product> {
-    if (quantity <= 0) {
-      throw new Error('La cantidad a agregar debe ser mayor a 0');
-    }
-
-    const result = await db.query(
-      `UPDATE products
-       SET 
-        stock_quantity = stock_quantity + $1,
-        is_available = true,
-        last_stock_update = NOW()
-       WHERE id = $2
-       RETURNING id, category_id, name, base_price, is_available, image_url,
-                 stock_quantity, low_stock_threshold, last_stock_update`,
+      `UPDATE products 
+       SET stock = stock + $1, is_available = true 
+       WHERE id = $2 RETURNING *`,
       [quantity, productId]
     );
-
-    if (result.rowCount === 0) {
-      throw new Error(`Producto con id ${productId} no encontrado`);
-    }
-
-    return result.rows[0] as Product;
+    return result.rows[0];
   }
 
-  // Descontar stock (cuando se vende)
-  async decreaseStock(productId: number, quantity: number): Promise<Product> {
-    if (quantity <= 0) {
-      throw new Error('La cantidad a descontar debe ser mayor a 0');
-    }
-
-    // Obtener stock actual
-    const current = await this.getProductWithStock(productId);
-    if (!current) {
-      throw new Error(`Producto con id ${productId} no encontrado`);
-    }
-
-    const newQuantity = Math.max(0, current.stock_quantity - quantity);
-    const shouldBeAvailable = newQuantity > 0;
-
+  /**
+   * Decrementa el stock (venta)
+   * US008.3: Descontar stock
+   */
+  static async decreaseStock(productId: number, quantity: number): Promise<ProductoEntity> {
     const result = await db.query(
-      `UPDATE products
-       SET 
-        stock_quantity = $1,
-        is_available = $2,
-        last_stock_update = NOW()
-       WHERE id = $3
-       RETURNING id, category_id, name, base_price, is_available, image_url,
-                 stock_quantity, low_stock_threshold, last_stock_update`,
-      [newQuantity, shouldBeAvailable, productId]
+      `UPDATE products 
+       SET stock = GREATEST(stock - $1, 0), 
+           is_available = CASE WHEN stock - $1 <= 0 THEN false ELSE true END 
+       WHERE id = $2 RETURNING *`,
+      [quantity, productId]
     );
-
-    return result.rows[0] as Product;
+    return result.rows[0];
   }
 
-  // Obtener alertas de stock bajo
-  async getLowStockAlerts(restaurantId: number): Promise<StockAlert[]> {
+  /**
+   * Obtiene alertas de stock bajo
+   * US008: Alertas de stock
+   */
+  static async getLowStockAlerts(restaurantId: number): Promise<ProductoEntity[]> {
     const result = await db.query(
-      `SELECT 
-        p.id as product_id,
-        p.name,
-        p.stock_quantity as current_stock,
-        p.low_stock_threshold as threshold,
-        CASE 
-          WHEN p.stock_quantity = 0 THEN 'OUT_OF_STOCK'
-          WHEN p.stock_quantity <= p.low_stock_threshold THEN 'LOW_STOCK'
-          ELSE 'NORMAL'
-        END as status
-       FROM products p
-       JOIN categories c ON p.category_id = c.id
-       WHERE c.restaurant_id = $1
-       AND (p.stock_quantity = 0 OR p.stock_quantity <= p.low_stock_threshold)
-       ORDER BY p.stock_quantity ASC, p.name`,
+      `SELECT p.* 
+       FROM products p 
+       JOIN categories c ON p.category_id = c.id 
+       WHERE c.restaurant_id = $1 
+         AND p.deleted_at IS NULL
+         AND (p.stock = 0 OR p.stock <= 5)`, // Using default threshold 5
       [restaurantId]
     );
-    return result.rows as StockAlert[];
+    return result.rows;
   }
 
-  // Obtener resumen de stock
-  async getStockSummary(restaurantId: number): Promise<{
-    total_products: number;
-    in_stock: number;
-    low_stock: number;
-    out_of_stock: number;
-  }> {
+  /**
+   * Resumen de stock para dashboard
+   */
+  static async getStockSummary(restaurantId: number) {
     const result = await db.query(
-      `SELECT 
-        COUNT(*) as total_products,
-        COUNT(CASE WHEN stock_quantity > low_stock_threshold THEN 1 END) as in_stock,
-        COUNT(CASE WHEN stock_quantity > 0 AND stock_quantity <= low_stock_threshold THEN 1 END) as low_stock,
-        COUNT(CASE WHEN stock_quantity = 0 THEN 1 END) as out_of_stock
-       FROM products p
-       JOIN categories c ON p.category_id = c.id
-       WHERE c.restaurant_id = $1`,
+      `SELECT COUNT(*) as total_products,
+              SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END) as out_of_stock,
+              SUM(CASE WHEN stock <= 5 AND stock > 0 THEN 1 ELSE 0 END) as low_stock
+       FROM products p 
+       JOIN categories c ON p.category_id = c.id 
+       WHERE c.restaurant_id = $1 AND p.deleted_at IS NULL`,
       [restaurantId]
     );
-
-    const row = result.rows[0];
-    return {
-      total_products: parseInt(row.total_products),
-      in_stock: parseInt(row.in_stock),
-      low_stock: parseInt(row.low_stock),
-      out_of_stock: parseInt(row.out_of_stock)
-    };
+    return result.rows[0];
   }
 
-  // Actualizar threshold de stock bajo
-  async updateLowStockThreshold(productId: number, threshold: number): Promise<void> {
-    if (threshold < 0) {
-      throw new Error('El threshold no puede ser negativo');
+  /**
+   * Descuenta stock masivamente por un pedido
+   * Integración US008 + US011
+   */
+  static async decreaseStockForOrder(orderId: number): Promise<void> {
+    const result = await db.query(`SELECT product_id, quantity FROM order_items WHERE order_id = $1`, [orderId]);
+    for (const item of result.rows) {
+      await this.decreaseStock(item.product_id, item.quantity);
     }
+  }
 
-    const result = await db.query(
-      `UPDATE products
-       SET low_stock_threshold = $1
-       WHERE id = $2`,
-      [threshold, productId]
-    );
-
-    if (result.rowCount === 0) {
-      throw new Error(`Producto con id ${productId} no encontrado`);
+  /**
+   * Restaura stock masivamente por cancelación
+   * Integración US008 + US024
+   */
+  static async restoreStockForOrder(orderId: number): Promise<void> {
+    const result = await db.query(`SELECT product_id, quantity FROM order_items WHERE order_id = $1`, [orderId]);
+    for (const item of result.rows) {
+      await this.addStock(item.product_id, item.quantity);
     }
+  }
+
+  /**
+   * Marca como agotado inmediatamente
+   * US008
+   */
+  static async markOutOfStock(productId: number): Promise<ProductoEntity> {
+    return await this.updateStock(productId, 0, 'Manual mark out of stock');
+  }
+
+  /**
+   * Marca como disponible con stock inicial
+   * US008
+   */
+  static async markAvailable(productId: number, initialStock: number): Promise<ProductoEntity> {
+    return await this.updateStock(productId, initialStock, 'Manual restore availability');
   }
 }
+

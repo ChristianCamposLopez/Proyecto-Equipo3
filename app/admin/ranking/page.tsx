@@ -310,7 +310,7 @@ const styles = `
 `;
 
 /*
-interface RankedProduct {
+interface RankedProductoEntity {
   product_id: number;
   product_name: string;
   total_quantity_sold: number;
@@ -334,7 +334,7 @@ export default function RankingPage() {
 
   // Estado de la petición
   const [loading, setLoading] = useState<boolean>(false);
-  const [ranking, setRanking] = useState<RankedProduct[]>([]);
+  const [ranking, setRanking] = useState<RankedProductoEntity[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRanking = async () => {
@@ -486,7 +486,7 @@ export default function RankingPage() {
   */
 
 
-interface RankedProduct {
+interface RankedProductoEntity {
   product_id: number;
   product_name: string;
   total_quantity_sold: number;
@@ -509,7 +509,7 @@ export default function RankingPage() {
   
   const [topN, setTopN] = useState<number>(5);
   const [loading, setLoading] = useState<boolean>(false);
-  const [ranking, setRanking] = useState<RankedProduct[]>([]);
+  const [ranking, setRanking] = useState<RankedProductoEntity[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState<string>('');
 

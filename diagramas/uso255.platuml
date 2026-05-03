@@ -1,0 +1,57 @@
+@startuml
+skinparam style strictuml
+autonumber
+title Diagrama de Secuencia - Apertura / Cierre del Restaurante (US025.5)
+
+' Estilo para simpleza visual y elegancia profesional
+skinparam sequenceGroupHeaderFontSize 0
+skinparam sequenceGroupBorderThickness 1
+
+actor "Administrador" as Admin
+participant "dashboard: Next.js" as View
+participant "restCtrl: RestauranteControlador" as Ctrl
+participant "restRepo: RestauranteRepositorio" as Repo
+participant "r: Restaurante" as Rest
+database "Base de Datos" as DB
+
+Admin -> View : toggleEstado(abierto)
+activate View
+
+View -> Ctrl : alternarCierre(abierto)
+activate Ctrl
+
+' Fase 1: Sincronización de objeto desde persistencia
+Ctrl -> Repo : buscarPorId(idRestaurante)
+activate Repo
+Repo -> DB : SELECT * FROM restaurantes WHERE id=?
+activate DB
+DB --> Repo : registro_encontrado
+deactivate DB
+Repo --> Ctrl : r (instancia Restaurante)
+deactivate Repo
+
+' Fase 2: Cambio de estado de negocio (US025.5)
+note right of Ctrl : **US025.5**: El estado "Cerrado" \nbloquea transacciones futuras en el carrito.
+
+Ctrl -> Rest : actualizarEstado(abierto)
+activate Rest
+Rest --> Ctrl : void
+deactivate Rest
+
+' Fase 3: Persistencia de la disponibilidad operativa
+Ctrl -> Repo : actualizar(r)
+activate Repo
+Repo -> DB : UPDATE restaurantes SET esta_abierto=? WHERE id=?
+activate DB
+DB --> Repo : exito
+deactivate DB
+Repo --> Ctrl : void
+deactivate Repo
+
+Ctrl --> View : confirmacionActualizacion()
+deactivate Ctrl
+
+View --> Admin : mostrarCambioEnPantalla()
+deactivate View
+
+@enduml

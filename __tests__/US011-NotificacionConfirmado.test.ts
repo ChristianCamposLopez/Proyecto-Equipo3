@@ -15,7 +15,7 @@ jest.mock("@/lib/cart", () => ({
   resolveCustomerId: jest.fn(),
 }));
 
-describe("US011: Confirmación de Pedido - Pruebas de Persistencia y Servicio", () => {
+describe("US011: Confirmación de PedidoEntity - Pruebas de Persistencia y Servicio", () => {
   
   beforeEach(() => {
     jest.clearAllMocks();

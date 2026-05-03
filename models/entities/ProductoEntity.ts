@@ -7,6 +7,8 @@ export interface ProductoEntity {
   is_available: boolean;
   is_active: boolean;
   stock: number;
+  image_url?: string | null;
+  category_name?: string;
   deleted_at: Date | null;
   descripcion: string | null;
 }

@@ -1,8 +1,8 @@
 // app/api/platos/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { MenuController } from '../../../controllers/MenuController';
+import { MenuService } from '@/services/MenuService';
 
-const menuController = new MenuController();
+const menuService = new MenuService();
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const product = await menuController.createProduct({
+    const product = await menuService.createProductoEntity({
       name,
       base_price: Number(base_price),
       stock: Number(stock),
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     const categoryId = searchParams.get('categoryId'); //NUEVO Para filtaredo de categorias USOO1 (Sprint 6)
     const includeInactive = searchParams.get('includeInactive') === 'true';
 
-    const result = await menuController.getCatalogProducts(
+    const result = await menuService.getCatalogProducts(
       restaurantId ? Number(restaurantId) : null,
       includeInactive,
       categoryId ? Number(categoryId) : null //NUEVO Para filtrado de categorias USOO1 (Sprint 6)

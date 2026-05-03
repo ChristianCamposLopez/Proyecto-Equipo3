@@ -1,5 +1,5 @@
 import { ReembolsoDAO } from "@/models/daos/ReembolsoDAO";
-import { ReembolsoController } from "@/controllers/ReembolsoController";
+import { ReembolsoService } from "@/services/ReembolsoService";
 import { db } from "@/config/db";
 import { GET } from "@/app/api/reembolsos/route";
 import { PATCH } from "@/app/api/reembolsos/[id]/process/route";
@@ -72,7 +72,7 @@ describe("US026: Pagos y Facturación – Reembolso (Integral)", () => {
 
       it("✗ debe lanzar error si el pedido no existe o no está CANCELLED", async () => {
         mockQuery.mockResolvedValueOnce({ rowCount: 0 });
-        await expect(ReembolsoDAO.approveRefund(999)).rejects.toThrow("Pedido no encontrado o no está pendiente de reembolso");
+        await expect(ReembolsoDAO.approveRefund(999)).rejects.toThrow("PedidoEntity no encontrado o no está pendiente de reembolso");
       });
     });
 
@@ -88,16 +88,16 @@ describe("US026: Pagos y Facturación – Reembolso (Integral)", () => {
 
       it("✗ debe lanzar error si el pedido no está pendiente", async () => {
         mockQuery.mockResolvedValueOnce({ rowCount: 0 });
-        await expect(ReembolsoDAO.rejectRefund(789, "Fuera de plazo")).rejects.toThrow("Pedido no encontrado o no está pendiente de reembolso");
+        await expect(ReembolsoDAO.rejectRefund(789, "Fuera de plazo")).rejects.toThrow("PedidoEntity no encontrado o no está pendiente de reembolso");
       });
     });
   });
 
   // =========================================================
-  // SECCIÓN 2: CAPA DE SERVICIOS E INTEGRACIÓN (Controller & API)
+  // SECCIÓN 2: CAPA DE SERVICIOS E INTEGRACIÓN (Service & API)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
-    let controller: ReembolsoController;
+    let controller: ReembolsoService;
     
     // Espías para mockear el DAO y aislar el controlador
     let spyGetPending: jest.SpyInstance;
@@ -105,7 +105,7 @@ describe("US026: Pagos y Facturación – Reembolso (Integral)", () => {
     let spyReject: jest.SpyInstance;
 
     beforeEach(() => {
-      controller = new ReembolsoController();
+      controller = new ReembolsoService();
       spyGetPending = jest.spyOn(ReembolsoDAO, 'getPendingRefunds');
       spyApprove = jest.spyOn(ReembolsoDAO, 'approveRefund');
       spyReject = jest.spyOn(ReembolsoDAO, 'rejectRefund');
@@ -117,7 +117,7 @@ describe("US026: Pagos y Facturación – Reembolso (Integral)", () => {
       spyReject.mockRestore();
     });
 
-    describe("ReembolsoController.getPendingRefunds", () => {
+    describe("ReembolsoService.getPendingRefunds", () => {
       it("✓ debe devolver objeto con lista de reembolsos pendientes", async () => {
         const fakeRefunds = [{ order_id: 1, total_amount: 100 }];
         spyGetPending.mockResolvedValueOnce(fakeRefunds);
@@ -132,7 +132,7 @@ describe("US026: Pagos y Facturación – Reembolso (Integral)", () => {
       });
     });
 
-    describe("ReembolsoController.approveRefund", () => {
+    describe("ReembolsoService.approveRefund", () => {
       it("✓ debe aprobar reembolso y retornar mensaje de éxito", async () => {
         spyApprove.mockResolvedValueOnce({ id: 10 });
         const result = await controller.approveRefund(10);
@@ -141,12 +141,12 @@ describe("US026: Pagos y Facturación – Reembolso (Integral)", () => {
       });
 
       it("✗ debe propagar errores del DAO (ej. pedido no encontrado)", async () => {
-        spyApprove.mockRejectedValueOnce(new Error("Pedido no encontrado"));
-        await expect(controller.approveRefund(999)).rejects.toThrow("Pedido no encontrado");
+        spyApprove.mockRejectedValueOnce(new Error("PedidoEntity no encontrado"));
+        await expect(controller.approveRefund(999)).rejects.toThrow("PedidoEntity no encontrado");
       });
     });
 
-    describe("ReembolsoController.rejectRefund", () => {
+    describe("ReembolsoService.rejectRefund", () => {
       it("✓ debe rechazar reembolso con motivo y retornar mensaje", async () => {
         spyReject.mockResolvedValueOnce({ id: 5 });
         const result = await controller.rejectRefund(5, "Fuera de tiempo");
@@ -161,7 +161,7 @@ describe("US026: Pagos y Facturación – Reembolso (Integral)", () => {
         const listaDePrueba = [{ order_id: 1, total_amount: 100 }];
         
         // 2. IMPORTANTE: Si spyGetPending es un spy de ReembolsoDAO
-        // DEBE devolver el arreglo. El Controller se encargará de envolverlo.
+        // DEBE devolver el arreglo. El Service se encargará de envolverlo.
         spyGetPending.mockResolvedValueOnce(listaDePrueba); 
 
         const req = new Request("http://localhost/api/reembolsos?adminId=admin123");

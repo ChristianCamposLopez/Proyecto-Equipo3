@@ -1,5 +1,6 @@
 import 'react'
 import React from 'react';
+import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import MenuPage from '../app/menu/page';
 
@@ -81,7 +82,7 @@ describe('MenuPage Component', () => {
     });
   });
 
-  describe('Product Information', () => {
+  describe('ProductoEntity Information', () => {
     it('should format price with 2 decimals', async () => {
       const mockProducts = [
         {
@@ -177,7 +178,7 @@ describe('MenuPage Component', () => {
     });
   });
 
-  describe('Product Availability', () => {
+  describe('ProductoEntity Availability', () => {
     it('should show unavailable status', async () => {
       const mockProducts = [
         {

@@ -1,8 +1,8 @@
 // app/api/platos/[id]/availability/route.ts
 import { NextResponse } from 'next/server';
-import { DisponibilidadController } from '@/controllers/DisponibilidadController';
+import { DisponibilidadService } from '@/services/DisponibilidadService';
 
-const controller = new DisponibilidadController();
+const controller = new DisponibilidadService();
 
 export async function GET(
   request: Request,
@@ -14,7 +14,7 @@ export async function GET(
     if (isNaN(productId)) {
       return NextResponse.json({ error: 'Invalid product id' }, { status: 400 });
     }
-    const availability = await controller.getByProduct(productId);
+    const availability = await controller.getByProductoEntity(productId);
     return NextResponse.json({ availability });
   } catch (err) {
     console.error(err);

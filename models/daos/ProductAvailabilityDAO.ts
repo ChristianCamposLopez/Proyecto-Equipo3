@@ -1,4 +1,6 @@
+// models/daos/ProductAvailabilityDAO.ts
 import { db } from '@/config/db';
+import { ProductoEntity } from '@/models/entities';
 
 export type ProductAvailability = {
   id: number;
@@ -8,7 +10,10 @@ export type ProductAvailability = {
 };
 
 export class ProductAvailabilityDAO {
-  async updateStock(productId: number, stock: number): Promise<ProductAvailability> {
+  /**
+   * Actualiza el stock de un producto (US008)
+   */
+  static async updateStock(productId: number, stock: number): Promise<ProductAvailability> {
     if (!Number.isInteger(stock) || stock < 0) {
       throw new Error('El stock debe ser un entero mayor o igual a cero');
     }
@@ -29,3 +34,4 @@ export class ProductAvailabilityDAO {
     return result.rows[0] as ProductAvailability;
   }
 }
+

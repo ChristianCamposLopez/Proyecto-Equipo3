@@ -1,6 +1,6 @@
 import { DisponibilidadDAO } from "@/models/daos/DisponibilidadDAO";
 import { db } from "@/config/db";
-import { DisponibilidadController } from "@/controllers/DisponibilidadController";
+import { DisponibilidadService } from "@/services/DisponibilidadService";
 import { POST } from "@/app/api/platos/[id]/availability/route";
 import { NextRequest } from "next/server";
 
@@ -101,7 +101,7 @@ describe("US020.1: Gestión de Menú – Registrar horario (Pruebas Integrales)"
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller + API Route)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service + API Route)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
     // Espías para interceptar los métodos del DAO sin mockear el módulo completo
@@ -118,13 +118,13 @@ describe("US020.1: Gestión de Menú – Registrar horario (Pruebas Integrales)"
       spyHasOverlap.mockRestore();
     });
 
-    describe("DisponibilidadController.create", () => {
+    describe("DisponibilidadService.create", () => {
       it("✓ debe crear un horario cuando no hay solapamiento y tiempos válidos", async () => {
         spyHasOverlap.mockResolvedValueOnce(false);
         const fakeSchedule = { id: 1, product_id: 10, day_of_week: 2, start_time: "08:00", end_time: "12:00" };
         spyCreate.mockResolvedValueOnce(fakeSchedule);
 
-        const controller = new DisponibilidadController();
+        const controller = new DisponibilidadService();
         const result = await controller.create({
           productId: 10,
           dayOfWeek: 2,
@@ -143,7 +143,7 @@ describe("US020.1: Gestión de Menú – Registrar horario (Pruebas Integrales)"
       });
 
       it("✗ debe lanzar error si startTime >= endTime", async () => {
-        const controller = new DisponibilidadController();
+        const controller = new DisponibilidadService();
         await expect(controller.create({
           productId: 1,
           dayOfWeek: 1,
@@ -154,7 +154,7 @@ describe("US020.1: Gestión de Menú – Registrar horario (Pruebas Integrales)"
       });
 
       it("✗ debe lanzar error si dayOfWeek está fuera de rango (0-6)", async () => {
-        const controller = new DisponibilidadController();
+        const controller = new DisponibilidadService();
         await expect(controller.create({
           productId: 1,
           dayOfWeek: 7,
@@ -165,7 +165,7 @@ describe("US020.1: Gestión de Menú – Registrar horario (Pruebas Integrales)"
 
       it("✗ debe lanzar error si hay solapamiento con otro horario", async () => {
         spyHasOverlap.mockResolvedValueOnce(true);
-        const controller = new DisponibilidadController();
+        const controller = new DisponibilidadService();
         await expect(controller.create({
           productId: 1,
           dayOfWeek: 1,

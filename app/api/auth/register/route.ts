@@ -2,15 +2,14 @@
 // API Route — US010.1: Registro de Administrador
 
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthControlador } from '@/controllers/AuthControlador';
+import { AuthService } from '@/services/AuthService';
 import { AutenticacionDTO } from '@/models/entities/AutenticacionDTO';
 
-const authCtrl = new AuthControlador();
+const authService = new AuthService();
 
 /**
  * POST /api/auth/register
  * Recibe AutenticacionDTO → registra nuevo usuario.
- * Diagrama de Secuencia US010.1: vista → authCtrl.registrar(AutenticacionDTO)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -30,10 +29,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Paso 2 del diagrama: registrar(AutenticacionDTO)
-    await authCtrl.registrar(datos);
+    await authService.registrar(datos);
 
-    // Paso 13-14 del diagrama: mensajeExito → mostrarConfirmacion
     return NextResponse.json(
       { mensaje: 'Usuario registrado exitosamente' },
       { status: 201 }

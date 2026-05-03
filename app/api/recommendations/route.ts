@@ -1,6 +1,6 @@
 // app/api/recommendations/route.ts
 import { NextResponse } from "next/server";
-import { RecomendacionController } from "@/controllers/RecomendacionController";
+import { RecomendacionService } from "@/services/RecomendacionService";
 
 export async function GET(request: Request) {
   try {
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const controller = new RecomendacionController();
+    const controller = new RecomendacionService();
     
     // Ahora usamos el customerId real que vino en la URL
     const recommendations = await controller.getRecommendationsForUser(

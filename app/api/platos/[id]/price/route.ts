@@ -1,8 +1,8 @@
 // app/api/platos/[id]/price/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { MenuController } from '@/controllers/MenuController';
+import { MenuService } from '@/services/MenuService';
 
-const menuController = new MenuController();
+const menuController = new MenuService();
 
 export async function PATCH(
   request: NextRequest,

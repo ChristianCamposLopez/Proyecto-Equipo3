@@ -263,7 +263,7 @@ export default function KitchenPage() {
                 <article className="kitchen-ticket" key={order.id}>
                   <div className="ticket-head">
                     <div>
-                      <div className="ticket-id">Pedido #{order.id}</div>
+                      <div className="ticket-id">PedidoEntity #{order.id}</div>
                       <div className="ticket-meta">
                         {order.customer_name ?? "Cliente"} · ${Number(order.total_amount).toFixed(2)}
                       </div>

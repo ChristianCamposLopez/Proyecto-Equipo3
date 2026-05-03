@@ -1,6 +1,6 @@
 import { RecomendacionDAO } from "@/models/daos/RecomendacionDAO";
 import { db } from "@/config/db";
-import { RecomendacionController } from "@/controllers/RecomendacionController";
+import { RecomendacionService } from "@/services/RecomendacionService";
 import { GET } from "@/app/api/recommendations/route";
 import { NextRequest } from "next/server";
 
@@ -66,7 +66,7 @@ describe("US021.2: Experiencia del Cliente – Analizar frecuencia (Pruebas Inte
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller + API Route)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service + API Route)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
     let spyGetTop: jest.SpyInstance;
@@ -79,11 +79,11 @@ describe("US021.2: Experiencia del Cliente – Analizar frecuencia (Pruebas Inte
       spyGetTop.mockRestore();
     });
 
-    describe("RecomendacionController.getRecommendationsForUser", () => {
+    describe("RecomendacionService.getRecommendationsForUser", () => {
       it("✓ debe devolver recomendaciones cuando hay historial", async () => {
         const recs = [{ id: 1, name: "Taco", score: 8 }];
         spyGetTop.mockResolvedValueOnce(recs);
-        const controller = new RecomendacionController();
+        const controller = new RecomendacionService();
         const result = await controller.getRecommendationsForUser(1, 5);
         expect(spyGetTop).toHaveBeenCalledWith(1, 5);
         expect(result).toEqual(recs);
@@ -91,14 +91,14 @@ describe("US021.2: Experiencia del Cliente – Analizar frecuencia (Pruebas Inte
 
       it("✓ debe devolver arreglo vacío si no hay recomendaciones", async () => {
         spyGetTop.mockResolvedValueOnce([]);
-        const controller = new RecomendacionController();
+        const controller = new RecomendacionService();
         const result = await controller.getRecommendationsForUser(1, 5);
         expect(result).toEqual([]);
       });
 
       it("✗ debe propagar errores del DAO", async () => {
         spyGetTop.mockRejectedValueOnce(new Error("DB error"));
-        const controller = new RecomendacionController();
+        const controller = new RecomendacionService();
         await expect(controller.getRecommendationsForUser(1, 5)).rejects.toThrow("DB error");
       });
     });

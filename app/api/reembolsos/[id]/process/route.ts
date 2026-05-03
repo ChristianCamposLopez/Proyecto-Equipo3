@@ -1,6 +1,6 @@
 // app/api/reembolsos/[id]/process/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { ReembolsoController } from "@/controllers/ReembolsoController";
+import { ReembolsoService } from "@/services/ReembolsoService";
 
 export async function PATCH(
   req: NextRequest,
@@ -20,7 +20,7 @@ export async function PATCH(
       return NextResponse.json({ error: "ID inválido" }, { status: 400 });
     }
 
-    const controller = new ReembolsoController();
+    const controller = new ReembolsoService();
 
     if (action === "approve") {
       const result = await controller.approveRefund(orderId);

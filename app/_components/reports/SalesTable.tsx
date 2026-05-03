@@ -1,6 +1,6 @@
 // components/reports/SalesTable.tsx
 import React from 'react';
-import { Sale } from '@/models/entities/Sale';
+import { Sale } from '@/models/entities/VentaEntity';
 
 interface SalesTableProps {
   sales: Sale[];

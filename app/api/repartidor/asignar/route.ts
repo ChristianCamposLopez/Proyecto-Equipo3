@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RepartidorController } from '@/controllers/RepartidorController';
+import { RepartidorService } from '@/services/RepartidorService';
 
-const controller = new RepartidorController();
+const controller = new RepartidorService();
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const resultado = await controller.autoAssign(Number(orderId));
 
     return NextResponse.json({
-      mensaje: 'Repartidor asignado correctamente',
+      mensaje: 'RepartidorEntity asignado correctamente',
       repartidor: resultado.repartidor,
       orderId: resultado.orderId,
     });

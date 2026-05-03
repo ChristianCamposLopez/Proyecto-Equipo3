@@ -1,5 +1,5 @@
 import { ProductoDAO } from "@/models/daos/ProductoDAO";
-import { MenuController } from "@/controllers/MenuController";
+import { MenuService } from "@/services/MenuService";
 import { db } from "@/config/db";
 import { DELETE } from "@/app/api/platos/[id]/delete/route";
 import { NextRequest } from "next/server";
@@ -66,16 +66,16 @@ describe("US005.3: Gestión de Menú – Eliminar plato (Pruebas Integrales)", (
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller & API)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service & API)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
     
-    let controller: MenuController;
+    let controller: MenuService;
     let spyFindById: jest.SpyInstance;
     let spyLogicalDelete: jest.SpyInstance;
 
     beforeEach(() => {
-      controller = new MenuController();
+      controller = new MenuService();
       // Espiamos los métodos del DAO para controlar su comportamiento en esta capa
       spyFindById = jest.spyOn(ProductoDAO, 'findByIdIncludingInactive');
       spyLogicalDelete = jest.spyOn(ProductoDAO, 'logicalDelete');
@@ -85,12 +85,12 @@ describe("US005.3: Gestión de Menú – Eliminar plato (Pruebas Integrales)", (
       jest.restoreAllMocks();
     });
 
-    describe("MenuController.eliminarProduct", () => {
+    describe("MenuService.eliminarProductoEntity", () => {
       it("✓ debe eliminar lógicamente si el producto existe", async () => {
         spyFindById.mockResolvedValueOnce({ id: 5, name: "Test" });
         spyLogicalDelete.mockResolvedValueOnce(true);
         
-        await expect(controller.eliminarProduct(5)).resolves.toBeUndefined();
+        await expect(controller.eliminarProductoEntity(5)).resolves.toBeUndefined();
         
         expect(spyFindById).toHaveBeenCalledWith(5);
         expect(spyLogicalDelete).toHaveBeenCalledWith(5);
@@ -99,7 +99,7 @@ describe("US005.3: Gestión de Menú – Eliminar plato (Pruebas Integrales)", (
       it("✗ debe lanzar error si el producto no existe", async () => {
         spyFindById.mockResolvedValueOnce(null);
         
-        await expect(controller.eliminarProduct(99)).rejects.toThrow("Producto no encontrado");
+        await expect(controller.eliminarProductoEntity(99)).rejects.toThrow("Producto no encontrado");
         expect(spyLogicalDelete).not.toHaveBeenCalled();
       });
 
@@ -107,7 +107,7 @@ describe("US005.3: Gestión de Menú – Eliminar plato (Pruebas Integrales)", (
         spyFindById.mockResolvedValueOnce({ id: 1 });
         spyLogicalDelete.mockResolvedValueOnce(false);
         
-        await expect(controller.eliminarProduct(1)).rejects.toThrow("No se pudo eliminar el producto");
+        await expect(controller.eliminarProductoEntity(1)).rejects.toThrow("No se pudo eliminar el producto");
       });
     });
 

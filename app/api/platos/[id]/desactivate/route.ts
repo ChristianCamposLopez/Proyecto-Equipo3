@@ -1,8 +1,8 @@
 // app/api/platos/[id]/desactivate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { MenuController } from '@/controllers/MenuController';
+import { MenuService } from '@/services/MenuService';
 
-const menuController = new MenuController();
+const menuController = new MenuService();
 
 export async function PATCH(
   req: NextRequest,
@@ -14,7 +14,7 @@ export async function PATCH(
     if (isNaN(productId)) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
     }
-    await menuController.deactivateProduct(productId);
+    await menuController.deactivateProductoEntity(productId);
     return NextResponse.json({ message: 'Producto desactivado' });
   } catch (err: any) {
     console.error(err);

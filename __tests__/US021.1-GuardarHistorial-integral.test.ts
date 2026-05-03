@@ -1,6 +1,6 @@
 import { PedidoDAO } from "@/models/daos/PedidoDAO";
 import { db } from "@/config/db";
-import { PedidoController } from "@/controllers/pedidoController";
+import { PedidoService } from "@/services/PedidoService";
 import { POST, GET } from "@/app/api/pedidos/route";
 import { NextRequest } from "next/server";
 
@@ -91,7 +91,7 @@ describe("US021.1: Experiencia del Cliente – Guardar historial de pedidos (Pru
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller + API Routes)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service + API Routes)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
     // Espías para interceptar los métodos del DAO sin mockear todo el módulo
@@ -108,17 +108,17 @@ describe("US021.1: Experiencia del Cliente – Guardar historial de pedidos (Pru
       spyGetPedidosByUser.mockRestore();
     });
 
-    describe("PedidoController.registrarHistorial", () => {
+    describe("PedidoService.registrarHistorial", () => {
       it("✓ debe llamar al DAO con los parámetros correctos", async () => {
         spyRegistrarHistorial.mockResolvedValueOnce({ success: true });
         const items = [{ product_id: 1, quantity: 2 }];
-        const controller = new PedidoController();
+        const controller = new PedidoService();
         await controller.registrarHistorial(100, 5, 10, items);
         expect(spyRegistrarHistorial).toHaveBeenCalledWith(100, 5, 10, items);
       });
 
       it("✗ debe lanzar error si items está vacío", async () => {
-        const controller = new PedidoController();
+        const controller = new PedidoService();
         await expect(controller.registrarHistorial(1, 1, 1, []))
           .rejects.toThrow("No hay items para registrar en historial");
         expect(spyRegistrarHistorial).not.toHaveBeenCalled();
@@ -133,7 +133,7 @@ describe("US021.1: Experiencia del Cliente – Guardar historial de pedidos (Pru
         const res = await POST(req);
         expect(res.status).toBe(200);
         const json = await res.json();
-        expect(json).toEqual({ message: "Pedido registrado en historial", pedidoId: 1 });
+        expect(json).toEqual({ message: "PedidoEntity registrado en historial", pedidoId: 1 });
       });
 
       it("✗ debe retornar 400 si faltan campos obligatorios", async () => {

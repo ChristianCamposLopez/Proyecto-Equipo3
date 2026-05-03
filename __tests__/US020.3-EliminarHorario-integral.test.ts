@@ -1,6 +1,6 @@
 import { DisponibilidadDAO } from "@/models/daos/DisponibilidadDAO";
 import { db } from "@/config/db";
-import { DisponibilidadController } from "@/controllers/DisponibilidadController";
+import { DisponibilidadService } from "@/services/DisponibilidadService";
 import { DELETE } from "@/app/api/platos/[id]/availability/[availabilityId]/route";
 import { NextRequest } from "next/server";
 
@@ -47,7 +47,7 @@ describe("US020.3: Gestión de Menú – Eliminar horario (Pruebas Integrales)",
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller + API Route)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service + API Route)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
     // Espías para interceptar los métodos del DAO sin mockear el módulo completo
@@ -61,10 +61,10 @@ describe("US020.3: Gestión de Menú – Eliminar horario (Pruebas Integrales)",
       spyDelete.mockRestore();
     });
 
-    describe("DisponibilidadController.delete", () => {
+    describe("DisponibilidadService.delete", () => {
       it("✓ debe eliminar horario existente y retornar true", async () => {
         spyDelete.mockResolvedValueOnce(true);
-        const controller = new DisponibilidadController();
+        const controller = new DisponibilidadService();
         const result = await controller.delete(10);
         expect(spyDelete).toHaveBeenCalledWith(10);
         expect(result).toBe(true);
@@ -72,7 +72,7 @@ describe("US020.3: Gestión de Menú – Eliminar horario (Pruebas Integrales)",
 
       it("✗ debe lanzar 'Not found' si delete retorna false", async () => {
         spyDelete.mockResolvedValueOnce(false);
-        const controller = new DisponibilidadController();
+        const controller = new DisponibilidadService();
         await expect(controller.delete(99)).rejects.toThrow("Not found");
       });
     });

@@ -1,5 +1,5 @@
 import { ProductoDAO } from "@/models/daos/ProductoDAO";
-import { MenuController } from "@/controllers/MenuController";
+import { MenuService } from "@/services/MenuService";
 import { db } from "@/config/db";
 import { GET } from "@/app/api/platos/route";
 import { NextRequest } from "next/server";
@@ -116,7 +116,7 @@ describe("US001: Filtrado de Platos - PRUEBAS INTEGRALES", () => {
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller y API)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service y API)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
     
@@ -131,12 +131,12 @@ describe("US001: Filtrado de Platos - PRUEBAS INTEGRALES", () => {
       daoSpy.mockRestore();
     });
 
-    describe("MenuController.getCatalogProducts", () => {
+    describe("MenuService.getCatalogProducts", () => {
       it("✓ debe llamar a ProductoDAO con restaurantId, includeInactive y categoryId correctos", async () => {
         const fakeProducts = [{ id: 1, name: "Burger", base_price: 5 }];
         daoSpy.mockResolvedValue(fakeProducts);
 
-        const controller = new MenuController();
+        const controller = new MenuService();
         const result = await controller.getCatalogProducts(5, true, 12);
 
         expect(daoSpy).toHaveBeenCalledWith(5, true, 12);
@@ -145,14 +145,14 @@ describe("US001: Filtrado de Platos - PRUEBAS INTEGRALES", () => {
 
       it("✓ debe pasar null para categoryId cuando no se proporciona", async () => {
         daoSpy.mockResolvedValue([]);
-        const controller = new MenuController();
+        const controller = new MenuService();
         await controller.getCatalogProducts(2, false, null);
         expect(daoSpy).toHaveBeenCalledWith(2, false, null);
       });
 
       it("✓ debe usar valores por defecto includeInactive=false y categoryId=null", async () => {
         daoSpy.mockResolvedValue([]);
-        const controller = new MenuController();
+        const controller = new MenuService();
         await controller.getCatalogProducts(3);
         expect(daoSpy).toHaveBeenCalledWith(3, false, null);
       });
@@ -160,7 +160,7 @@ describe("US001: Filtrado de Platos - PRUEBAS INTEGRALES", () => {
       it("✗ debe propagar errores del DAO", async () => {
         const error = new Error("Error en base de datos");
         daoSpy.mockRejectedValue(error);
-        const controller = new MenuController();
+        const controller = new MenuService();
         await expect(controller.getCatalogProducts(1)).rejects.toThrow("Error en base de datos");
       });
     });

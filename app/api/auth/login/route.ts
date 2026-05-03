@@ -2,15 +2,14 @@
 // API Route — US010.2: Inicio de Sesión (Login)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthControlador } from '@/controllers/AuthControlador';
+import { AuthService } from '@/services/AuthService';
 import { AutenticacionDTO } from '@/models/entities/AutenticacionDTO';
 
-const authCtrl = new AuthControlador();
+const authService = new AuthService();
 
 /**
  * POST /api/auth/login
- * Recibe AutenticacionDTO → valida credenciales → retorna JWT.
- * Diagrama de Secuencia US010.2: loginPage → authCtrl.login(AutenticacionDTO)
+ * Recibe AutenticacionDTO → valida credenciales.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -24,12 +23,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email y contraseña son obligatorios' }, { status: 400 });
     }
 
-    // Ahora authCtrl.login nos devuelve el objeto { token, userId, rol }
-    const authData = await authCtrl.login(datos);
+    const authData = await authService.login(datos);
 
     return NextResponse.json(
       { 
-        token: authData.token, 
         userId: authData.userId, 
         rol: authData.rol, 
         mensaje: 'Inicio de sesión exitoso' 
@@ -39,7 +36,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const mensaje = error instanceof Error ? error.message : 'Error interno del servidor';
 
-    // Determinar código de estado según el tipo de error
     let status = 500;
     if (mensaje.includes('no encontrado')) status = 404;
     if (mensaje.includes('incorrecta')) status = 401;

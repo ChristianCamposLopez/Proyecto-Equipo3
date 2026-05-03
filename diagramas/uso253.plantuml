@@ -1,0 +1,65 @@
+@startuml
+skinparam style strictuml
+autonumber
+title Diagrama de Secuencia - Subir Logo de Restaurante (US025.3)
+
+' Estilo para elegancia visual
+skinparam sequenceGroupHeaderFontSize 0
+skinparam sequenceGroupBorderThickness 1
+
+actor "Administrador" as Admin
+participant "configPage: Next.js" as View
+participant "restCtrl: RestauranteControlador" as Ctrl
+participant "storage: ServicioAlmacenamiento" as Store
+participant "restRepo: RestauranteRepositorio" as Repo
+participant "r: Restaurante" as Rest
+database "Base de Datos" as DB
+
+Admin -> View : seleccionarImagen(archivo)
+activate View
+
+View -> Ctrl : gestionarImagen(archivo)
+activate Ctrl
+
+' Fase 1: Validación técnica del archivo
+note right of Ctrl : **US025.3**: Validar peso < 2MB\ny formato (jpg/png)
+
+alt Archivo Válido
+    
+    ' Fase 2: Almacenamiento Físico (Local o Cloud)
+    Ctrl -> Store : guardarArchivo(archivo)
+    activate Store
+    Store --> Ctrl : logoUrl (String)
+    deactivate Store
+    
+    ' Fase 3: Persistencia de la ruta en la Entidad
+    Ctrl -> Repo : buscarPorId(id)
+    activate Repo
+    Repo --> Ctrl : r (instancia Restaurante)
+    deactivate Repo
+    
+    Ctrl -> Rest : setLogoUrl(logoUrl)
+    activate Rest
+    Rest --> Ctrl : void
+    deactivate Rest
+    
+    Ctrl -> Repo : actualizar(r)
+    activate Repo
+    Repo -> DB : UPDATE restaurantes SET logo_url=?
+    activate DB
+    DB --> Repo : ok
+    deactivate DB
+    Repo --> Ctrl : void
+    deactivate Repo
+    
+    Ctrl --> View : confirmacionCarga()
+    View --> Admin : mostrarNuevoLogo()
+    
+else Archivo Excede Límite
+    Ctrl --> View : errorPesoExcedido()
+    deactivate Ctrl
+    View --> Admin : mostrarNotificacionError()
+end
+
+deactivate View
+@enduml

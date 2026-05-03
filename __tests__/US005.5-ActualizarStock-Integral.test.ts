@@ -1,5 +1,5 @@
 import { ProductoDAO } from "@/models/daos/ProductoDAO";
-import { MenuController } from "@/controllers/MenuController";
+import { MenuService } from "@/services/MenuService";
 import { db } from "@/config/db";
 import { PATCH } from "@/app/api/platos/[id]/stock/route";
 import { NextRequest } from "next/server";
@@ -67,15 +67,15 @@ describe("US005.5: Gestión de Menú – Actualizar stock (Integral)", () => {
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS Y API (MenuController + Routes)
+  // 2. CAPA DE SERVICIOS Y API (MenuService + Routes)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
-    let controller: MenuController;
+    let controller: MenuService;
     let spyFindById: jest.SpyInstance;
     let spyUpdateStock: jest.SpyInstance;
 
     beforeEach(() => {
-      controller = new MenuController();
+      controller = new MenuService();
       // Espiamos ProductoDAO para aislar la lógica de servicios
       spyFindById = jest.spyOn(ProductoDAO, 'findByIdIncludingInactive');
       spyUpdateStock = jest.spyOn(ProductoDAO, 'updateStock');
@@ -86,7 +86,7 @@ describe("US005.5: Gestión de Menú – Actualizar stock (Integral)", () => {
       spyUpdateStock.mockRestore();
     });
 
-    describe("MenuController.updateStock", () => {
+    describe("MenuService.updateStock", () => {
       it("✓ debe actualizar stock si cantidad >= 0 y producto existe", async () => {
         spyFindById.mockResolvedValueOnce({ id: 3 });
         spyUpdateStock.mockResolvedValueOnce(true);

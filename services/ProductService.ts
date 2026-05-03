@@ -9,38 +9,13 @@
  * - Coordinar múltiples DAOs si es necesario
  */
 
-import { ProductAvailabilityDAO } from '@/models/daos/ProductAvailabilityDAO';
-
-export type ProductAvailability = {
-  id: number;
-  name: string;
-  stock: number;
-  is_available: boolean;
-};
+import { ProductAvailabilityDAO, ProductAvailability } from '@/models/daos/ProductAvailabilityDAO';
 
 export class ProductService {
-  private static dao: ProductAvailabilityDAO | null = null;
-
-  /**
-   * Establecer una instancia del DAO (útil para tests)
-   */
-  static setDAO(daoInstance: ProductAvailabilityDAO): void {
-    ProductService.dao = daoInstance;
-  }
-
-  /**
-   * Obtener la instancia del DAO (crear si no existe)
-   */
-  private static getDAO(): ProductAvailabilityDAO {
-    if (!ProductService.dao) {
-      ProductService.dao = new ProductAvailabilityDAO();
-    }
-    return ProductService.dao;
-  }
 
   /**
    * Actualizar stock de un producto
-   * Validaciones de negocio:
+   * Validaciones de negocio (US008):
    * - Stock no puede ser negativo
    * - Stock 0 automáticamente marca como agotado
    * - Stock > 0 automáticamente marca como disponible
@@ -58,7 +33,7 @@ export class ProductService {
       throw new Error('ID de producto inválido');
     }
 
-    // Validación 2: Stock válido
+    // Validación 2: Stock válido (US008)
     if (!this.isValidStock(stock)) {
       throw new Error('El stock debe ser un número entero mayor o igual a cero');
     }
@@ -74,8 +49,8 @@ export class ProductService {
       console.info(`[ProductService] Reactivando producto ${productId}`);
     }
 
-    // Persistir cambios
-    const updated = await this.getDAO().updateStock(productId, stock);
+    // Persistir cambios usando el DAO estático
+    const updated = await ProductAvailabilityDAO.updateStock(productId, stock);
 
     // Validación 4: Verificar consistencia post-actualización
     this.validateStockConsistency(updated);
@@ -85,7 +60,7 @@ export class ProductService {
 
   /**
    * Marcar un producto como agotado (stock = 0)
-   * Caso de uso específico: Chef quiere marcar inmediatamente como agotado
+   * Caso de uso específico: Chef quiere marcar inmediatamente como agotado (US008)
    * 
    * @param productId - ID del producto
    * @returns ProductAvailability con stock=0, is_available=false
@@ -107,9 +82,7 @@ export class ProductService {
     }
 
     try {
-      // En una BD real, consultarías el estado actual
-      // Por ahora retornamos lógica simple
-      // En futuro: SELECT is_available FROM products WHERE id=?
+      // US020: En futuro se consultará el estado actual con reglas de horario
       return true; // Placeholder
     } catch (error) {
       console.error(`[ProductService] Error verificando disponibilidad: ${error}`);
@@ -139,9 +112,6 @@ export class ProductService {
 
   /**
    * Validar que el ID de producto sea válido
-   * 
-   * @param productId - ID a validar
-   * @returns boolean - true si válido
    */
   private static isValidProductId(productId: any): boolean {
     return Number.isInteger(productId) && productId > 0;
@@ -149,9 +119,6 @@ export class ProductService {
 
   /**
    * Validar que el stock sea válido
-   * 
-   * @param stock - Stock a validar
-   * @returns boolean - true si válido
    */
   private static isValidStock(stock: any): boolean {
     return Number.isInteger(stock) && stock >= 0;
@@ -160,9 +127,6 @@ export class ProductService {
   /**
    * Validar consistencia stock-is_available
    * Lanzar error si la relación es inconsistente
-   * 
-   * @param product - Producto a validar
-   * @throws Error si inconsistencia
    */
   private static validateStockConsistency(product: ProductAvailability): void {
     const { stock, is_available } = product;
@@ -182,3 +146,4 @@ export class ProductService {
     }
   }
 }
+

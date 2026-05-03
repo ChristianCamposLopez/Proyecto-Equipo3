@@ -1,5 +1,5 @@
 import { ProductoDAO } from "@/models/daos/ProductoDAO";
-import { MenuController } from "@/controllers/MenuController";
+import { MenuService } from "@/services/MenuService";
 import { db } from "@/config/db";
 import { PATCH as patchNombre } from "@/app/api/platos/[id]/nombre/route";
 import { PATCH as patchDescripcion } from "@/app/api/platos/[id]/descripcion/route";
@@ -25,12 +25,12 @@ describe("US005.2: Gestión de Menú – Editar plato (Pruebas Integrales)", () 
   // =========================================================
   describe("Capa de Persistencia (ProductoDAO)", () => {
 
-    describe("updateProduct – Lógica SQL Dinámica", () => {
+    describe("updateProductoEntity – Lógica SQL Dinámica", () => {
       it("✓ debe modificar el nombre del plato", async () => {
         const mockRow = { id: 5, name: "Pizza Pepperoni XL", descripcion: "Tradicional" };
         mockQuery.mockResolvedValueOnce({ rows: [mockRow] });
 
-        const result = await ProductoDAO.updateProduct(5, { name: "Pizza Pepperoni XL" });
+        const result = await ProductoDAO.updateProductoEntity(5, { name: "Pizza Pepperoni XL" });
 
         const [sql, params] = mockQuery.mock.calls[0];
         expect(sql).toMatch(/UPDATE\s+products\s+SET\s+name\s+=\s+\$1\s+WHERE\s+id\s+=\s+\$2/i);
@@ -42,7 +42,7 @@ describe("US005.2: Gestión de Menú – Editar plato (Pruebas Integrales)", () 
         const mockRow = { id: 5, name: "Pizza", descripcion: "Nueva receta con orilla de queso" };
         mockQuery.mockResolvedValueOnce({ rows: [mockRow] });
 
-        const result = await ProductoDAO.updateProduct(5, { descripcion: "Nueva receta con orilla de queso" });
+        const result = await ProductoDAO.updateProductoEntity(5, { descripcion: "Nueva receta con orilla de queso" });
 
         const [sql, params] = mockQuery.mock.calls[0];
         expect(sql).toMatch(/UPDATE\s+products\s+SET\s+descripcion\s+=\s+\$1\s+WHERE\s+id\s+=\s+\$2/i);
@@ -55,7 +55,7 @@ describe("US005.2: Gestión de Menú – Editar plato (Pruebas Integrales)", () 
         const mockRow = { id: 5, name: "Hamburguesa Doble", descripcion: "Con tocino y cheddar" };
         mockQuery.mockResolvedValueOnce({ rows: [mockRow] });
 
-        await ProductoDAO.updateProduct(5, { 
+        await ProductoDAO.updateProductoEntity(5, { 
           name: "Hamburguesa Doble", 
           descripcion: "Con tocino y cheddar" 
         });
@@ -68,7 +68,7 @@ describe("US005.2: Gestión de Menú – Editar plato (Pruebas Integrales)", () 
 
     describe("Validación de errores y duplicados", () => {
       it("✕ debe lanzar error si se intenta actualizar sin datos", async () => {
-        await expect(ProductoDAO.updateProduct(5, {})).rejects.toThrow(
+        await expect(ProductoDAO.updateProductoEntity(5, {})).rejects.toThrow(
           "No hay datos para actualizar"
         );
       });
@@ -89,36 +89,36 @@ describe("US005.2: Gestión de Menú – Editar plato (Pruebas Integrales)", () 
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller & API)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service & API)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
     
-    let controller: MenuController;
+    let controller: MenuService;
     let spyFindById: jest.SpyInstance;
     let spyFindByName: jest.SpyInstance;
-    let spyUpdateProduct: jest.SpyInstance;
+    let spyUpdateProductoEntity: jest.SpyInstance;
 
     beforeEach(() => {
-      controller = new MenuController();
+      controller = new MenuService();
       spyFindById = jest.spyOn(ProductoDAO, 'findByIdIncludingInactive');
       spyFindByName = jest.spyOn(ProductoDAO, 'findByName');
-      spyUpdateProduct = jest.spyOn(ProductoDAO, 'updateProduct');
+      spyUpdateProductoEntity = jest.spyOn(ProductoDAO, 'updateProductoEntity');
     });
 
     afterEach(() => {
       jest.restoreAllMocks();
     });
 
-    describe("MenuController - Lógica de Negocio", () => {
+    describe("MenuService - Lógica de Negocio", () => {
       it("✓ updateNombre debe validar duplicado y actualizar", async () => {
         spyFindById.mockResolvedValueOnce({ id: 1, name: "Viejo" });
         spyFindByName.mockResolvedValueOnce(null);
-        spyUpdateProduct.mockResolvedValueOnce({ id: 1, name: "Nuevo" });
+        spyUpdateProductoEntity.mockResolvedValueOnce({ id: 1, name: "Nuevo" });
 
         const result = await controller.updateNombre(1, "Nuevo");
         
         expect(spyFindByName).toHaveBeenCalledWith("Nuevo");
-        expect(spyUpdateProduct).toHaveBeenCalledWith(1, { name: "Nuevo" });
+        expect(spyUpdateProductoEntity).toHaveBeenCalledWith(1, { name: "Nuevo" });
         expect(result.name).toBe("Nuevo");
       });
 
@@ -128,15 +128,15 @@ describe("US005.2: Gestión de Menú – Editar plato (Pruebas Integrales)", () 
 
         await expect(controller.updateNombre(1, "Duplicado"))
           .rejects.toThrow("Ya existe un plato con ese nombre");
-        expect(spyUpdateProduct).not.toHaveBeenCalled();
+        expect(spyUpdateProductoEntity).not.toHaveBeenCalled();
       });
 
       it("✓ updateDescripcion debe actualizar sin validaciones de duplicados", async () => {
-        spyUpdateProduct.mockResolvedValueOnce({ id: 1, descripcion: "Nueva desc" });
+        spyUpdateProductoEntity.mockResolvedValueOnce({ id: 1, descripcion: "Nueva desc" });
         
         const result = await controller.updateDescripcion(1, "Nueva desc");
         
-        expect(spyUpdateProduct).toHaveBeenCalledWith(1, { descripcion: "Nueva desc" });
+        expect(spyUpdateProductoEntity).toHaveBeenCalledWith(1, { descripcion: "Nueva desc" });
         expect(result.descripcion).toBe("Nueva desc");
       });
     });
@@ -147,7 +147,7 @@ describe("US005.2: Gestión de Menú – Editar plato (Pruebas Integrales)", () 
         it("✓ debe retornar 200 y el producto actualizado", async () => {
           spyFindById.mockResolvedValueOnce({ id: 5 });
           spyFindByName.mockResolvedValueOnce(null);
-          spyUpdateProduct.mockResolvedValueOnce({ id: 5, name: "Nuevo nombre" });
+          spyUpdateProductoEntity.mockResolvedValueOnce({ id: 5, name: "Nuevo nombre" });
 
           const req = { json: async () => ({ name: "Nuevo nombre" }) } as NextRequest;
           const params = Promise.resolve({ id: "5" });
@@ -187,7 +187,7 @@ describe("US005.2: Gestión de Menú – Editar plato (Pruebas Integrales)", () 
 
       describe("PATCH /api/platos/[id]/descripcion", () => {
         it("✓ debe actualizar descripción incluso si es null", async () => {
-          spyUpdateProduct.mockResolvedValueOnce({ id: 3, descripcion: null });
+          spyUpdateProductoEntity.mockResolvedValueOnce({ id: 3, descripcion: null });
           
           const req = { json: async () => ({ descripcion: null }) } as NextRequest;
           const params = Promise.resolve({ id: "3" });

@@ -1,5 +1,5 @@
 import { RankingDAO } from '@/models/daos/RankingDAO';
-import { RankingController } from '@/controllers/RankingController';
+import { RankingService } from '@/services/RankingService';
 import { db } from '@/config/db';
 
 jest.mock('@/config/db', () => ({
@@ -23,8 +23,8 @@ describe('US019.2 – Mostrar top 5 (límite y validaciones)', () => {
     });
   });
 
-  describe('Lógica de negocio (RankingController) – top 5 por defecto y validaciones', () => {
-    const controller = new RankingController();
+  describe('Lógica de negocio (RankingService) – top 5 por defecto y validaciones', () => {
+    const controller = new RankingService();
     const validStart = new Date('2024-01-01');
     const validEnd = new Date('2024-01-02');
 

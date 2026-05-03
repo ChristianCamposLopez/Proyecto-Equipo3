@@ -1,6 +1,8 @@
 // app/api/pedidos/[id]/cancel/route.ts
 import { NextResponse } from "next/server";
-import { PedidoController } from "@/controllers/pedidoController";
+import { PedidoService } from '@/services/PedidoService';
+
+const pedidoService = new PedidoService();
 
 export async function PUT(
   req: Request,
@@ -14,9 +16,8 @@ export async function PUT(
       return NextResponse.json({ error: "Invalid order id" }, { status: 400 });
     }
 
-    const controller = new PedidoController();
     // El controlador ya maneja la lógica de negocio interna
-    const result = await controller.cancelPedido(pedidoId);
+    const result = await pedidoService.cancelPedido(pedidoId);
 
     return NextResponse.json(result);
   } catch (error: any) {

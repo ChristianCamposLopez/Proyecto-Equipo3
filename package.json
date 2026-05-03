@@ -10,9 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.3",
     "exceljs": "^4.4.0",
-    "jsonwebtoken": "^9.0.3",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "next": "16.1.6",

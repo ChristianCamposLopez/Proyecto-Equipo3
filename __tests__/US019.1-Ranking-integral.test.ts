@@ -1,5 +1,5 @@
 import { RankingDAO } from '@/models/daos/RankingDAO';
-import { RankingController } from '@/controllers/RankingController';
+import { RankingService } from '@/services/RankingService';
 import { db } from '@/config/db';
 
 jest.mock('@/config/db', () => ({
@@ -50,8 +50,8 @@ describe('US019.1 – Calcular ranking de ventas (persistencia y lógica)', () =
     });
   });
 
-  describe('Lógica de negocio (RankingController)', () => {
-    const controller = new RankingController();
+  describe('Lógica de negocio (RankingService)', () => {
+    const controller = new RankingService();
 
     it('debe invocar al DAO y devolver el ranking calculado', async () => {
       const spyDao = jest.spyOn(RankingDAO.prototype, 'getTopSellingProducts')

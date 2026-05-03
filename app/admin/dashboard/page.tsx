@@ -43,6 +43,12 @@ export default function AdminMenu() {
       category: 'Logística' 
     },
     { 
+      name: 'Perfil del Restaurante', 
+      path: '/admin/restaurante', 
+      icon: '🏪', 
+      category: 'Configuración' 
+    },
+    { 
       name: 'Cambiar sesión', 
       path: '/login', 
       icon: '🔐', 

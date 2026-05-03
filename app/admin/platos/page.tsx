@@ -114,7 +114,7 @@ type Availability = {
   end_time: string;
 };
 
-type Product = {
+type ProductoEntity = {
   id: number;
   name: string;
   base_price: string;
@@ -137,7 +137,7 @@ interface FormState {
 export default function AdminPlatosPage({ params }: { params: Promise<{ restaurantId: string }> }) {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductoEntity[]>([]);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -168,7 +168,7 @@ export default function AdminPlatosPage({ params }: { params: Promise<{ restaura
         setCategories(catData.categories || []);
 
         const productsWithAvailability = await Promise.all(
-          (data.products || []).map(async (product: Product) => {
+          (data.products || []).map(async (product: ProductoEntity) => {
             try {
               const res = await fetch(`/api/platos/${product.id}/availability`);
               const avData = await res.json();
@@ -247,11 +247,11 @@ export default function AdminPlatosPage({ params }: { params: Promise<{ restaura
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al crear plato');
 
-      const newProduct = data.product;
+      const newProductoEntity = data.product;
 
       // 2. Subir imagen (Si el usuario seleccionó una)
-      if (form.image && newProduct.id) {
-        const imgRes = await fetch(`/api/platos/${newProduct.id}/images`, {
+      if (form.image && newProductoEntity.id) {
+        const imgRes = await fetch(`/api/platos/${newProductoEntity.id}/images`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -265,7 +265,7 @@ export default function AdminPlatosPage({ params }: { params: Promise<{ restaura
       }
 
       // 3. Éxito
-      setProducts(prev => [newProduct, ...prev]);
+      setProducts(prev => [newProductoEntity, ...prev]);
       setForm({ name: '', base_price: '', stock: '', category_id: '', description: '', image: null, fileName: '', format: '' });
       setShowCreateForm(false);
       alert('¡Plato creado con éxito!');

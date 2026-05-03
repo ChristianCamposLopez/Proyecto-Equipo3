@@ -207,7 +207,7 @@ export default function ConfirmationPage(){
       <div className="confirmation-root">
         <div className="confirmation-card">
           <div className="success-icon">✅</div>
-          <h1 className="confirmation-title">¡Pedido Confirmado!</h1>
+          <h1 className="confirmation-title">¡PedidoEntity Confirmado!</h1>
           <p className="confirmation-subtitle">
             Tu orden ha sido recibida y está siendo preparada.
           </p>
@@ -238,7 +238,7 @@ export default function ConfirmationPage(){
               Ver Mis Órdenes
             </button>
             <button className="btn btn-secondary" onClick={() => window.location.href = '/cliente/menu'}>
-              Hacer Otro Pedido
+              Hacer Otro PedidoEntity
             </button>
           </div>
 

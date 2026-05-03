@@ -1,6 +1,8 @@
 // app/api/orders/[id]/cancel/route.ts
 import { NextRequest } from 'next/server';
-import { cancelOrder } from '@/controllers/orderController';
+import { PedidoService } from '@/services/PedidoService';
+
+const pedidoService = new PedidoService();
 
 interface Context {
   params: { id: string } | Promise<{ id: string }>;
@@ -18,5 +20,10 @@ export async function POST(req: NextRequest, context: Context) {
   if (isNaN(orderId)) {
     return new Response(JSON.stringify({ error: 'ID inválido' }), { status: 400 });
   }
-  return cancelOrder(req, orderId);
+  try {
+    const result = await pedidoService.cancelPedido(orderId);
+    return new Response(JSON.stringify(result), { status: 200 });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
 }

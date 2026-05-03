@@ -1,0 +1,64 @@
+@startuml
+skinparam style strictuml
+autonumber
+title Diagrama de Secuencia - Inicio de Sesión (US010.2)
+
+' Ajuste de estilo para simpleza visual
+skinparam sequenceGroupHeaderFontSize 0
+skinparam sequenceGroupBorderThickness 1
+
+actor "Administrador" as Admin
+participant "loginPage: Next.js" as View
+participant "authCtrl: AuthControlador" as Ctrl
+participant "authRepo: AuthRepositorio" as Repo
+participant "u: Usuario" as User
+database "Base de Datos" as DB
+
+Admin -> View : ingresarCredenciales(email, pass)
+activate View
+
+View -> Ctrl : login(AutenticacionDTO)
+activate Ctrl
+
+' Fase 1: Persistencia
+Ctrl -> Repo : buscarPorEmail(email)
+activate Repo
+Repo -> DB : SELECT * FROM usuarios WHERE email =?
+activate DB
+DB --> Repo : registro_encontrado / null
+deactivate DB
+Repo --> Ctrl : u (instancia Usuario) / null
+deactivate Repo
+
+' Fase 2: Lógica de Validación (Separación de Casos)
+alt
+    note right of Ctrl : **Caso: Usuario Identificado**
+    
+    Ctrl -> Ctrl : verificarCredenciales(pass, u.passwordHash)
+    
+    alt
+        ' Rama de Éxito
+        Ctrl -> User : validarRol("Administrador")
+        activate User
+        User --> Ctrl : true
+        deactivate User
+        
+        Ctrl --> View : token JWT (String)
+        View --> Admin : redirigirPanelControl()
+        
+    else
+        ' Rama de Password incorrecto
+        Ctrl --> View : errorPasswordInvalido()
+        View --> Admin : mostrarNotificacionError()
+    end
+
+else
+    ' Rama de Usuario inexistente
+    note right of Ctrl : **Caso: Usuario No Registrado**
+    Ctrl --> View : errorUsuarioNoEncontrado()
+    deactivate Ctrl
+    View --> Admin : mostrarNotificacionError()
+end
+
+deactivate View
+@enduml

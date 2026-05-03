@@ -1,8 +1,8 @@
 // app/api/platos/[id]/availability/[availabilityId]/route.ts
 import { NextResponse } from 'next/server';
-import { DisponibilidadController } from '@/controllers/DisponibilidadController';
+import { DisponibilidadService } from '@/services/DisponibilidadService';
 
-const controller = new DisponibilidadController();
+const controller = new DisponibilidadService();
 
 export async function PATCH(
   request: Request,

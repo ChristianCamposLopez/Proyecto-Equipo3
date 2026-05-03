@@ -67,7 +67,7 @@ const statusLabels: Record<string, string> = {
   PENDING: "Pendiente",
   PREPARING: "Preparando",
   READY: "Listo",
-  DELIVERY_ASSIGNED: "Repartidor asignado",
+  DELIVERY_ASSIGNED: "RepartidorEntity asignado",
   ON_DELIVERY: "En camino",
   COMPLETED: "Completado",
   DELIVERED: "Entregado",
@@ -1111,7 +1111,7 @@ export default function OrdersPage() {
         // Solo loguear error, no fallar el pedido principal
         console.error("Error al registrar historial:", await historyRes.text());
       } else {
-        setMessage({ type: "success", text: `Pedido #${newOrderId} confirmado y enviado a cocina` });
+        setMessage({ type: "success", text: `PedidoEntity #${newOrderId} confirmado y enviado a cocina` });
       }
 
       setOrderNote("");
@@ -1167,7 +1167,7 @@ export default function OrdersPage() {
         )
       );
 
-      setMessage({ type: "success", text: `Pedido #${id} cancelado correctamente` });
+      setMessage({ type: "success", text: `PedidoEntity #${id} cancelado correctamente` });
     } catch (error: any) {
       setMessage({ type: "error", text: error.message });
     } finally {
@@ -1184,7 +1184,7 @@ export default function OrdersPage() {
 
     const data = await res.json()
     if (data.success) {
-      alert("Repartidor asignado: " + (data.deliveryman?.full_name || ""))
+      alert("RepartidorEntity asignado: " + (data.deliveryman?.full_name || ""))
       loadData()
       return
     }
@@ -1530,12 +1530,12 @@ export default function OrdersPage() {
                         <div>
                           <div className="order-status-head">
                             <div>
-                              <h3 className="order-status-title">Pedido #{order.id}</h3>
+                              <h3 className="order-status-title">PedidoEntity #{order.id}</h3>
                               <p className="order-status-meta">
                                 Total ${Number(order.total_amount).toFixed(2)} · {order.note || "Sin nota especial"}
                               </p>
                               <p className="order-status-meta">
-                                Repartidor: {order.deliveryman_name ?? "Pendiente de asignación"}
+                                RepartidorEntity: {order.deliveryman_name ?? "Pendiente de asignación"}
                               </p>
                             </div>
                             <span className={`order-status-pill ${isCancelled ? "cancelled" : ""}`}>
@@ -1571,7 +1571,7 @@ export default function OrdersPage() {
                       <th>Estado</th>
                       <th>Nota</th>
                       <th>Total</th>
-                      <th>Repartidor</th>
+                      <th>RepartidorEntity</th>
                       <th>Acción</th>
                     </tr>
                   </thead>
@@ -1596,7 +1596,7 @@ export default function OrdersPage() {
                               </button>
                             )}
                             {["DELIVERY_ASSIGNED", "ON_DELIVERY"].includes(order.status) && (
-                              <span style={{ color: "#24633a", fontWeight: 700 }}>Repartidor asignado</span>
+                              <span style={{ color: "#24633a", fontWeight: 700 }}>RepartidorEntity asignado</span>
                             )}
                             {["COMPLETED", "DELIVERED"].includes(order.status) && (
                               <span style={{ color: "#24633a", fontWeight: 700 }}>Entregado</span>

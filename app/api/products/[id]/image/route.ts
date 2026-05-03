@@ -4,7 +4,7 @@ import {
   getProductImage,
   uploadProductImage,
   deleteProductImage,
-} from '@/controllers/productImageController';
+} from '@/services/ProductImageService';
 
 // Handler context types from Next.js may wrap params in a promise
 interface Context {

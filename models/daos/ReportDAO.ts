@@ -1,5 +1,11 @@
-// models/daos/ReportDAO.ts — US015 & US006: Exportación de reportes
+// models/daos/ReportDAO.ts
+/**
+ * Capa de Persistencia para Generación de Reportes
+ * US006: Reportes de ventas diarias
+ * US015: Exportación de información (CSV/Excel)
+ */
 import { db } from '@/config/db';
+import { VentaDiaria } from '@/models/entities';
 
 export interface OrderDetailForExport {
   order_id: number;
@@ -32,7 +38,7 @@ export class ReportDAO {
   /**
    * Obtener todas las órdenes con detalles para exportación (US015/US006)
    */
-  async getOrdersForExport(
+  static async getOrdersForExport(
     restaurantId: number,
     startDate?: string,
     endDate?: string
@@ -108,7 +114,7 @@ export class ReportDAO {
   /**
    * Obtener reporte de ventas en formato plano para CSV/Excel
    */
-  async getSalesReportFlat(
+  static async getSalesReportFlat(
     restaurantId: number,
     startDate?: string,
     endDate?: string
@@ -155,7 +161,7 @@ export class ReportDAO {
   /**
    * Obtener resumen de ventas por fecha (US006: Reporte de ventas)
    */
-  async getDailySalesReport(
+  static async getDailySalesReportSummary(
     restaurantId: number,
     startDate?: string,
     endDate?: string
@@ -208,7 +214,7 @@ export class ReportDAO {
       const result = await db.query(query, params);
       return result.rows;
     } catch (error) {
-      console.error('[ReportDAO.getDailySalesReport]', error);
+      console.error('[ReportDAO.getDailySalesReportSummary]', error);
       throw error;
     }
   }
@@ -216,7 +222,7 @@ export class ReportDAO {
   /**
    * Obtener ventas diarias legado (compatible con código existente)
    */
-  static async getDailySales(): Promise<any[]> {
+  static async getDailySales(): Promise<VentaDiaria[]> {
     try {
       const query = `
         SELECT 
@@ -239,7 +245,12 @@ export class ReportDAO {
       `;
 
       const result = await db.query(query);
-      return result.rows;
+      return result.rows.map(row => ({
+        fecha: row.day,
+        total_ventas: Number(row.total_sales),
+        numero_pedidos: Number(row.total_orders),
+        average_ticket: Number(row.average_ticket)
+      }));
     } catch (error) {
       console.error('[ReportDAO.getDailySales]', error);
       throw error;

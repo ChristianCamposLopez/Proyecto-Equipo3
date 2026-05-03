@@ -1,6 +1,6 @@
 import { DisponibilidadDAO } from "@/models/daos/DisponibilidadDAO";
 import { db } from "@/config/db";
-import { DisponibilidadController } from "@/controllers/DisponibilidadController";
+import { DisponibilidadService } from "@/services/DisponibilidadService";
 import { GET } from "@/app/api/platos/[id]/availability/route";
 import { NextRequest } from "next/server";
 
@@ -53,7 +53,7 @@ describe("US020.4: Gestión de Menú – Consultar horarios (Pruebas Integrales)
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller + API Route)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service + API Route)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
     // Espía para interceptar el método del DAO sin mockear todo el módulo
@@ -67,20 +67,20 @@ describe("US020.4: Gestión de Menú – Consultar horarios (Pruebas Integrales)
       spyGetByProductId.mockRestore();
     });
 
-    describe("DisponibilidadController.getByProduct", () => {
+    describe("DisponibilidadService.getByProductoEntity", () => {
       it("✓ debe devolver los horarios de un producto", async () => {
         const fakeSchedules = [{ id: 1, day_of_week: 1, start_time: "08:00", end_time: "12:00" }];
         spyGetByProductId.mockResolvedValueOnce(fakeSchedules);
-        const controller = new DisponibilidadController();
-        const result = await controller.getByProduct(7);
+        const controller = new DisponibilidadService();
+        const result = await controller.getByProductoEntity(7);
         expect(spyGetByProductId).toHaveBeenCalledWith(7);
         expect(result).toEqual(fakeSchedules);
       });
 
       it("✗ debe propagar errores del DAO", async () => {
         spyGetByProductId.mockRejectedValueOnce(new Error("DB error"));
-        const controller = new DisponibilidadController();
-        await expect(controller.getByProduct(1)).rejects.toThrow("DB error");
+        const controller = new DisponibilidadService();
+        await expect(controller.getByProductoEntity(1)).rejects.toThrow("DB error");
       });
     });
 

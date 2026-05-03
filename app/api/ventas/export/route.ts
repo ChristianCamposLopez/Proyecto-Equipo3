@@ -1,8 +1,8 @@
 // app/api/ventas/export/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { VentasController } from '@/controllers/ventasController';
+import { VentasService } from '@/services/VentasService';
 
-const controller = new VentasController();
+const ventasService = new VentasService();
 
 export async function GET(req: NextRequest) {
   try {
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { buffer, fileName } = await controller.exportSales(
+    const { buffer, fileName } = await ventasService.exportSales(
       inicio,
       fin,
       idRest,

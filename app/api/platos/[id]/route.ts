@@ -1,8 +1,8 @@
 // app/api/platos/[id]/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-import { MenuController } from '@/controllers/MenuController';
+import { MenuService } from '@/services/MenuService';
 
-const menuController = new MenuController();
+const menuController = new MenuService();
 
 export async function GET(
   request: NextRequest,
@@ -36,7 +36,7 @@ export async function DELETE(
     if (isNaN(productId)) {
       return NextResponse.json({ error: 'ID de producto inválido' }, { status: 400 });
     }
-    await menuController.deactivateProduct(productId);
+    await menuController.deactivateProductoEntity(productId);
     return NextResponse.json({ message: 'Producto desactivado exitosamente' });
   } catch (err: any) {
     if (err.message === 'Producto no encontrado') {

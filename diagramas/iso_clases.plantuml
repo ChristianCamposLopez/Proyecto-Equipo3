@@ -1,0 +1,53 @@
+@startuml
+skinparam classAttributeIconSize 0
+hide empty members
+title Diagrama de Clases Integral - Gestión de Acceso (US010)
+
+class AutenticacionDTO {
+    + email : String
+    + password : String
+    + nombre : String
+    + tokenTemporal : String
+}
+
+class AuthControlador {
+    + registrar(datos : AutenticacionDTO) : void
+    + login(datos : AutenticacionDTO) : String
+    + solicitarRecuperacion(email : String) : void
+}
+
+class Usuario {
+    - id : String
+    - email : String
+    - passwordHash : String
+    - nombre : String
+    - resetToken : String
+    - tokenExpiracion : DateTime
+    + <<constructor>> Usuario(id, email, passHash, nombre)
+    + validarRol(permiso : String) : boolean
+}
+
+class Rol {
+    - id : int
+    - nombre : String
+    - permisos : String
+}
+
+class AuthRepositorio {
+    + guardar(u : Usuario) : void
+    + buscarPorEmail(email : String) : Usuario
+}
+
+' Relaciones y Multiplicidad
+AuthControlador "1"..> "1" AutenticacionDTO : "usa para procesar"
+AuthControlador "1" --> "1" AuthRepositorio : "solicita datos"
+AuthRepositorio "1" -- "0..*" Usuario : "persiste"
+Usuario "0..*" -- "1" Rol : "pertenece a"
+
+note bottom of Usuario
+  Cubre:
+  - US010.1 (passwordHash y constructor)
+  - US010.3 (resetToken)
+  - US010.4 (Relación con Rol)
+end note
+@enduml

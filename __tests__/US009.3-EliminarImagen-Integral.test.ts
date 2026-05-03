@@ -1,5 +1,5 @@
 import { ImagenDAO } from "@/models/daos/ImagenDAO";
-import { ImagenController } from "@/controllers/ImagenController";
+import { ImagenService } from "@/services/ImagenService";
 import { db } from "@/config/db";
 import { DELETE } from "@/app/api/platos/[id]/images/[imageId]/route";
 import { NextRequest } from "next/server";
@@ -68,17 +68,17 @@ describe("US009.3: Gestión de Menú – Eliminar imagen (Integral)", () => {
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Controller & API)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service & API)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
-    let controller: ImagenController;
+    let controller: ImagenService;
     let spyGetById: jest.SpyInstance;
     let spyDelete: jest.SpyInstance;
     let spyGetNewest: jest.SpyInstance;
     let spySetPrimary: jest.SpyInstance;
 
     beforeEach(() => {
-      controller = new ImagenController();
+      controller = new ImagenService();
       // Espiamos los métodos del DAO
       spyGetById = jest.spyOn(ImagenDAO, 'getById');
       spyDelete = jest.spyOn(ImagenDAO, 'delete');
@@ -90,7 +90,7 @@ describe("US009.3: Gestión de Menú – Eliminar imagen (Integral)", () => {
       jest.restoreAllMocks();
     });
 
-    describe("ImagenController.deleteImage", () => {
+    describe("ImagenService.deleteImage", () => {
       it("✓ debe eliminar imagen (física y BD) y reasignar primaria si era la principal", async () => {
         const image = { id: 10, product_id: 3, image_path: "/uploads/img.jpg", is_primary: true };
         spyGetById.mockResolvedValueOnce(image);

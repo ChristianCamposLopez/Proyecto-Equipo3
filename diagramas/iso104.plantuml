@@ -1,0 +1,61 @@
+@startuml
+skinparam style strictuml
+autonumber
+title Diagrama de Secuencia - Control de Acceso por Roles (US010.4)
+
+' Ajuste de estilo para elegancia técnica
+skinparam sequenceGroupHeaderFontSize 0
+skinparam sequenceGroupBorderThickness 1
+
+actor "Usuario (Admin/Chef/Repartidor)" as Actor
+participant "dashboard: Next.js" as View
+participant "authCtrl: AuthControlador" as Ctrl
+participant "authRepo: AuthRepositorio" as Repo
+participant "u: Usuario" as User
+database "Base de Datos" as DB
+
+Actor -> View : intentarAccesoModulo()
+activate View
+
+View -> Ctrl : verificarPermisos(token)
+activate Ctrl
+
+' Fase 1: Recuperación de Identidad y Cargo
+Ctrl -> Repo : buscarPorEmail(email)
+activate Repo
+Repo -> DB : SELECT u.*, r.nombre FROM usuarios u JOIN roles r...
+activate DB
+DB --> Repo : registro_con_rol
+deactivate DB
+Repo --> Ctrl : u (instancia de Usuario)
+deactivate Repo
+
+' Fase 2: Validación Dinámica de Roles (US010.4)
+alt
+    note right of Ctrl : **Caso: Usuario con Cargo Autorizado**
+    
+    ' El sistema valida el rol específico según el módulo solicitado
+    Ctrl -> User : validarRol("Admin" | "Chef" | "Repartidor")
+    activate User
+    User --> Ctrl : true
+    deactivate User
+    
+    Ctrl --> View : autorizado (void)
+    View --> Actor : mostrarInterfazEspecifica()
+    
+else
+    ' Rama de Acceso Restringido
+    note right of Ctrl : **Caso: Intento de acceso no permitido**
+    
+    Ctrl -> User : validarRol("Rol_Requerido")
+    activate User
+    User --> Ctrl : false
+    deactivate User
+    
+    Ctrl --> View : errorAccesoDenegado()
+    deactivate Ctrl
+    View --> Actor : mostrarMensajeRestriccion()
+End
+
+deactivate View
+@enduml

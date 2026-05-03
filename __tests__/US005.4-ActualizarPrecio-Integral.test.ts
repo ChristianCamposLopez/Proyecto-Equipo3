@@ -1,5 +1,5 @@
 import { ProductoDAO } from "@/models/daos/ProductoDAO";
-import { MenuController } from "@/controllers/MenuController";
+import { MenuService } from "@/services/MenuService";
 import { db } from "@/config/db";
 import { PATCH } from "@/app/api/platos/[id]/price/route";
 import { NextRequest } from "next/server";
@@ -43,7 +43,7 @@ describe("US005.4: Gestión de Menú – Actualizar precio (Integral)", () => {
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS Y API (MenuController + Routes)
+  // 2. CAPA DE SERVICIOS Y API (MenuService + Routes)
   // =========================================================
   describe("Capa de Servicios y API", () => {
     // Espías para interceptar el DAO sin romper la implementación de arriba
@@ -60,25 +60,25 @@ describe("US005.4: Gestión de Menú – Actualizar precio (Integral)", () => {
       spyUpdatePrice.mockRestore();
     });
 
-    describe("MenuController.updatePrice", () => {
+    describe("MenuService.updatePrice", () => {
       it("✓ debe actualizar si el precio > 0 y producto existe", async () => {
         spyFindById.mockResolvedValueOnce({ id: 1 });
         spyUpdatePrice.mockResolvedValueOnce(true);
         
-        const controller = new MenuController();
+        const controller = new MenuService();
         await controller.updatePrice(1, 25);
         expect(spyUpdatePrice).toHaveBeenCalledWith(1, 25);
       });
 
       it("✗ debe lanzar error si precio <= 0", async () => {
-        const controller = new MenuController();
+        const controller = new MenuService();
         await expect(controller.updatePrice(1, 0)).rejects.toThrow("El precio debe ser mayor a 0");
         expect(spyFindById).not.toHaveBeenCalled();
       });
 
       it("✗ debe lanzar error si producto no existe", async () => {
         spyFindById.mockResolvedValueOnce(null);
-        const controller = new MenuController();
+        const controller = new MenuService();
         await expect(controller.updatePrice(99, 10)).rejects.toThrow("Producto no encontrado");
         expect(spyUpdatePrice).not.toHaveBeenCalled();
       });

@@ -1,8 +1,8 @@
 // app/api/orders/pending/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { OrderDAO } from '@/models/daos/OrderDAO';
+import { PedidoService } from '@/services/PedidoService';
 
-const dao = new OrderDAO();
+const pedidoService = new PedidoService();
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const orders = await dao.getPendingOrders(parseInt(restaurantId, 10));
+    const orders = await pedidoService.getPendingOrders(parseInt(restaurantId, 10));
     return NextResponse.json(orders, { status: 200 });
   } catch (error) {
     console.error('[GET /api/orders/pending]', error);

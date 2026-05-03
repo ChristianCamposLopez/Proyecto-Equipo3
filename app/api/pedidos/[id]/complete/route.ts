@@ -1,6 +1,8 @@
 // app/api/pedidos/[id]/complete/route.ts
 import { NextResponse } from "next/server";
-import { PedidoController } from "@/controllers/pedidoController";
+import { PedidoService } from '@/services/PedidoService';
+
+const pedidoService = new PedidoService();
 
 export async function PUT(
   req: Request,
@@ -17,10 +19,9 @@ export async function PUT(
       return NextResponse.json({ error: "ID de pedido inválido" }, { status: 400 });
     }
 
-    const controller = new PedidoController();
-    await controller.completarPedido(pedidoId);
+    await pedidoService.completarPedido(pedidoId);
 
-    return NextResponse.json({ message: "Pedido completado" });
+    return NextResponse.json({ message: "PedidoEntity completado" });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Server error" }, { status: 500 });
   }

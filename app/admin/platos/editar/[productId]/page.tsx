@@ -363,7 +363,7 @@ export default function EditarPlato() {
      Cargar imágenes y datos del producto
   =============================== */
 
-  const loadProduct = async () => {
+  const loadProductoEntity = async () => {
     try {
       const res = await fetch(`/api/platos/${productId}`);
       const data = await res.json();
@@ -409,7 +409,7 @@ export default function EditarPlato() {
     if (!productId) return;
 
     loadImages();
-    loadProduct();
+    loadProductoEntity();
     loadAvailability();
   }, [productId]);
   /* ===============================
@@ -500,7 +500,7 @@ export default function EditarPlato() {
      ACTIVAR PLATO
   =============================== */
 
-  const activateProduct = async () => {
+  const activateProductoEntity = async () => {
     const res = await fetch(`/api/platos/${productId}/activate`, {
       method: 'PATCH',
     });
@@ -519,7 +519,7 @@ export default function EditarPlato() {
      DESACTIVAR PLATO
   =============================== */
 
-  const deactivateProduct = async () => {
+  const deactivateProductoEntity = async () => {
     if (!confirm('Desactivar plato?')) return;
 
     const res = await fetch(`/api/platos/${productId}/desactivate`, {
@@ -709,10 +709,10 @@ export default function EditarPlato() {
               Acciones <span>del plato</span>
             </h2>
             <div className="action-group">
-              <button onClick={deactivateProduct} className="edit-btn warning">
+              <button onClick={deactivateProductoEntity} className="edit-btn warning">
                 Desactivar
               </button>
-              <button onClick={activateProduct} className="edit-btn primary">
+              <button onClick={activateProductoEntity} className="edit-btn primary">
                 Activar
               </button>
               <button onClick={deletePermanent} className="edit-btn danger">

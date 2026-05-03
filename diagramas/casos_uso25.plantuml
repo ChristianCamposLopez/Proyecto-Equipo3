@@ -1,0 +1,42 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+' Único actor para este módulo específico
+actor "Administrador" as Admin
+
+rectangle "Gestión de Restaurante" {
+    
+    ' Caso de Uso de Registro Fiscal (US025.1)
+    (Dar de alta Restaurante) as UC_Alta
+    
+    ' Caso de Uso de Perfil con Puntos de Extensión (US025.2, US025.3, US025.4, US025.7)
+    usecase UC_Gestion as "Administrar Información del Negocio
+    --
+    Puntos de Extensión:
+    Modificar Datos de contacto
+    Cargar Identidad Visual
+    Establecer Horarios de Atención
+    Consultar Resumen de Perfil"
+    
+    ' Caso de Uso Operativo con Puntos de Extensión (US025.5, US025.6)
+    usecase UC_Estado as "Controlar Disponibilidad y Estado
+    --
+    Puntos de Extensión:
+    Cambio de Apertura/Cierre
+    Inactivación del Negocio"
+    
+    ' Lógica Técnica Obligatoria (Inclusión)
+    (Validar Ausencia de Pedidos) as UC_Val
+    
+    ' Relaciones de Asociación
+    Admin -- UC_Alta
+    Admin -- UC_Gestion
+    Admin -- UC_Estado
+    
+}
+
+note bottom of UC_Alta : Requisito US025.1: RFC Único
+note bottom of UC_Val : Crucial para US025.6: \nEvita inconsistencias logísticas
+@enduml

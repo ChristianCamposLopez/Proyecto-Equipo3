@@ -1,5 +1,5 @@
 import { ImagenDAO } from "@/models/daos/ImagenDAO";
-import { ImagenController } from "@/controllers/ImagenController";
+import { ImagenService } from "@/services/ImagenService";
 import { db } from "@/config/db";
 import { GET } from "@/app/api/platos/[id]/images/route";
 import { NextRequest } from "next/server";
@@ -58,14 +58,14 @@ describe("US009.1: Gestión de Menú – Visualizar imágenes (Integral)", () =>
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (ImagenController + API)
+  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (ImagenService + API)
   // =========================================================
   describe("Capa de Servicios e Integración", () => {
-    let controller: ImagenController;
+    let controller: ImagenService;
     let spyGetImages: jest.SpyInstance;
 
     beforeEach(() => {
-      controller = new ImagenController();
+      controller = new ImagenService();
       // Espiamos el DAO para controlar las respuestas en la capa de API
       spyGetImages = jest.spyOn(ImagenDAO, 'getImagesByProductId');
     });
@@ -74,7 +74,7 @@ describe("US009.1: Gestión de Menú – Visualizar imágenes (Integral)", () =>
       spyGetImages.mockRestore();
     });
 
-    describe("ImagenController.getImages", () => {
+    describe("ImagenService.getImages", () => {
       it("✓ debe retornar el objeto { images } con las imágenes del producto", async () => {
         const fakeImages = [{ id: 1, image_path: "/img.jpg" }];
         spyGetImages.mockResolvedValueOnce(fakeImages);

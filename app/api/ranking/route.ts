@@ -1,8 +1,8 @@
 // app/api/ranking/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { RankingController } from '@/controllers/RankingController';
+import { RankingService } from '@/services/RankingService';
 
-const controller = new RankingController();
+const controller = new RankingService();
 
 export async function GET(req: NextRequest) {
   try {

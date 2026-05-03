@@ -1,11 +1,11 @@
 // models/entities/RankingEntities.ts
-export interface RankedProduct {
+export interface RankedProductoEntity {
   product_id: number;
   product_name: string;
   total_quantity_sold: number;
 }
 
 export interface RankingResponse {
-  ranking: RankedProduct[];
+  ranking: RankedProductoEntity[];
   restaurantName: string | null;
 }

@@ -124,7 +124,7 @@ const styles = `
   }
 `
 
-type Product = {
+type ProductoEntity = {
   id: number
   name: string
   stock_quantity: number
@@ -148,11 +148,11 @@ type Summary = {
 }
 
 export default function AdminStockPage() {
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<ProductoEntity[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [summary, setSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
-  const [editingProduct, setEditingProduct] = useState<number | null>(null)
+  const [editingProductoEntity, setEditingProductoEntity] = useState<number | null>(null)
   const [editQuantity, setEditQuantity] = useState<number>(0)
 
   useEffect(() => {
@@ -196,7 +196,7 @@ export default function AdminStockPage() {
       })
 
       if (res.ok) {
-        setEditingProduct(null)
+        setEditingProductoEntity(null)
         fetchData()
       }
     } catch (e) {
@@ -313,7 +313,7 @@ export default function AdminStockPage() {
                           </td>
                           <td>
                             <button className="btn-small btn-restock" onClick={() => {
-                              setEditingProduct(product.id)
+                              setEditingProductoEntity(product.id)
                               setEditQuantity(product.stock_quantity)
                             }}>
                               Editar
@@ -330,8 +330,8 @@ export default function AdminStockPage() {
         </div>
 
         {/* Modal de edición */}
-        {editingProduct && (
-          <div className="modal" onClick={() => setEditingProduct(null)}>
+        {editingProductoEntity && (
+          <div className="modal" onClick={() => setEditingProductoEntity(null)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <h2 className="modal-title">Actualizar Stock</h2>
               <input
@@ -342,8 +342,8 @@ export default function AdminStockPage() {
                 min="0"
               />
               <div className="modal-buttons">
-                <button className="btn" onClick={() => handleStockChange(editingProduct)}>Guardar</button>
-                <button className="btn" style={{borderColor: '#7A7268', color: '#7A7268'}} onClick={() => setEditingProduct(null)}>Cancelar</button>
+                <button className="btn" onClick={() => handleStockChange(editingProductoEntity)}>Guardar</button>
+                <button className="btn" style={{borderColor: '#7A7268', color: '#7A7268'}} onClick={() => setEditingProductoEntity(null)}>Cancelar</button>
               </div>
             </div>
           </div>

@@ -1,0 +1,72 @@
+@startuml
+skinparam style strictuml
+autonumber
+title Diagrama de Secuencia - Baja de Restaurante (US025.6)
+
+' Estilo para simpleza visual y elegancia profesional
+skinparam sequenceGroupHeaderFontSize 0
+skinparam sequenceGroupBorderThickness 1
+
+actor "Administrador" as Admin
+participant "configPage: Next.js" as View
+participant "restCtrl: RestauranteControlador" as Ctrl
+participant "restRepo: RestauranteRepositorio" as Repo
+participant "r: Restaurante" as Rest
+database "Base de Datos" as DB
+
+Admin -> View : confirmarBaja()
+activate View
+
+View -> Ctrl : darDeBaja()
+activate Ctrl
+
+' Fase 1: Sincronización y validación de estado
+Ctrl -> Repo : buscarPorId(idRestaurante)
+activate Repo
+Repo -> DB : SELECT * FROM restaurantes WHERE id=?
+activate DB
+DB --> Repo : restaurante_encontrado
+deactivate DB
+Repo --> Ctrl : r (instancia Restaurante)
+deactivate Repo
+
+' Fase 2: Regla de negocio crítica (Validación de Pedidos)
+note over Ctrl, Rest : **US025.6**: No permitir baja \nsi existen pedidos en curso.
+
+Ctrl -> Rest : tienePedidosPendientes()
+activate Rest
+Rest --> Ctrl : booleano (true / false)
+deactivate Rest
+
+alt No existen pedidos pendientes
+    
+    ' Fase 3: Borrado Lógico
+    Ctrl -> Rest : desactivarEntidad()
+    activate Rest
+    note right of Rest : Set activo = false
+    Rest --> Ctrl : void
+    deactivate Rest
+    
+    Ctrl -> Repo : actualizar(r)
+    activate Repo
+    Repo -> DB : UPDATE restaurantes SET activo=false WHERE id=?
+    activate DB
+    DB --> Repo : exito
+    deactivate DB
+    Repo --> Ctrl : void
+    deactivate Repo
+    
+    Ctrl --> View : confirmacionInactivacion()
+    View --> Admin : mostrarRestauranteInactivo()
+    
+else Pedidos en curso detectados
+    
+    ' Rama de error: Bloqueo de baja
+    Ctrl --> View : errorPedidosEnCurso()
+    deactivate Ctrl
+    View --> Admin : mostrarAlertaPendientes()
+    
+End
+
+deactivate View
+@enduml

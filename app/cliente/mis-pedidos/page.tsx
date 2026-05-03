@@ -1,7 +1,7 @@
 // app/restaurantes/mis-pedidos/page.tsx
-'use client';
-
-import React, { useEffect, useState, useRef } from 'react';
+"use client"
+import React, { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -285,115 +285,80 @@ type Order = {
 };
 
 export default function MisPedidosPage() {
+  const [customerId, setCustomerId] = useState<number | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState<number | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const prevActiveStatusRef = useRef<Map<number, string | null>>(new Map());
+  const router = useRouter();
 
-  const ordersRef = useRef(orders);
+  // 1. Cargar el ID real al montar el componente
   useEffect(() => {
-    ordersRef.current = orders;
-  }, [orders]);
+    const savedId = sessionStorage.getItem('userId');
+    if (savedId) {
+      setCustomerId(parseInt(savedId));
+    } else {
+      router.push('/login');
+    }
+  }, [router]);
 
-  useEffect(() => {
-    const loadInitial = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/pedidos');
-        const data = await res.json();
-        const pedidos = data.pedidos || [];
-        setOrders(pedidos);
-        
-        const prevMap = new Map();
-        pedidos.forEach((order: Order) => {
-          prevMap.set(order.id, order.active_status);
-        });
-        prevActiveStatusRef.current = prevMap;
-      } catch (err) {
-        setError('No se pudieron cargar los pedidos');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadInitial();
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch('/api/pedidos');
-        const data = await res.json();
-        const newOrders = data.pedidos || [];
-        
-        // 1. 🔥 COMPARA CON LA REF (Para evitar el parpadeo si no hay cambios)
-        if (JSON.stringify(newOrders) !== JSON.stringify(ordersRef.current)) {
-          
-          // 2. Detectar cambios para alertas
-          newOrders.forEach((newOrder: Order) => {
-            const prevActiveStatus = prevActiveStatusRef.current.get(newOrder.id);
-            const currentActiveStatus = newOrder.active_status;
-            
-            if (prevActiveStatus !== currentActiveStatus) {
-              if (currentActiveStatus === 'CONFIRMED') {
-                alert(`✅ Pedido #${newOrder.id} ha sido confirmado`);
-              }
-              prevActiveStatusRef.current.set(newOrder.id, currentActiveStatus);
-            }
-          });
-
-          // 3. Actualizar el estado real
-          setOrders(newOrders);
-        }
-      } catch (err) {
-        console.error('Error en polling:', err);
-      }
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, []); // [] está bien aquí porque usamos refs para los datos cambiantes
-
-  /*const fetchOrders = async () => {
+  // 2. Función de carga de datos (Sin comparaciones ni alertas)
+  const fetchOrders = useCallback(async (quiet = false) => {
+    if (!customerId) return;
+    
+    if (!quiet) setLoading(true);
+    setError(null);
+    
     try {
-      const res = await fetch('/api/pedidos');
+      const res = await fetch(`/api/pedidos?customerId=${customerId}`);
       const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error || 'Error al obtener pedidos');
+      
       setOrders(data.pedidos || []);
-    } catch (err) {
-      setError('No se pudieron cargar los pedidos');
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }; */
+  }, [customerId]);
 
-  /*useEffect(() => {
-    fetchOrders();
-  }, []); */
+  // 3. Disparar carga inicial cuando el ID esté disponible
+  useEffect(() => {
+    if (customerId) {
+      fetchOrders();
+    }
+  }, [customerId, fetchOrders]);
 
+  // 4. Acciones (Completar/Cancelar)
   const handleComplete = async (orderId: number) => {
+    if (!customerId) return;
     setCompletingId(orderId);
-    setError(null);
+    setError(null); // Limpiamos errores previos
+
     try {
-      const res = await fetch(`/api/pedidos/${orderId}/complete`, { method: 'PUT' });
+      const res = await fetch(`/api/pedidos/${orderId}/complete?customerId=${customerId}`, { 
+        method: 'PUT' 
+      });
+      
+      const data = await res.json(); // 👈 Primero obtenemos la respuesta
+
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Error al completar');
+        // 👈 AQUÍ ESTÁ EL TRUCO: Usamos el error que viene del backend (data.error)
+        throw new Error(data.error || 'Error al completar el pedido');
       }
-      // Actualizar estado local: ya no está activo, cambiar status a COMPLETED
-      setOrders(prev =>
-        prev.map(order =>
-          order.id === orderId
-            ? { ...order, status: 'COMPLETED', is_active: false, active_status: null }
-            : order
-        )
-      );
+      
+      await fetchOrders(true);
     } catch (err: any) {
+      // Ahora 'err.message' será el texto exacto del controlador
       setError(err.message);
     } finally {
       setCompletingId(null);
     }
   };
 
-  const handleCancel = async (orderId: number) => {
+  /*const handleCancel = async (orderId: number) => {
     setCancellingId(orderId);
     setError(null);
     try {
@@ -416,6 +381,8 @@ export default function MisPedidosPage() {
       setCancellingId(null);
     }
   };
+
+  */
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -442,7 +409,7 @@ export default function MisPedidosPage() {
     }
   };
 
-  if (loading) {
+  if (loading && !customerId) {
     return (
       <>
         <style>{styles}</style>
@@ -458,6 +425,7 @@ export default function MisPedidosPage() {
 
   return (
     <>
+    <p>customerId: {customerId}</p>
       <style>{styles}</style>
       <div className="menu-root">
         <header className="menu-hero">
@@ -533,7 +501,7 @@ export default function MisPedidosPage() {
 
                   {/* 🔥 CONDICIÓN MODIFICADA: solo si está activo y el estado activo es PENDING o CONFIRMED */}
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    {order.is_active && (order.active_status === 'PENDING' || order.active_status === 'CONFIRMED') && (
+                    {order.is_active && order.active_status === 'ON_DELIVERY' && (
                       <>
                         {/*<button
                           onClick={() => handleCancel(order.id)}

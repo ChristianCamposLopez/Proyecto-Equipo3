@@ -64,12 +64,12 @@ const DEMO_CUSTOMER_ID = 1
 const ORDER_REFRESH_MS = 10000
 
 const statusLabels: Record<string, string> = {
-  PENDING: "Preparando",
+  PENDING: "Pendiente",
   PREPARING: "Preparando",
-  READY: "Preparando",
-  DELIVERY_ASSIGNED: "En camino",
+  READY: "Listo",
+  DELIVERY_ASSIGNED: "Repartidor asignado",
   ON_DELIVERY: "En camino",
-  COMPLETED: "Entregado",
+  COMPLETED: "Completado",
   DELIVERED: "Entregado",
   CANCELLED: "Cancelado",
   CONFIRMED: "Confirmado",

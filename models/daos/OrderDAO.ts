@@ -150,10 +150,32 @@ export class OrderDAO {
   // Obtener órdenes pendientes de un restaurante
   async getPendingOrders(restaurantId: number): Promise<Order[]> {
     const result = await db.query(
-      `SELECT id, customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at
-       FROM orders
-       WHERE restaurant_id = $1 AND status IN ('PENDING', 'CONFIRMED')
-       ORDER BY created_at ASC`,
+      `SELECT 
+      o.id, 
+      o.customer_id, 
+      o.restaurant_id, 
+      o.delivery_address_json, 
+      o.status, 
+      o.total_amount, 
+      o.created_at,
+      o.note, -- 👈 Agregamos la nota
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'product_name', p.name,
+            'quantity', oi.quantity,
+            'unit_price', oi.unit_price_at_purchase
+          )
+        ) FILTER (WHERE oi.id IS NOT NULL), 
+        '[]'
+      ) AS items -- 👈 Agregamos los items como un array JSON
+    FROM orders o
+    LEFT JOIN order_items oi ON o.id = oi.order_id
+    LEFT JOIN products p ON oi.product_id = p.id
+    WHERE o.restaurant_id = $1 
+      AND o.status IN ('PENDING', 'CONFIRMED')
+    GROUP BY o.id
+    ORDER BY o.created_at ASC`,
       [restaurantId]
     );
     return result.rows as Order[];

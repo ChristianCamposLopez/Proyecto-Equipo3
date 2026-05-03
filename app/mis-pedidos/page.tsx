@@ -533,7 +533,7 @@ export default function MisPedidosPage() {
 
                   {/* 🔥 CONDICIÓN MODIFICADA: solo si está activo y el estado activo es PENDING o CONFIRMED */}
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    {order.is_active && (order.active_status === 'PENDING' || order.active_status === 'CONFIRMED' || order.active_status === 'DELIVERED') && (
+                    {order.is_active && order.active_status !== 'COMPLETED' && (order.active_status === 'PENDING' || order.active_status === 'CONFIRMED' || order.active_status === 'DELIVERED') && (
                       <>
                         {/*<button
                           onClick={() => handleCancel(order.id)}

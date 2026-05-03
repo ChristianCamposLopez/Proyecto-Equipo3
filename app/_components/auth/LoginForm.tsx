@@ -31,8 +31,16 @@ export const LoginForm = () => {
         return;
       }
 
+      // 1. Guardamos el token
       localStorage.setItem('token', data.token);
-      router.push('/dashboard');
+      sessionStorage.setItem('userId', data.userId);
+      sessionStorage.setItem('userRole', data.rol); // 👈 Guardamos el rol
+
+      if (data.rol === 'restaurant_admin' || data.rol === 'admin') {
+        router.push('/admin/dashboard'); // 👈 URL limpia sin el ID
+      } else {
+        router.push('/cliente/dashboard');
+      }
     } catch {
       setError('Error de conexión con el servidor');
     } finally {

@@ -107,7 +107,7 @@ describe("US021.2: Experiencia del Cliente – Analizar frecuencia (Pruebas Inte
       it("✓ debe retornar 200 con las recomendaciones", async () => {
         const fakeRecs = [{ id: 2, name: "Burger", score: 12 }];
         spyGetTop.mockResolvedValueOnce(fakeRecs);
-        const req = createGetRequest("http://localhost/api/recommendations?restaurantId=10");
+        const req = createGetRequest("http://localhost/api/recommendations?restaurantId=10&customerId=123");
         const res = await GET(req);
         const json = await res.json();
         expect(res.status).toBe(200);
@@ -120,7 +120,7 @@ describe("US021.2: Experiencia del Cliente – Analizar frecuencia (Pruebas Inte
         const req = createGetRequest("http://localhost/api/recommendations");
         const res = await GET(req);
         expect(res.status).toBe(400);
-        expect(await res.json()).toEqual({ error: "restaurantId required" });
+        expect(await res.json()).toEqual({ error: "restaurantId and customerId are required" });
         expect(spyGetTop).not.toHaveBeenCalled();
       });
     });

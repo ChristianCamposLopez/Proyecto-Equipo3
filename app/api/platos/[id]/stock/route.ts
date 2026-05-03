@@ -19,6 +19,7 @@ export async function PATCH(
     await menuController.updateStock(productId, stock);
     return NextResponse.json({ message: 'Stock actualizado correctamente' });
   } catch (err: any) {
+    console.error("DETALLE DEL ERROR:", err); //
     if (err.message === 'Producto no encontrado') {
       return NextResponse.json({ error: err.message }, { status: 404 });
     }

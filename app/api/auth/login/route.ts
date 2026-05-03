@@ -15,26 +15,25 @@ const authCtrl = new AuthControlador();
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Validar campos requeridos
     const datos: AutenticacionDTO = {
       email: body.email,
       password: body.password,
     };
 
     if (!datos.email || !datos.password) {
-      return NextResponse.json(
-        { error: 'Email y contraseña son obligatorios' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Email y contraseña son obligatorios' }, { status: 400 });
     }
 
-    // Paso 2 del diagrama: login(AutenticacionDTO) → token JWT
-    const token = await authCtrl.login(datos);
+    // Ahora authCtrl.login nos devuelve el objeto { token, userId, rol }
+    const authData = await authCtrl.login(datos);
 
-    // Paso 10-11 del diagrama: token JWT → redirigirPanelControl
     return NextResponse.json(
-      { token, mensaje: 'Inicio de sesión exitoso' },
+      { 
+        token: authData.token, 
+        userId: authData.userId, 
+        rol: authData.rol, 
+        mensaje: 'Inicio de sesión exitoso' 
+      },
       { status: 200 }
     );
   } catch (error) {

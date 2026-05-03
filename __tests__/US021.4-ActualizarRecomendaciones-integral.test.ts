@@ -113,7 +113,7 @@ describe("US021.4: Experiencia del Cliente – Actualizar recomendaciones (Prueb
       spyGetTop.mockResolvedValueOnce(nuevasRecomendaciones);
 
       // 3. Obtener recomendaciones (simulando que se recalcularon después del pedido)
-      const reqGet = createGetRequest("http://localhost/api/recommendations?restaurantId=2");
+      const reqGet = createGetRequest("http://localhost/api/recommendations?restaurantId=2&customerId=1");
       const resGet = await obtenerRecomendaciones(reqGet);
       const json = await resGet.json();
 

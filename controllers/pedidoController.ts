@@ -22,8 +22,24 @@ export class PedidoController {
       throw new Error("Pedido no encontrado o ya finalizado");
     }
     // Solo permitir completar si el estado actual es DELIVERED
-    if (pedido.status !== 'DELIVERED') {
-      throw new Error(`No se puede completar un pedido en estado '${pedido.status}'. Solo se permite completar pedidos entregados (DELIVERED).`);
+    if (pedido.status !== 'ON_DELIVERY') {
+      if (pedido.status === 'PENDING') {
+        throw new Error(`No se puede completar un pedido en estado pendiente. Solo se permite completar pedidos entregados.`);
+      }else{
+        if (pedido.status === 'CONFIRMED') {
+          throw new Error(`No se puede completar un pedido en estado confirmado. Solo se permite completar pedidos entregados.`);
+        }else{
+          if (pedido.status === 'READY') {
+            throw new Error(`No se puede completar un pedido en estado listo. Solo se permite completar pedidos entregados.`);
+          }else{
+            if (pedido.status === 'CANCELLED') {
+              throw new Error(`No se puede completar un pedido cancelado. Solo se permite completar pedidos entregados.`);
+            }else{
+              throw new Error(`No se puede completar un pedido en estado '${pedido.status}'. Solo se permite completar pedidos entregados.`);
+            }
+          }
+        }
+      }
     }
     await PedidoDAO.completarPedido(pedidoId);
   }

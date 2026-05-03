@@ -26,14 +26,36 @@ describe("US005.5: Gestión de Menú – Actualizar stock (Integral)", () => {
     beforeEach(() => jest.clearAllMocks());
 
     describe("updateStock", () => {
-      it("✓ debe actualizar la columna stock", async () => {
+      it("✓ debe actualizar la columna stock correctamente", async () => {
+        // Simulamos que la base de datos afectó a 1 fila
         mockQuery.mockResolvedValueOnce({ rowCount: 1 });
         
-        await ProductoDAO.updateStock(8, 150);
+        const productoId = 8;
+        const nuevoStock = 150;
+        const esperadoIsAvailable = true; // 150 > 0 es true
+
+        await ProductoDAO.updateStock(productoId, nuevoStock);
+        
+        // 1. Corregimos el Regex para que acepte la columna is_available y el tercer parámetro $3
+        // 2. Corregimos el array de parámetros para que incluya [quantity, isAvailable, id]
+        expect(mockQuery).toHaveBeenCalledWith(
+          expect.stringMatching(/UPDATE\s+products\s+SET\s+stock\s*=\s*\$1,\s+is_available\s*=\s*\$2\s+WHERE\s+id\s*=\s*\$3/i),
+          [nuevoStock, esperadoIsAvailable, productoId]
+        );
+      });
+
+      // Añade este caso extra para probar el cambio de is_available a false
+      it("✓ debe marcar is_available como false si el stock es 0", async () => {
+        mockQuery.mockResolvedValueOnce({ rowCount: 1 });
+        
+        const productoId = 10;
+        const nuevoStock = 0;
+
+        await ProductoDAO.updateStock(productoId, nuevoStock);
         
         expect(mockQuery).toHaveBeenCalledWith(
-          expect.stringContaining("UPDATE products SET stock = $1"),
-          [150, 8]
+          expect.any(String),
+          [0, false, 10]
         );
       });
 

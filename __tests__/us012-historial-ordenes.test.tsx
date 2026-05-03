@@ -3,7 +3,7 @@
  * Pruebas para la página de órdenes y visualización de datos
  */
 
-/*
+
 describe('US012: Historial de Órdenes', () => {
   const mockOrders = [
     {
@@ -320,4 +320,4 @@ describe('US012: Historial de Órdenes', () => {
   })
 })
 
-*/
+

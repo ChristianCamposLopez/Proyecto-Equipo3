@@ -1,7 +1,8 @@
 // app/reembolsos/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useState } from 'react';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -224,6 +225,9 @@ type PendingRefund = {
 };
 
 export default function ReembolsosPage() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
+  const [adminId, setAdminId] = useState<number | null>(null); // ID real del admin
   const [refunds, setRefunds] = useState<PendingRefund[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -231,37 +235,60 @@ export default function ReembolsosPage() {
   const [showRejectModal, setShowRejectModal] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
-  const fetchPending = async () => {
+  // 1. Recuperar el ID del administrador al cargar
+  useEffect(() => {
+    const savedId = sessionStorage.getItem('userId');
+    if (savedId) {
+      setAdminId(parseInt(savedId));
+    }
+  }, []);
+
+  // 2. Cargar solicitudes (Enviando adminId por Query String)
+  const fetchPending = useCallback(async () => {
+    if (!adminId) return; // No disparar si no hay ID
+
     try {
       setLoading(true);
-      const res = await fetch('/api/reembolsos');
-      if (!res.ok) throw new Error('Error al cargar solicitudes');
+      setError(null);
+      const res = await fetch(`/api/reembolsos?adminId=${adminId}`);
+      
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al cargar solicitudes');
+      
       setRefunds(data.refunds || []);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminId]);
 
+  // 3. Efecto para disparar la carga inicial
   useEffect(() => {
-    fetchPending();
-  }, []);
+    if (adminId) {
+      fetchPending();
+    }
+  }, [adminId, fetchPending]);
 
+  // 4. Aprobar (Enviando adminId en el Body)
   const handleApprove = async (orderId: number) => {
+    if (!adminId) return;
+    
     setProcessingId(orderId);
+    setError(null);
     try {
       const res = await fetch(`/api/reembolsos/${orderId}/process`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'approve' }),
+        body: JSON.stringify({ 
+          action: 'approve',
+          adminId: adminId // 👈 ID Real
+        }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Error al aprobar');
-      }
-      // Remover de la lista
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al aprobar');
+
       setRefunds(prev => prev.filter(r => r.order_id !== orderId));
     } catch (err: any) {
       setError(err.message);
@@ -270,22 +297,29 @@ export default function ReembolsosPage() {
     }
   };
 
+  // 5. Rechazar (Enviando adminId en el Body)
   const handleReject = async (orderId: number) => {
+    if (!adminId) return;
     if (!rejectReason.trim()) {
       setError('Debes escribir un motivo de rechazo');
       return;
     }
+
     setProcessingId(orderId);
     try {
       const res = await fetch(`/api/reembolsos/${orderId}/process`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reject', reason: rejectReason.trim() }),
+        body: JSON.stringify({ 
+          action: 'reject', 
+          reason: rejectReason.trim(),
+          adminId: adminId // 👈 ID Real
+        }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Error al rechazar');
-      }
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al rechazar');
+
       setRefunds(prev => prev.filter(r => r.order_id !== orderId));
       setShowRejectModal(null);
       setRejectReason('');
@@ -295,10 +329,22 @@ export default function ReembolsosPage() {
       setProcessingId(null);
     }
   };
-
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('es-MX');
   };
+
+  useEffect(() => {
+    // 🛡️ Guardia de seguridad
+    const role = sessionStorage.getItem('userRole');
+    if (role !== 'admin' && role !== 'restaurant_admin') {
+      router.replace('/login');
+    } else {
+      setAuthorized(true);
+      // Aquí puedes disparar tus fetch iniciales
+    }
+  }, [router]);
+
+  if (!authorized) return null; // 👈 Evita el parpadeo de contenido
 
   if (loading) {
     return (

@@ -202,13 +202,17 @@ export class PedidoDAO {
         `SELECT product_id, quantity FROM pedido_items_historial WHERE order_id = $1`,
         [orderId]
       );
+
       for (const item of items.rows) {
+        // 💡 Modificamos para actualizar stock Y disponibilidad simultáneamente
         await client.query(
-          `UPDATE products SET stock = stock + $1 WHERE id = $2`,
+          `UPDATE products 
+          SET stock = stock + $1, 
+              is_available = TRUE 
+          WHERE id = $2`,
           [item.quantity, item.product_id]
         );
       }
-
       // 3. Eliminar de orders y order_items (si existen, porque puede que ya se hayan eliminado)
       await client.query(`DELETE FROM order_items WHERE order_id = $1`, [orderId]);
       await client.query(`DELETE FROM orders WHERE id = $1`, [orderId]);
@@ -233,7 +237,7 @@ export class PedidoDAO {
         [orderId]
       );
       await client.query(`DELETE FROM order_items WHERE order_id = $1`, [orderId]);
-      await client.query(`DELETE FROM orders WHERE id = $1`, [orderId]);
+      await client.query(`DELETE FROM orders WHERE id = $1`, [orderId]); 
       await client.query("COMMIT");
     } catch (e) {
       await client.query("ROLLBACK");

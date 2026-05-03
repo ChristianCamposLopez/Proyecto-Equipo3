@@ -1,9 +1,9 @@
 // app/admin/restaurantes/[restaurantid]/ranking/page.tsx
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ExportService, ExportData, ExportMetadata } from '@/services/ExportService';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Inyectar estilos (proporcionados)
 const styles = `
@@ -512,6 +512,24 @@ export default function RankingPage() {
   const [ranking, setRanking] = useState<RankedProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState<string>('');
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const userId = sessionStorage.getItem('userId');
+    const userRole = sessionStorage.getItem('userRole'); // Idealmente guardas el rol al loguear
+
+    // Si no hay ID o el rol no es ADMIN, para afuera
+    if (!userId || userRole !== 'restaurant_admin') {
+      router.push('/login');
+    } else {
+      setIsAdmin(true);
+    }
+  }, [router]);
+
+  // Si aún está validando, no mostramos NADA
+  if (!isAdmin) return <div className="loading">Verificando credenciales...</div>;
 
   const fetchRanking = async () => {
     // Validación de fechas

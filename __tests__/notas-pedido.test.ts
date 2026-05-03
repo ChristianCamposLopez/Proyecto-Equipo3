@@ -1,0 +1,112 @@
+/**
+ * Notas de pedidos
+ * Pruebas unitarias sobre normalización y guardado de notas.
+ */
+
+const mockDbQuery = jest.fn();
+const mockConnect = jest.fn();
+const mockGetDeliveryAddressSnapshot = jest.fn();
+
+jest.mock("@/config/db", () => ({
+  db: {
+    query: (...args: unknown[]) => mockDbQuery(...args),
+    connect: (...args: unknown[]) => mockConnect(...args),
+  },
+}));
+
+jest.mock("@/lib/deliveryAddresses", () => ({
+  getDeliveryAddressSnapshot: (...args: unknown[]) =>
+    mockGetDeliveryAddressSnapshot(...args),
+}));
+
+import { checkoutCart, normalizeOrderNote } from "@/lib/cart";
+
+describe("Notas de pedidos", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("normaliza una nota válida eliminando espacios extras", () => {
+    expect(normalizeOrderNote("  Sin salsa y con extra queso  ")).toBe(
+      "Sin salsa y con extra queso"
+    );
+  });
+
+  it("rechaza notas con más de 200 caracteres", () => {
+    expect(() => normalizeOrderNote("a".repeat(201))).toThrow(
+      "La nota no puede exceder 200 caracteres"
+    );
+  });
+
+  it("guarda la nota normalizada al confirmar el checkout", async () => {
+    const mockClientQuery = jest
+      .fn()
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            product_id: 7,
+            quantity: 2,
+            unit_price: 150,
+            stock: 5,
+            is_available: true,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 120,
+            customer_id: 1,
+            restaurant_id: 8,
+            delivery_address_json: { street: "Reforma" },
+            status: "PENDING",
+            note: "Sin cebolla",
+            total_amount: 300,
+            created_at: "2026-04-24T12:00:00.000Z",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({});
+    const mockRelease = jest.fn();
+
+    mockGetDeliveryAddressSnapshot.mockResolvedValue({
+      street: "Av. Reforma",
+      exteriorNumber: "100",
+      interiorNumber: null,
+      neighborhood: "Centro",
+      city: "CDMX",
+      state: "CDMX",
+      postalCode: "06000",
+      references: null,
+    });
+    mockDbQuery.mockResolvedValueOnce({
+      rows: [{ id: 99, customer_id: 1, restaurant_id: 8 }],
+    });
+    mockConnect.mockResolvedValue({
+      query: mockClientQuery,
+      release: mockRelease,
+    });
+
+    const order = await checkoutCart(1, "  Sin cebolla  ", 4);
+
+    expect(mockClientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO orders"),
+      [1, 8, JSON.stringify({
+        street: "Av. Reforma",
+        exteriorNumber: "100",
+        interiorNumber: null,
+        neighborhood: "Centro",
+        city: "CDMX",
+        state: "CDMX",
+        postalCode: "06000",
+        references: null,
+      }), "Sin cebolla", 300]
+    );
+    expect(order.note).toBe("Sin cebolla");
+    expect(mockRelease).toHaveBeenCalled();
+  });
+});

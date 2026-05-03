@@ -35,8 +35,9 @@ services:
     volumes:
       # Persistencia de datos
       - pg_data:/var/lib/postgresql/data
-      # Autocarga del esquema — :z para SELinux
-      - ./bd/init.sql:/docker-entrypoint-initdb.d/init.sql:z
+      # Autocarga del esquema y datos iniciales (Orden alfabético: 01_init, 02_seed)
+      - ./bd/init.sql:/docker-entrypoint-initdb.d/01_init.sql:z
+      - ./bd/seed_test_ivan.sql:/docker-entrypoint-initdb.d/02_seed.sql:z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d restaurante_bd"]
       interval: 5s

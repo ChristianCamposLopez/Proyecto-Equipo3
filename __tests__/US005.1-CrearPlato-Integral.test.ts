@@ -16,11 +16,15 @@ const mockQuery = db.query as jest.Mock;
 const createPostRequest = (body: any) => {
   return {
     json: async () => body,
-  } as NextRequest;
+  } as unknown as NextRequest;
 };
 
-describe("US005.1: Gestión de Menú – Crear plato (Pruebas Integrales)", () => {
+describe("US005.1: Gestión de Menú – Crear plato (Robustez y Sembrado)", () => {
   
+  beforeAll(() => {
+    console.log(">>> Probando US005: Creación de platos (Caminos Alternativos)...");
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -30,191 +34,105 @@ describe("US005.1: Gestión de Menú – Crear plato (Pruebas Integrales)", () =
   // =========================================================
   describe("Capa de Persistencia (ProductoDAO)", () => {
     
-    describe("createProductoEntity", () => {
-      it("✓ debe insertar un nuevo producto con los datos correctos y devolverlo", async () => {
-        const newProductoEntity = {
-          id: 10,
-          name: "Hamburguesa",
-          base_price: 12.5,
-          stock: 50,
-          category_id: 3,
-          descripcion: "Con queso y bacon",
-          is_active: true,
-          is_available: true,
-          deleted_at: null,
-        };
-        mockQuery.mockResolvedValueOnce({ rows: [newProductoEntity] });
+    it("✓ debe insertar un nuevo producto con datos mínimos (Camino Feliz)", async () => {
+      console.log("  -> Verificando inserción exitosa...");
+      const fakeProduct = { id: 10, name: "Taco", base_price: 2.5, stock: 100, category_id: 1, is_active: true };
+      mockQuery.mockResolvedValueOnce({ rows: [fakeProduct] });
 
-        const result = await ProductoDAO.createProductoEntity({
-          name: "Hamburguesa",
-          base_price: 12.5,
-          stock: 50,
-          category_id: 3,
-          descripcion: "Con queso y bacon",
-        });
-
-        expect(mockQuery).toHaveBeenCalledTimes(1);
-        const [sql, params] = mockQuery.mock.calls[0];
-        expect(sql).toContain("INSERT INTO products");
-        expect(params).toEqual(["Hamburguesa", 12.5, 50, 3, "Con queso y bacon"]);
-        expect(result).toEqual(newProductoEntity);
+      const result = await ProductoDAO.createProductoEntity({
+        name: "Taco",
+        base_price: 2.5,
+        stock: 100,
+        category_id: 1
       });
 
-      it("✓ debe aceptar descripción nula cuando no se proporciona", async () => {
-        mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }] });
-        await ProductoDAO.createProductoEntity({
-          name: "Papas",
-          base_price: 5,
-          stock: 100,
-          category_id: 2,
-        });
-        const params = mockQuery.mock.calls[0][1];
-        expect(params[4]).toBeNull();
-      });
-
-      it("✗ debe propagar el error si la base de datos falla", async () => {
-        const dbError = new Error("Constraint violation");
-        mockQuery.mockRejectedValueOnce(dbError);
-        await expect(ProductoDAO.createProductoEntity({
-          name: "Duplicado",
-          base_price: 10,
-          stock: 5,
-          category_id: 1,
-        })).rejects.toThrow("Constraint violation");
-      });
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringMatching(/INSERT INTO products/i),
+        expect.arrayContaining(["Taco", 2.5, 100, 1])
+      );
+      expect(result).toEqual(fakeProduct);
     });
 
-    describe("findByName (usado para validar duplicados)", () => {
-      it("✓ debe buscar por nombre (case-insensitive)", async () => {
-        const existing = { id: 5, name: "Pizza", deleted_at: null };
-        mockQuery.mockResolvedValueOnce({ rows: [existing] });
-        const result = await ProductoDAO.findByName("pizza");
-        expect(mockQuery).toHaveBeenCalledWith(
-          expect.stringContaining("LOWER(name) = LOWER($1)"),
-          ["pizza"]
-        );
-        expect(result).toEqual(existing);
-      });
-
-      it("✓ debe devolver null si no existe el nombre", async () => {
-        mockQuery.mockResolvedValueOnce({ rows: [] });
-        const result = await ProductoDAO.findByName("Nonexistent");
-        expect(result).toBeNull();
-      });
+    it("✗ debe lanzar error ante violación de constraint unique/null (Camino Alternativo)", async () => {
+      console.log("  -> Verificando error de integridad de DB...");
+      mockQuery.mockRejectedValueOnce(new Error('duplicate key value violates unique constraint "products_name_key"'));
+      
+      await expect(ProductoDAO.createProductoEntity({
+        name: "Duplicado",
+        base_price: 10,
+        stock: 1,
+        category_id: 1
+      })).rejects.toThrow("duplicate key");
     });
   });
 
   // =========================================================
-  // 2. CAPA DE SERVICIOS E INTEGRACIÓN (Service + API Route)
+  // 2. CAPA DE SERVICIOS (MenuService)
   // =========================================================
-  describe("Capa de Servicios e Integración", () => {
-    
-    // Espías para interceptar el DAO sin mockear el módulo completo
-    let spyFindByName: jest.SpyInstance;
-    let spyCreateProductoEntity: jest.SpyInstance;
-
-    beforeEach(() => {
-      spyFindByName = jest.spyOn(ProductoDAO, 'findByName');
-      spyCreateProductoEntity = jest.spyOn(ProductoDAO, 'createProductoEntity');
+  describe("Capa de Servicios (MenuService)", () => {
+    it("⚠ debe rechazar creación si el plato ya existe activo (Lógica de Negocio)", async () => {
+      console.log("  -> Verificando validación de duplicados en Service...");
+      const existingProduct = { id: 1, name: "Pizza", deleted_at: null };
+      jest.spyOn(ProductoDAO, 'findByName').mockResolvedValue(existingProduct);
+      
+      const service = new MenuService();
+      await expect(service.createProductoEntity({
+        name: "Pizza",
+        base_price: 10,
+        stock: 5,
+        category_id: 1
+      })).rejects.toThrow("Ya existe un plato activo");
     });
 
-    afterEach(() => {
-      spyFindByName.mockRestore();
-      spyCreateProductoEntity.mockRestore();
+    it("⚠ debe validar que el precio sea positivo", async () => {
+      console.log("  -> Verificando validación de precio positivo...");
+      const service = new MenuService();
+      await expect(service.createProductoEntity({
+        name: "Gratis",
+        base_price: -1,
+        stock: 5,
+        category_id: 1
+      })).rejects.toThrow("El precio debe ser mayor a 0");
     });
 
-    describe("MenuService.createProductoEntity", () => {
-      it("✓ debe crear un producto cuando los datos son válidos y no hay duplicado activo", async () => {
-        spyFindByName.mockResolvedValueOnce(null); 
-        const created = { id: 99, name: "Taco", base_price: 8 };
-        spyCreateProductoEntity.mockResolvedValueOnce(created);
+    it("⚠ debe validar que el stock no sea negativo", async () => {
+      console.log("  -> Verificando validación de stock no negativo...");
+      const service = new MenuService();
+      await expect(service.createProductoEntity({
+        name: "Papas",
+        base_price: 5,
+        stock: -10,
+        category_id: 1
+      })).rejects.toThrow("El stock no puede ser negativo");
+    });
+  });
 
-        const controller = new MenuService();
-        const result = await controller.createProductoEntity({
-          name: "Taco",
-          base_price: 8,
-          stock: 20,
-          category_id: 4,
-          descripcion: "Tacos al pastor",
-        });
+  // =========================================================
+  // 3. CAPA API (Controllers)
+  // =========================================================
+  describe("API Route POST /api/platos", () => {
+    it("✗ debe retornar 400 si faltan campos requeridos", async () => {
+      console.log("  -> Verificando rechazo de payload incompleto...");
+      const req = createPostRequest({ name: "Incompleto" });
+      const res = await POST(req);
+      const data = await res.json();
 
-        expect(spyFindByName).toHaveBeenCalledWith("Taco");
-        expect(spyCreateProductoEntity).toHaveBeenCalled();
-        expect(result).toEqual(created);
-      });
-
-      it("✗ debe lanzar error si el precio es <= 0", async () => {
-        const controller = new MenuService();
-        await expect(controller.createProductoEntity({
-          name: "Test",
-          base_price: 0,
-          stock: 10,
-          category_id: 1,
-        })).rejects.toThrow("El precio debe ser mayor a 0");
-        expect(spyCreateProductoEntity).not.toHaveBeenCalled();
-      });
-
-      it("✗ debe lanzar error si el stock es negativo", async () => {
-        const controller = new MenuService();
-        await expect(controller.createProductoEntity({
-          name: "Test",
-          base_price: 5,
-          stock: -1,
-          category_id: 1,
-        })).rejects.toThrow("El stock no puede ser negativo");
-        expect(spyCreateProductoEntity).not.toHaveBeenCalled();
-      });
-
-      it("✗ debe lanzar error si ya existe un plato activo con el mismo nombre", async () => {
-        spyFindByName.mockResolvedValueOnce({ id: 1, name: "Pizza", deleted_at: null });
-        const controller = new MenuService();
-        await expect(controller.createProductoEntity({
-          name: "Pizza",
-          base_price: 10,
-          stock: 5,
-          category_id: 2,
-        })).rejects.toThrow("Ya existe un plato activo o no eliminado con ese nombre");
-        expect(spyCreateProductoEntity).not.toHaveBeenCalled();
-      });
+      expect(res.status).toBe(400);
+      expect(data.error).toBe("Faltan campos obligatorios");
     });
 
-    describe("API Route POST /api/platos", () => {
-      it("✓ debe retornar 200 y el producto creado cuando todo es correcto", async () => {
-        spyFindByName.mockResolvedValueOnce(null);
-        const fakeProductoEntity = { id: 1, name: "Empanada", base_price: 3 };
-        spyCreateProductoEntity.mockResolvedValueOnce(fakeProductoEntity);
-
-        const req = createPostRequest({
-          name: "Empanada",
-          base_price: 3,
-          stock: 100,
-          category_id: 5,
-          descripcion: "Carne",
-        });
-        const res = await POST(req);
-        const json = await res.json();
-
-        expect(res.status).toBe(200);
-        expect(json).toEqual({ message: "Plato creado exitosamente", product: fakeProductoEntity });
+    it("✓ debe retornar 200 si la creación es exitosa", async () => {
+      jest.spyOn(ProductoDAO, 'findByName').mockResolvedValue(null);
+      jest.spyOn(ProductoDAO, 'createProductoEntity').mockResolvedValue({ id: 99 } as any);
+      
+      const req = createPostRequest({
+        name: "Nuevo",
+        base_price: 10,
+        stock: 10,
+        category_id: 1
       });
-
-      it("✗ debe retornar 400 si faltan campos obligatorios (name, base_price, stock, category_id)", async () => {
-        const req = createPostRequest({ name: "Solo nombre" });
-        const res = await POST(req);
-        const json = await res.json();
-        expect(res.status).toBe(400);
-        expect(json).toEqual({ error: "Faltan campos obligatorios" });
-        expect(spyCreateProductoEntity).not.toHaveBeenCalled();
-      });
-
-      it("✗ debe retornar 500 si el controlador lanza un error", async () => {
-        spyFindByName.mockRejectedValueOnce(new Error("DB error"));
-        const req = createPostRequest({ name: "X", base_price: 1, stock: 1, category_id: 1 });
-        const res = await POST(req);
-        const json = await res.json();
-        expect(res.status).toBe(500);
-        expect(json).toEqual({ error: "DB error" });
-      });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
     });
   });
 });

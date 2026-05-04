@@ -7,10 +7,10 @@ const menuController = new MenuService();
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const productId = Number(id);
     if (isNaN(productId)) {
       return NextResponse.json({ error: 'ID de producto inválido' }, { status: 400 });
@@ -25,15 +25,20 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const productId = Number(id);
     const body = await request.json();
     
     if (typeof body.isAvailable === 'boolean') {
-      await db.query("UPDATE products SET is_available = $1 WHERE id = $2", [body.isAvailable, productId]);
+      // US008/US010: Al activar disponibilidad, debemos asegurar que el stock sea > 0 para cumplir la constraint
+      if (body.isAvailable) {
+        await db.query("UPDATE products SET is_available = true, stock = GREATEST(stock, 10) WHERE id = $1", [productId]);
+      } else {
+        await db.query("UPDATE products SET is_available = false, stock = 0 WHERE id = $1", [productId]);
+      }
       return NextResponse.json({ success: true });
     }
     

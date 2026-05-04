@@ -15,11 +15,14 @@ export default function MenuPage() {
   const [categories, setCategories] = useState<CategoriaEntity[]>([])
   const [products, setProducts] = useState<ProductoEntity[]>([])
   const [activeCategory, setActiveCategory] = useState<number | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
   const [cart, setCart] = useState<CartSummary>(() => ({ ...({} as CartSummary), total_amount: 0, items: [] }))
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<number | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const savedRole = sessionStorage.getItem("userRole") || "client"
     const savedId = sessionStorage.getItem("customerId") || "1"
     setRole(savedRole)
@@ -31,7 +34,10 @@ export default function MenuPage() {
     try {
       const res = await fetch(`/api/categorias?restaurantId=${RESTAURANT_ID}`)
       const data = await res.json()
-      setCategories(data.categories || [])
+      const uniqueCats = (data.categories || []).filter((v: any, i: any, a: any) => 
+        a.findIndex((t: any) => t.name === v.name) === i
+      )
+      setCategories(uniqueCats)
     } catch (e) {
       console.error(e)
     }
@@ -41,7 +47,11 @@ export default function MenuPage() {
     setLoading(true)
     try {
       let url = `/api/platos?restaurantId=${RESTAURANT_ID}`
-      if (activeCategory) url += `&categoryId=${activeCategory}`
+      if (searchTerm) {
+        url += `&search=${encodeURIComponent(searchTerm)}`
+      } else if (activeCategory) {
+        url += `&categoryId=${activeCategory}`
+      }
       
       const [prodRes, cartRes] = await Promise.all([
         fetch(url),
@@ -58,11 +68,16 @@ export default function MenuPage() {
     } finally {
       setLoading(false)
     }
-  }, [activeCategory, userId])
+  }, [activeCategory, userId, searchTerm])
 
   useEffect(() => {
-    if (userId) loadProducts()
-  }, [loadProducts, userId])
+    if (userId && mounted) {
+        const handler = setTimeout(() => {
+            loadProducts()
+        }, 300)
+        return () => clearTimeout(handler)
+    }
+  }, [loadProducts, userId, mounted, searchTerm])
 
   const addToCart = async (productId: number) => {
     setUpdatingId(productId)
@@ -86,7 +101,6 @@ export default function MenuPage() {
   const toggleAvailability = async (productId: number, currentStatus: boolean) => {
     setUpdatingId(productId)
     try {
-      // US010: El admin puede cambiar disponibilidad
       const res = await fetch(`/api/platos/${productId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -100,95 +114,488 @@ export default function MenuPage() {
     }
   }
 
+  if (!mounted) return null
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-zinc-800 pb-8">
-          <div>
-            <h1 className="text-5xl font-black uppercase tracking-tighter text-orange-500">Menú Digital</h1>
-            <p className="text-zinc-500 mt-2 italic">La Parrilla Mixteca — Sabores que trascienden.</p>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: menuStyles }} />
+      <div className="menu-container">
+        <header className="menu-header">
+          <div className="header-top">
+            <div>
+              <div className="label-top">Experiencia Gastronómica</div>
+              <h1 className="header-title">
+                Menú <em>Digital</em>
+              </h1>
+              <p className="header-subtitle">
+                La Parrilla Mixteca — Sabores que trascienden el tiempo y el espacio.
+              </p>
+            </div>
+
+            <Link href="/orders" className="cart-summary-box">
+              <span className="cart-label">TOTAL CARRITO</span>
+              <span className="cart-amount">${Number(cart.total_amount || 0).toFixed(2)}</span>
+              <span className="cart-action">Finalizar Pedido ╱ Ver detalles</span>
+            </Link>
           </div>
-          
-          <Link href="/orders" className="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:border-orange-500 transition-all group">
-            <span className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Carrito de Compras</span>
-            <span className="text-3xl font-black text-white group-hover:text-orange-500 transition-colors">
-              ${Number(cart.total_amount || 0).toFixed(2)}
-            </span>
-            <span className="block text-xs text-zinc-600 mt-1">Ver detalles del pedido →</span>
-          </Link>
         </header>
 
-        <nav className="flex gap-2 overflow-x-auto pb-6 scrollbar-hide">
-          <button 
-            onClick={() => setActiveCategory(null)}
-            className={`px-6 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${activeCategory === null ? 'bg-orange-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'}`}
-          >
-            Todos
-          </button>
-          {categories.map(cat => (
-            <button 
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`px-6 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${activeCategory === cat.id ? 'bg-orange-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'}`}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </nav>
+        <main className="menu-content">
+          <div className="filter-bar">
+            <div className="search-box">
+              <input 
+                type="text"
+                placeholder="Buscar platillos..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setActiveCategory(null)
+                }}
+                className="search-input"
+              />
+              <span className="search-icon">🔍</span>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {products.map(product => (
-            <div key={product.id} className={`group bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden flex flex-col transition-all hover:border-zinc-700 ${!product.is_available ? 'grayscale opacity-60' : ''}`}>
-              <div className="aspect-video bg-zinc-800 relative overflow-hidden">
-                {product.image_url ? (
-                  <Image src={product.image_url} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-4xl">🥘</div>
-                )}
-                {!product.is_available && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <span className="bg-red-600 text-white px-4 py-1 rounded-full text-xs font-black uppercase">Agotado</span>
-                  </div>
-                )}
-              </div>
+            <nav className="category-nav">
+              <button 
+                onClick={() => {
+                  setActiveCategory(null)
+                  setSearchTerm("")
+                }}
+                className={`cat-btn ${activeCategory === null && !searchTerm ? 'active' : ''}`}
+              >
+                Todo el Menú
+              </button>
+              {categories.map(cat => (
+                <button 
+                  key={cat.id}
+                  onClick={() => {
+                    setActiveCategory(cat.id)
+                    setSearchTerm("")
+                  }}
+                  className={`cat-btn ${activeCategory === cat.id ? 'active' : ''}`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </nav>
+          </div>
 
-              <div className="p-6 flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <span className="text-[10px] font-black text-orange-500 uppercase">{product.category_name}</span>
-                    <h3 className="text-xl font-bold">{product.name}</h3>
-                  </div>
-                  <span className="text-xl font-black text-white">${Number(product.base_price).toFixed(2)}</span>
-                </div>
-                
-                <p className="text-sm text-zinc-500 mb-6 line-clamp-2">{product.descripcion || "Sin descripción disponible."}</p>
-
-                <div className="mt-auto space-y-3">
-                  {(role === 'admin' || role === 'restaurant_admin' || role === 'chef') ? (
-                    <button 
-                      onClick={() => toggleAvailability(product.id, !!product.is_available)}
-                      disabled={updatingId === product.id}
-                      className={`w-full py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${
-                        product.is_available ? 'bg-zinc-800 text-zinc-400 hover:bg-red-900 hover:text-white' : 'bg-green-900 text-green-100 hover:bg-green-800'
-                      }`}
-                    >
-                      {product.is_available ? "Desactivar Disponibilidad" : "Activar Disponibilidad"}
-                    </button>
+          <div className="product-grid">
+            {products.map(product => (
+              <div 
+                key={product.id} 
+                className={`product-entry ${!product.is_active || !product.is_available ? 'unavailable' : ''}`}
+              >
+                <div className="product-image-container">
+                  {product.image_url || product.image_display ? (
+                    <Image 
+                      src={product.image_url || product.image_display || "/images/default-product.png"} 
+                      alt={product.name} 
+                      fill 
+                      className="product-img" 
+                    />
                   ) : (
-                    <button 
-                      onClick={() => addToCart(product.id)}
-                      disabled={!product.is_available || updatingId === product.id}
-                      className="w-full py-4 bg-orange-600 hover:bg-orange-500 disabled:bg-zinc-800 disabled:text-zinc-600 rounded-2xl font-black transition-all transform active:scale-95"
-                    >
-                      {updatingId === product.id ? "Agregando..." : product.is_available ? "Agregar al Carrito" : "No Disponible"}
-                    </button>
+                    <div className="img-placeholder">🥘</div>
+                  )}
+                  {!product.is_available && (
+                    <div className="sold-out-overlay">
+                      <span>Agotado</span>
+                    </div>
                   )}
                 </div>
+
+                <div className="product-details">
+                  <div className="details-header">
+                    <div className="cat-label">{product.category_name}</div>
+                    <div className="price-tag">${Number(product.base_price).toFixed(2)}</div>
+                  </div>
+                  <h3 className="product-name">{product.name}</h3>
+                  <p className="product-desc">
+                    {product.descripcion || "Descripción exclusiva del chef para este platillo artesanal."}
+                  </p>
+
+                  <div className="product-actions">
+                    {(role === 'admin' || role === 'restaurant_admin' || role === 'chef') ? (
+                      <button 
+                        onClick={() => toggleAvailability(product.id, !!product.is_available)}
+                        disabled={updatingId === product.id}
+                        className={`action-btn-admin ${product.is_available ? 'deactivate' : 'activate'}`}
+                      >
+                        {product.is_available ? "Marcar Agotado" : "Habilitar Stock"}
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => addToCart(product.id)}
+                        disabled={!product.is_available || !product.is_active || updatingId === product.id}
+                        className="action-btn-client"
+                      >
+                        {updatingId === product.id ? "PROCESANDO..." : product.is_available ? "AGREGAR AL PEDIDO" : "TEMPORALMENTE AGOTADO"}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
+            ))}
+          </div>
+
+          {products.length === 0 && !loading && (
+            <div className="no-results">
+              <p>No se encontraron resultados para su búsqueda en nuestra selección actual.</p>
             </div>
-          ))}
-        </div>
+          )}
+        </main>
+
+        <footer className="menu-footer">
+          <span>La Parrilla Mixteca ╱ Selección de Verano</span>
+          <span>© 2026 Restaurante EQ3</span>
+        </footer>
       </div>
-    </div>
+    </>
   )
 }
+
+const menuStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;700&display=swap');
+
+  .menu-container {
+    min-height: 100vh;
+    background: #111010;
+    color: #F2EDE4;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .menu-header {
+    padding: 72px 48px 48px;
+    border-bottom: 1px solid #2A2620;
+  }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 32px;
+  }
+
+  .label-top {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: #C17A3A;
+    margin-bottom: 12px;
+  }
+
+  .header-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .header-title em {
+    font-style: italic;
+    font-weight: 400;
+    color: #C17A3A;
+  }
+
+  .header-subtitle {
+    margin-top: 16px;
+    font-size: 14px;
+    color: #7A7268;
+    font-weight: 300;
+    max-width: 420px;
+    line-height: 1.6;
+  }
+
+  .cart-summary-box {
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #C17A3A;
+    padding: 24px 32px;
+    border-radius: 2px;
+    text-align: right;
+    transition: all 0.3s ease;
+    background: #161412;
+  }
+
+  .cart-summary-box:hover {
+    background: #C17A3A;
+    color: #111010;
+  }
+
+  .cart-label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    margin-bottom: 4px;
+    opacity: 0.8;
+  }
+
+  .cart-amount {
+    display: block;
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .cart-action {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+  }
+
+  .cart-summary-box:hover .cart-action {
+    opacity: 1;
+  }
+
+  .menu-content {
+    padding: 32px 48px;
+  }
+
+  .filter-bar {
+    margin-bottom: 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .search-box {
+    position: relative;
+    max-width: 480px;
+  }
+
+  .search-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #2A2620;
+    padding: 12px 12px 12px 40px;
+    color: #F2EDE4;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    transition: border-color 0.3s;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: #C17A3A;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.4;
+  }
+
+  .category-nav {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+
+  .cat-btn {
+    background: transparent;
+    border: 1px solid #2A2620;
+    color: #7A7268;
+    padding: 8px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    border-radius: 2px;
+  }
+
+  .cat-btn:hover, .cat-btn.active {
+    border-color: #C17A3A;
+    color: #C17A3A;
+  }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 32px;
+  }
+
+  .product-entry {
+    border: 1px solid #2A2620;
+    background: #161412;
+    transition: all 0.3s ease;
+  }
+
+  .product-entry:hover {
+    border-color: #C17A3A;
+  }
+
+  .product-image-container {
+    height: 220px;
+    position: relative;
+    background: #111010;
+    overflow: hidden;
+  }
+
+  .product-img {
+    object-fit: cover;
+    transition: transform 0.6s ease;
+  }
+
+  .product-entry:hover .product-img {
+    transform: scale(1.05);
+  }
+
+  .sold-out-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(17, 16, 16, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sold-out-overlay span {
+    border: 1px solid #F2EDE4;
+    padding: 8px 16px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+  }
+
+  .product-details {
+    padding: 24px;
+  }
+
+  .details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+
+  .cat-label {
+    font-size: 10px;
+    color: #C17A3A;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .price-tag {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .product-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    line-height: 1.2;
+  }
+
+  .product-desc {
+    font-size: 14px;
+    color: #7A7268;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    height: 44px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .product-actions {
+    border-top: 1px solid #2A2620;
+    padding-top: 20px;
+  }
+
+  .action-btn-client {
+    width: 100%;
+    background: transparent;
+    border: 1px solid #C17A3A;
+    color: #C17A3A;
+    padding: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .action-btn-client:hover:not(:disabled) {
+    background: #C17A3A;
+    color: #111010;
+  }
+
+  .action-btn-client:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .action-btn-admin {
+    width: 100%;
+    padding: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid #2A2620;
+    transition: all 0.2s;
+  }
+
+  .action-btn-admin.deactivate { color: #B34A4A; }
+  .action-btn-admin.deactivate:hover { border-color: #B34A4A; background: rgba(179, 74, 74, 0.1); }
+  
+  .action-btn-admin.activate { color: #2E7D32; }
+  .action-btn-admin.activate:hover { border-color: #2E7D32; background: rgba(46, 125, 50, 0.1); }
+
+  .no-results {
+    padding: 80px 0;
+    text-align: center;
+    border: 1px dashed #2A2620;
+  }
+
+  .no-results p {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-style: italic;
+    color: #3A3630;
+  }
+
+  .unavailable {
+    opacity: 0.5;
+  }
+
+  .menu-footer {
+    padding: 48px;
+    border-top: 1px solid #1E1C19;
+    font-size: 11px;
+    color: #3A3630;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 768px) {
+    .menu-header { padding: 48px 24px; }
+    .header-top { flex-direction: column; align-items: flex-start; }
+    .cart-summary-box { width: 100%; text-align: left; }
+    .menu-content { padding: 24px; }
+    .product-grid { grid-template-columns: 1fr; }
+    .menu-footer { padding: 24px; flex-direction: column; gap: 8px; }
+  }
+`;

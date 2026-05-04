@@ -42,21 +42,30 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
     const restaurantId = searchParams.get('restaurantId');
-    const categoryId = searchParams.get('categoryId'); //NUEVO Para filtaredo de categorias USOO1 (Sprint 6)
+    const categoryId = searchParams.get('categoryId'); 
+    const searchTerm = searchParams.get('search');
     const includeInactive = searchParams.get('includeInactive') === 'true';
+
+    if (searchTerm) {
+      const result = await menuService.searchCatalog(searchTerm, restaurantId ? Number(restaurantId) : undefined);
+      return NextResponse.json(result);
+    }
 
     const result = await menuService.getCatalogProducts(
       restaurantId ? Number(restaurantId) : null,
       includeInactive,
-      categoryId ? Number(categoryId) : null //NUEVO Para filtrado de categorias USOO1 (Sprint 6)
+      categoryId ? Number(categoryId) : null 
     );
 
     return NextResponse.json(result);
 
-  } catch (err) {
-    console.error('GET /api/platos error', err);
+  } catch (err: any) {
+    console.error('❌ GET /api/platos error:', {
+      message: err.message,
+      stack: err.stack
+    });
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: err.message },
       { status: 500 }
     );
   }

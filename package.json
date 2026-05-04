@@ -17,6 +17,7 @@
     "pg": "^8.19.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "scheduler": "^0.27.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

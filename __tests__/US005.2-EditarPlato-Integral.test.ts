@@ -15,7 +15,10 @@ jest.mock("@/config/db", () => ({
 const mockQuery = db.query as jest.Mock;
 
 describe("US005.2: Gestión de Menú – Editar plato (Pruebas Integrales)", () => {
-  
+  beforeAll(() => {
+    console.log(">>> Probando US005: Edición de platos en el menú...");
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });

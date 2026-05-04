@@ -96,7 +96,8 @@ CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
     restaurant_id INT REFERENCES restaurants(id),
     name VARCHAR(100) NOT NULL,
-    descripcion TEXT
+    descripcion TEXT,
+    UNIQUE (restaurant_id, name)
 );
 
 -- =============================================

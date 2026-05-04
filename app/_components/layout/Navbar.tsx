@@ -37,42 +37,43 @@ export function Navbar() {
     window.location.reload() // Recargar para aplicar cambios en toda la app
   }
 
+  if (pathname === '/login') return null;
+
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled ? "bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md shadow-sm py-2" : "bg-transparent py-4"
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
+      isScrolled ? "bg-[#161412] border-[#2A2620] py-4 shadow-xl" : "bg-transparent border-transparent py-6"
     }`}>
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center text-white text-xl shadow-lg group-hover:rotate-12 transition-transform">
+      <div className="max-w-7xl mx-auto px-8 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 border border-[#C17A3A] flex items-center justify-center text-[#C17A3A] text-xl transition-all group-hover:bg-[#C17A3A] group-hover:text-[#111010]">
             🍱
           </div>
-          <span className="font-bold text-xl tracking-tight text-zinc-900 dark:text-zinc-100">
-            Restaurante<span className="text-orange-600">EQ3</span>
+          <span className="font-serif font-bold text-2xl tracking-tight text-[#F2EDE4]">
+            Restaurante<span className="text-[#C17A3A] italic font-normal">EQ3</span>
           </span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+        <div className="hidden md:flex items-center gap-8">
           {navLinks.filter(link => link.roles.includes("all") || link.roles.includes(role || "")).map(link => (
             <Link 
               key={link.path} 
               href={link.path}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`text-xs uppercase tracking-[0.2em] font-medium transition-all ${
                 pathname === link.path 
-                ? "bg-white dark:bg-zinc-800 text-orange-600 shadow-sm" 
-                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                ? "text-[#C17A3A]" 
+                : "text-[#7A7268] hover:text-[#F2EDE4]"
               }`}
             >
-              <span className="mr-2">{link.icon}</span>
               {link.name}
             </Link>
           ))}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <select 
             value={role || ""} 
             onChange={(e) => switchRole(e.target.value)}
-            className="bg-zinc-100 dark:bg-zinc-900 border-none text-xs rounded-lg px-2 py-1 outline-none focus:ring-2 ring-orange-500"
+            className="bg-[#1A1714] border border-[#2A2620] text-[#7A7268] text-[10px] uppercase tracking-widest rounded-sm px-3 py-1 outline-none focus:border-[#C17A3A] transition-colors"
           >
             <option value="client">Cliente</option>
             <option value="chef">Chef</option>
@@ -80,8 +81,8 @@ export function Navbar() {
             <option value="admin">Admin</option>
           </select>
 
-          <Link href="/login" className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-colors shadow-md hover:shadow-lg active:scale-95">
-            Mi Cuenta
+          <Link href="/login" className="border border-[#C17A3A] text-[#C17A3A] px-6 py-2 text-[10px] uppercase tracking-widest font-bold hover:bg-[#C17A3A] hover:text-[#111010] transition-all">
+            Cuenta
           </Link>
         </div>
       </div>

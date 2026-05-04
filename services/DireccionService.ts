@@ -13,10 +13,26 @@ export class DireccionService {
   }
 
   async registrarDireccion(customerId: number, datos: any) {
-    if (!datos.street || !datos.city) {
+    const normalized = {
+      street: datos.street?.trim(),
+      exteriorNumber: datos.exteriorNumber?.trim(),
+      interiorNumber: datos.interiorNumber?.trim() || null,
+      neighborhood: datos.neighborhood?.trim() || null,
+      city: datos.city?.trim(),
+      state: datos.state?.trim(),
+      postalCode: datos.postalCode?.trim(),
+      references: datos.references?.trim() || null,
+    };
+
+    if (!normalized.street || !normalized.city) {
       throw new Error("La calle y ciudad son requeridas");
     }
-    return await DireccionDAO.crear(customerId, datos);
+
+    if (normalized.postalCode && !/^\d{5}$/.test(normalized.postalCode)) {
+      throw new Error("El código postal debe tener 5 dígitos");
+    }
+
+    return await DireccionDAO.crear(customerId, normalized);
   }
 
   async actualizarDireccion(customerId: number, addressId: number, datos: any) {

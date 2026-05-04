@@ -1,116 +1,116 @@
+/**
+ * US011: Confirmación de Pedido
+ * Pruebas sobre la creación de pedidos (checkout) y consulta de estados.
+ */
+
 import { GET, POST } from "@/app/api/orders/route";
+import { PedidoService } from "@/services/PedidoService";
 import { db } from "@/config/db";
-import { checkoutCart, resolveCustomerId } from "@/lib/cart";
-import { NextResponse } from "next/server";
 
-// --- MOCKS ---
+// =========================================================
+// MOCKS GLOBALES
+// =========================================================
 jest.mock("@/config/db", () => ({
-  db: {
-    query: jest.fn(),
-  },
+  db: { query: jest.fn() },
 }));
 
-jest.mock("@/lib/cart", () => ({
-  checkoutCart: jest.fn(),
-  resolveCustomerId: jest.fn(),
-}));
+const mockQuery = db.query as jest.Mock;
 
-describe("US011: Confirmación de PedidoEntity - Pruebas de Persistencia y Servicio", () => {
+describe("US011: Confirmación de Pedido – Verificación Lógica", () => {
   
+  beforeAll(() => {
+    console.log(">>> [LOGICA] Verificando US011: Creación y Estados de Pedido...");
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   // ==========================================
-  // 1. PRUEBAS DE PERSISTENCIA (QUERY SQL)
+  // 1. CREACIÓN DE PEDIDO (POST)
   // ==========================================
-  describe("Capa de Persistencia (Lectura de Pedidos)", () => {
-    it("debe incluir el campo 'status' en la consulta SQL", async () => {
-      const mockOrder = {
-        id: 101,
-        status: "ACCEPTED", // Estado clave para la US011
-        total_amount: 150.0,
-        deliveryman_name: "Juan Chofer",
-        created_at: new Date().toISOString(),
-      };
+  describe("POST /api/orders (Checkout)", () => {
+    
+    it("✓ DEBE crear un pedido exitosamente (Camino Feliz)", async () => {
+      console.log("  -> Caso: Checkout válido con items en carrito");
+      const spy = jest.spyOn(PedidoService.prototype, 'checkout').mockResolvedValue({
+        success: true,
+        orderId: 100,
+        total: 50.5
+      });
 
-      (db.query as jest.Mock).mockResolvedValueOnce({ rows: [mockOrder] });
-      (resolveCustomerId as jest.Mock).mockReturnValue(1);
+      const req = new Request("http://localhost/api/orders", {
+        method: "POST",
+        body: JSON.stringify({ customerId: "1", note: "Sin cebolla", deliveryAddressId: 10 })
+      });
 
-      const req = new Request("http://localhost/api/orders?customerId=1");
-      const res = await GET(req);
+      const res = await POST(req as any);
       const data = await res.json();
 
-      // Verificamos que el servicio retorna lo que la DB entregó
-      expect(data[0]).toHaveProperty("status", "ACCEPTED");
-      expect(data[0]).toHaveProperty("deliveryman_name", "Juan Chofer");
-      
-      // Verificamos que la query SQL fue llamada correctamente
-      expect(db.query).toHaveBeenCalledWith(
-        expect.stringContaining("SELECT"),
-        expect.arrayContaining([1])
-      );
+      expect(res.status).toBe(201);
+      expect(data.id).toBe(100);
+      expect(spy).toHaveBeenCalledWith(1, "Sin cebolla", 10);
+      spy.mockRestore();
+    });
+
+    it("⚠ DEBE rechazar si el customerId no es un número (Validación de Tipos)", async () => {
+      console.log("  -> Caso: customerId inválido ('abc')");
+      const req = new Request("http://localhost/api/orders", {
+        method: "POST",
+        body: JSON.stringify({ customerId: "abc" })
+      });
+
+      const res = await POST(req as any);
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error).toBe("customerId inválido");
+    });
+
+    it("✗ DEBE propagar error de negocio (ej. Carrito vacío)", async () => {
+      console.log("  -> Caso: Error lanzado por PedidoService (Carrito vacío)");
+      jest.spyOn(PedidoService.prototype, 'checkout').mockRejectedValue(new Error("El carrito está vacío"));
+
+      const req = new Request("http://localhost/api/orders", {
+        method: "POST",
+        body: JSON.stringify({ customerId: "1" })
+      });
+
+      const res = await POST(req as any);
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error).toBe("El carrito está vacío");
+      jest.restoreAllMocks();
     });
   });
 
   // ==========================================
-  // 2. PRUEBAS DE SERVICIO (LÓGICA DE NEGOCIO)
+  // 2. CONSULTA DE ESTADOS (GET)
   // ==========================================
-  describe("Capa de Servicio (Creación y Respuesta)", () => {
-    
-    it("✓ POST: debe crear un pedido y retornar el objeto para la página de confirmación", async () => {
-      const mockNewOrder = {
-        id: 500,
-        status: "PENDING",
-        total_amount: 320.50,
-        note: "Entregar en puerta"
-      };
+  describe("GET /api/orders (Trazabilidad)", () => {
+    it("✓ DEBE retornar lista de pedidos filtrada por cliente", async () => {
+      console.log("  -> Caso: Consulta de historial activo por customerId");
+      mockQuery.mockResolvedValueOnce({ rows: [{ id: 1, status: 'PENDING' }] });
 
-      (resolveCustomerId as jest.Mock).mockReturnValue(1);
-      (checkoutCart as jest.Mock).mockResolvedValueOnce(mockNewOrder);
-
-      const req = new Request("http://localhost/api/orders", {
-        method: "POST",
-        body: JSON.stringify({
-          customerId: "user123",
-          note: "Entregar en puerta",
-          deliveryAddressId: 1
-        }),
-      });
-
-      const res = await POST(req);
+      const req = new Request("http://localhost/api/orders?customerId=1");
+      const res = await GET(req as any);
       const data = await res.json();
 
-      expect(res.status).toBe(201);
-      expect(data.id).toBe(500);
-      expect(data.status).toBe("PENDING");
+      expect(res.status).toBe(200);
+      expect(data).toHaveLength(1);
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringMatching(/WHERE\s+1=1\s+AND\s+o\.customer_id\s*=\s*\$1/i), [1]);
     });
 
-    it("✗ GET: debe manejar errores de base de datos con un 500", async () => {
-      (db.query as jest.Mock).mockRejectedValueOnce(new Error("Conexión perdida"));
+    it("✗ DEBE retornar 500 ante fallo crítico de base de datos", async () => {
+      console.log("  -> Caso: Error crítico en consulta SQL");
+      mockQuery.mockRejectedValueOnce(new Error("DB Connection Error"));
 
       const req = new Request("http://localhost/api/orders");
-      const res = await GET(req);
-      const data = await res.json();
-
+      const res = await GET(req as any);
+      
       expect(res.status).toBe(500);
-      expect(data.error).toBe("No se pudieron obtener los pedidos");
-    });
-
-    it("✗ POST: debe retornar 400 si la dirección de entrega falta (Lógica de Negocio)", async () => {
-        (resolveCustomerId as jest.Mock).mockReturnValue(1);
-        (checkoutCart as jest.Mock).mockRejectedValueOnce(new Error("Se requiere una dirección"));
-
-        const req = new Request("http://localhost/api/orders", {
-          method: "POST",
-          body: JSON.stringify({ customerId: "u1" }),
-        });
-
-        const res = await POST(req);
-        const data = await res.json();
-
-        expect(res.status).toBe(400);
-        expect(data.error).toContain("dirección");
+      expect(await res.json()).toEqual({ error: "No se pudieron obtener los pedidos" });
     });
   });
 });

@@ -12,15 +12,48 @@ export async function POST() {
     let adminUserId = 2;
     if (userResult.rows.length === 0) {
       const newUser = await db.query(`
-        INSERT INTO users (email, full_name, phone_number)
-        VALUES ('admin@restaurante.com', 'Admin Restaurante', '5559876543')
+        INSERT INTO users (email, password_hash, full_name, phone_number)
+        VALUES ('admin@restaurante.com', 'dummy_hash', 'Admin Restaurante', '5559876543')
         RETURNING id
       `);
       adminUserId = newUser.rows[0].id;
     } else {
       adminUserId = userResult.rows[0].id;
     }
-    console.log('✓ Usuario insertado/verificado');
+    // Asignar rol restaurant_admin (ID 2)
+    await db.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, 2) ON CONFLICT DO NOTHING', [adminUserId]);
+
+    // 1.1 Insertar Chef
+    const chefResult = await db.query("SELECT id FROM users WHERE email = 'chef@restaurante.com' LIMIT 1");
+    let chefUserId;
+    if (chefResult.rows.length === 0) {
+      const newChef = await db.query(`
+        INSERT INTO users (email, password_hash, full_name, phone_number)
+        VALUES ('chef@restaurante.com', 'dummy_hash', 'Chef Master', '5551112222')
+        RETURNING id
+      `);
+      chefUserId = newChef.rows[0].id;
+    } else {
+      chefUserId = chefResult.rows[0].id;
+    }
+    await db.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, 3) ON CONFLICT DO NOTHING', [chefUserId]);
+
+    // 1.2 Insertar Repartidor
+    const deliveryResult = await db.query("SELECT id FROM users WHERE email = 'repartidor@restaurante.com' LIMIT 1");
+    let deliveryUserId;
+    if (deliveryResult.rows.length === 0) {
+      const newDelivery = await db.query(`
+        INSERT INTO users (email, password_hash, full_name, phone_number)
+        VALUES ('repartidor@restaurante.com', 'dummy_hash', 'Juan Repartidor', '5553334444')
+        RETURNING id
+      `);
+      deliveryUserId = newDelivery.rows[0].id;
+    } else {
+      deliveryUserId = deliveryResult.rows[0].id;
+    }
+    await db.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, 4) ON CONFLICT DO NOTHING', [deliveryUserId]);
+
+    console.log('✓ Usuarios y roles insertados/verificados');
 
     // 2. Insertar restaurante
     await db.query(`
@@ -61,43 +94,43 @@ export async function POST() {
     const ensaladas = categoryMap['Ensaladas'];
 
     await db.query(`
-      INSERT INTO products (category_id, name, base_price, is_available)
+      INSERT INTO products (category_id, name, base_price, is_available, stock)
       VALUES 
-        ($1, 'Hamburguesa Mojarra', 85.00, true),
-        ($1, 'Hamburguesa Mixta', 90.00, true),
-        ($1, 'Hamburguesa Vegana', 75.00, false),
-        ($1, 'Hamburguesa Clásica', 65.00, true),
-        ($1, 'Hamburguesa Gigante', 110.00, true),
-        ($2, 'Tacos al Pastor', 45.00, true),
-        ($2, 'Tacos de Pollo', 40.00, false),
-        ($2, 'Tacos de Camarones', 55.00, true),
-        ($2, 'Tacos de Carne Asada', 50.00, true),
-        ($2, 'Tacos Dorados', 35.00, true),
-        ($3, 'Pizza Hawaiana', 95.00, true),
-        ($3, 'Pizza Pepperoni', 85.00, true),
-        ($3, 'Pizza Vegetariana', 80.00, true),
-        ($3, 'Pizza Carnívora', 105.00, false),
-        ($3, 'Pizza Cuatro Quesos', 100.00, true),
-        ($4, 'Filete a la Pimienta', 150.00, true),
-        ($4, 'Pechuga de Pollo Rellena', 125.00, true),
-        ($4, 'Salmón a la Mantequilla', 160.00, false),
-        ($4, 'Costillas BBQ', 140.00, true),
-        ($4, 'Pasta Alfredo', 95.00, true),
-        ($5, 'Refrescos Variados', 20.00, true),
-        ($5, 'Agua Natural', 15.00, true),
-        ($5, 'Jugo Natural', 35.00, true),
-        ($5, 'Cerveza Nacional', 40.00, true),
-        ($5, 'Vino Tinto', 65.00, false),
-        ($6, 'Flan Mexicano', 45.00, true),
-        ($6, 'Pastel de Chocolate', 55.00, true),
-        ($6, 'Helado Artesanal', 35.00, true),
-        ($6, 'Tiramisú', 50.00, false),
-        ($6, 'Churros con Chocolate', 30.00, true),
-        ($7, 'Ensalada César', 55.00, true),
-        ($7, 'Ensalada Griega', 60.00, true),
-        ($7, 'Ensalada Mixta', 45.00, true),
-        ($7, 'Ensalada de Pollo', 70.00, false),
-        ($7, 'Ensalada Caprese', 65.00, true)
+        ($1, 'Hamburguesa Mojarra', 85.00, true, 10),
+        ($1, 'Hamburguesa Mixta', 90.00, true, 10),
+        ($1, 'Hamburguesa Vegana', 75.00, false, 0),
+        ($1, 'Hamburguesa Clásica', 65.00, true, 10),
+        ($1, 'Hamburguesa Gigante', 110.00, true, 10),
+        ($2, 'Tacos al Pastor', 45.00, true, 10),
+        ($2, 'Tacos de Pollo', 40.00, false, 0),
+        ($2, 'Tacos de Camarones', 55.00, true, 10),
+        ($2, 'Tacos de Carne Asada', 50.00, true, 10),
+        ($2, 'Tacos Dorados', 35.00, true, 10),
+        ($3, 'Pizza Hawaiana', 95.00, true, 10),
+        ($3, 'Pizza Pepperoni', 85.00, true, 10),
+        ($3, 'Pizza Vegetariana', 80.00, true, 10),
+        ($3, 'Pizza Carnívora', 105.00, false, 0),
+        ($3, 'Pizza Cuatro Quesos', 100.00, true, 10),
+        ($4, 'Filete a la Pimienta', 150.00, true, 10),
+        ($4, 'Pechuga de Pollo Rellena', 125.00, true, 10),
+        ($4, 'Salmón a la Mantequilla', 160.00, false, 0),
+        ($4, 'Costillas BBQ', 140.00, true, 10),
+        ($4, 'Pasta Alfredo', 95.00, true, 10),
+        ($5, 'Refrescos Variados', 20.00, true, 10),
+        ($5, 'Agua Natural', 15.00, true, 10),
+        ($5, 'Jugo Natural', 35.00, true, 10),
+        ($5, 'Cerveza Nacional', 40.00, true, 10),
+        ($5, 'Vino Tinto', 65.00, false, 0),
+        ($6, 'Flan Mexicano', 45.00, true, 10),
+        ($6, 'Pastel de Chocolate', 55.00, true, 10),
+        ($6, 'Helado Artesanal', 35.00, true, 10),
+        ($6, 'Tiramisú', 50.00, false, 0),
+        ($6, 'Churros con Chocolate', 30.00, true, 10),
+        ($7, 'Ensalada César', 55.00, true, 10),
+        ($7, 'Ensalada Griega', 60.00, true, 10),
+        ($7, 'Ensalada Mixta', 45.00, true, 10),
+        ($7, 'Ensalada de Pollo', 70.00, false, 0),
+        ($7, 'Ensalada Caprese', 65.00, true, 10)
       ON CONFLICT DO NOTHING
     `, [hamburguesas, tacos, pizzas, principales, bebidas, postres, ensaladas]);
     console.log('✓ Productos insertados (35)');
@@ -109,14 +142,16 @@ export async function POST() {
     let clientUserId = 1;
     if (clientResult.rows.length === 0) {
       const newClient = await db.query(`
-        INSERT INTO users (email, full_name, phone_number)
-        VALUES ('cliente@ejemplo.com', 'Juan Cliente', '5551234567')
+        INSERT INTO users (email, password_hash, full_name, phone_number)
+        VALUES ('cliente@ejemplo.com', 'dummy_hash', 'Juan Cliente', '5551234567')
         RETURNING id
       `);
       clientUserId = newClient.rows[0].id;
     } else {
       clientUserId = clientResult.rows[0].id;
     }
+    // Asignar rol client (ID 1)
+    await db.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, 1) ON CONFLICT DO NOTHING', [clientUserId]);
 
     // Obtener todos los productos para mapear sus IDs
     const productsResult = await db.query(`

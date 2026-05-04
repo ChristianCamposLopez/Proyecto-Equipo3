@@ -7,7 +7,8 @@ export class ReembolsoService {
    * US026: Obtener reembolsos pendientes
    */
   async getPendingRefunds(restaurantId: number = 1) {
-    return await ReembolsoDAO.getPendingRefunds(restaurantId);
+    const refunds = await ReembolsoDAO.getPendingRefunds(restaurantId);
+    return { refunds };
   }
 
   /**

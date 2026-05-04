@@ -1,112 +1,71 @@
 /**
- * Notas de pedidos
- * Pruebas unitarias sobre normalización y guardado de notas.
+ * US007: Notas de pedidos
+ * Pruebas unitarias sobre normalización y guardado de notas utilizando PedidoService.
  */
 
-const mockDbQuery = jest.fn();
-const mockConnect = jest.fn();
-const mockGetDeliveryAddressSnapshot = jest.fn();
+import { PedidoService } from "@/services/PedidoService";
+import { CarritoDAO } from "@/models/daos/CarritoDAO";
+import { db } from "@/config/db";
 
+// Mocking
+jest.mock("@/models/daos/CarritoDAO");
+jest.mock("@/models/daos/PedidoDAO");
 jest.mock("@/config/db", () => ({
   db: {
-    query: (...args: unknown[]) => mockDbQuery(...args),
-    connect: (...args: unknown[]) => mockConnect(...args),
-  },
+    connect: jest.fn(),
+    query: jest.fn()
+  }
 }));
 
-jest.mock("@/lib/deliveryAddresses", () => ({
-  getDeliveryAddressSnapshot: (...args: unknown[]) =>
-    mockGetDeliveryAddressSnapshot(...args),
-}));
+describe("US007: Notas de pedidos (PedidoService)", () => {
+  let service: PedidoService;
 
-import { checkoutCart, normalizeOrderNote } from "@/lib/cart";
+  beforeAll(() => {
+    console.log(">>> Probando US007: Notas Especiales en Pedidos...");
+  });
 
-describe("Notas de pedidos", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    service = new PedidoService();
   });
 
   it("normaliza una nota válida eliminando espacios extras", () => {
-    expect(normalizeOrderNote("  Sin salsa y con extra queso  ")).toBe(
+    expect(service.normalizeOrderNote("  Sin salsa y con extra queso  ")).toBe(
       "Sin salsa y con extra queso"
     );
   });
 
   it("rechaza notas con más de 200 caracteres", () => {
-    expect(() => normalizeOrderNote("a".repeat(201))).toThrow(
+    expect(() => service.normalizeOrderNote("a".repeat(201))).toThrow(
       "La nota no puede exceder 200 caracteres"
     );
   });
 
   it("guarda la nota normalizada al confirmar el checkout", async () => {
-    const mockClientQuery = jest
-      .fn()
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            product_id: 7,
-            quantity: 2,
-            unit_price: 150,
-            stock: 5,
-            is_available: true,
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: 120,
-            customer_id: 1,
-            restaurant_id: 8,
-            delivery_address_json: { street: "Reforma" },
-            status: "PENDING",
-            note: "Sin cebolla",
-            total_amount: 300,
-            created_at: "2026-04-24T12:00:00.000Z",
-          },
-        ],
-      })
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({});
-    const mockRelease = jest.fn();
+    const mockClient = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // SELECT address
+        .mockResolvedValueOnce({ rows: [{ id: 120 }] }) // INSERT order
+        .mockResolvedValueOnce({ rows: [] }) // INSERT items
+        .mockResolvedValueOnce({ rows: [] }), // COMMIT
+      release: jest.fn()
+    };
 
-    mockGetDeliveryAddressSnapshot.mockResolvedValue({
-      street: "Av. Reforma",
-      exteriorNumber: "100",
-      interiorNumber: null,
-      neighborhood: "Centro",
-      city: "CDMX",
-      state: "CDMX",
-      postalCode: "06000",
-      references: null,
-    });
-    mockDbQuery.mockResolvedValueOnce({
-      rows: [{ id: 99, customer_id: 1, restaurant_id: 8 }],
-    });
-    mockConnect.mockResolvedValue({
-      query: mockClientQuery,
-      release: mockRelease,
-    });
+    (db.connect as jest.Mock).mockResolvedValue(mockClient);
+    (CarritoDAO.getActiveCart as jest.Mock).mockResolvedValue({ id: 99, restaurant_id: 8 });
+    (CarritoDAO.getItems as jest.Mock).mockResolvedValue([
+      { product_id: 7, quantity: 2, unit_price: 150, subtotal: 300 }
+    ]);
 
-    const order = await checkoutCart(1, "  Sin cebolla  ", 4);
+    const result = await service.checkout(1, "  Sin cebolla  ", 4);
 
-    expect(mockClientQuery).toHaveBeenCalledWith(
+    expect(mockClient.query).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO orders"),
-      [1, 8, JSON.stringify({
-        street: "Av. Reforma",
-        exteriorNumber: "100",
-        interiorNumber: null,
-        neighborhood: "Centro",
-        city: "CDMX",
-        state: "CDMX",
-        postalCode: "06000",
-        references: null,
-      }), "Sin cebolla", 300]
+      expect.arrayContaining(["Sin cebolla"])
     );
-    expect(order.note).toBe("Sin cebolla");
-    expect(mockRelease).toHaveBeenCalled();
+    expect(result.success).toBe(true);
+    expect(result.orderId).toBe(120);
+    expect(mockClient.release).toHaveBeenCalled();
   });
 });

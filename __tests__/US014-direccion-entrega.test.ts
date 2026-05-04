@@ -1,93 +1,69 @@
 /**
- * Ingresar dirección de entrega
- * Pruebas unitarias sobre validación y persistencia.
+ * US014: Gestión de Direcciones de Entrega
+ * Pruebas sobre validaciones de formato y persistencia de direcciones.
  */
 
-const mockDbQuery = jest.fn();
+import { DireccionService } from "@/services/DireccionService";
+import { DireccionDAO } from "@/models/daos/DireccionDAO";
 
-jest.mock("@/config/db", () => ({
-  db: {
-    query: (...args: unknown[]) => mockDbQuery(...args),
-  },
-}));
+// =========================================================
+// MOCKS GLOBALES
+// =========================================================
+jest.mock("@/models/daos/DireccionDAO");
 
-import {
-  createDeliveryAddress,
-  normalizeDeliveryAddressInput,
-} from "@/lib/deliveryAddresses";
+describe("US014: Gestión de Direcciones – Verificación Lógica", () => {
+  let service: DireccionService;
 
-describe("Ingresar dirección de entrega", () => {
+  beforeAll(() => {
+    console.log(">>> [LOGICA] Verificando US014: Gestión de Direcciones de Entrega...");
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    service = new DireccionService();
   });
 
-  it("normaliza una dirección válida y conserva los campos requeridos", () => {
-    const normalized = normalizeDeliveryAddressInput({
-      street: "  Av. Universidad ",
-      exteriorNumber: " 1200 ",
-      interiorNumber: " 4B ",
-      neighborhood: " Xoco ",
-      city: " Ciudad de México ",
-      state: " CDMX ",
-      postalCode: "03330",
-      references: " Frente al parque ",
+  describe("DireccionService.registrarDireccion", () => {
+    
+    it("✓ DEBE registrar dirección válida (Camino Feliz)", async () => {
+      console.log("  -> Caso: Datos completos y correctos");
+      (DireccionDAO.crear as jest.Mock).mockResolvedValue({ id: 1 });
+
+      const datos = {
+        street: "Av. Siempre Viva",
+        city: "Springfield",
+        state: "State",
+        postalCode: "12345"
+      };
+
+      const result = await service.registrarDireccion(1, datos);
+      expect(result.id).toBe(1);
     });
 
-    expect(normalized).toEqual({
-      street: "Av. Universidad",
-      exteriorNumber: "1200",
-      interiorNumber: "4B",
-      neighborhood: "Xoco",
-      city: "Ciudad de México",
-      state: "CDMX",
-      postalCode: "03330",
-      references: "Frente al parque",
+    it("⚠ DEBE rechazar si falta la calle o ciudad", async () => {
+      console.log("  -> Caso: Datos faltantes");
+      await expect(service.registrarDireccion(1, { street: "" }))
+        .rejects.toThrow("La calle y ciudad son requeridas");
+    });
+
+    it("⚠ DEBE validar que el código postal tenga 5 dígitos", async () => {
+      console.log("  -> Caso: CP inválido ('123')");
+      const datos = {
+        street: "Calle 1",
+        city: "CDMX",
+        postalCode: "123"
+      };
+
+      await expect(service.registrarDireccion(1, datos))
+        .rejects.toThrow("El código postal debe tener 5 dígitos");
     });
   });
 
-  it("rechaza códigos postales que no tienen 5 dígitos", () => {
-    expect(() =>
-      normalizeDeliveryAddressInput({
-        street: "Calle 5",
-        exteriorNumber: "22",
-        city: "Puebla",
-        state: "Puebla",
-        postalCode: "72A0",
-      })
-    ).toThrow("El código postal debe tener 5 dígitos");
-  });
-
-  it("guarda una dirección válida con los datos ya normalizados", async () => {
-    mockDbQuery.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 30,
-          customer_id: 8,
-          street: "Calle 5",
-          exterior_number: "22",
-          interior_number: null,
-          neighborhood: "Centro",
-          city: "Puebla",
-          state: "Puebla",
-          postal_code: "72000",
-          references: null,
-        },
-      ],
+  describe("DireccionService.eliminarDireccion", () => {
+    it("✓ DEBE llamar al DAO para eliminar", async () => {
+      console.log("  -> Caso: Eliminación de dirección");
+      await service.eliminarDireccion(10);
+      expect(DireccionDAO.eliminar).toHaveBeenCalledWith(10);
     });
-
-    const created = await createDeliveryAddress(8, {
-      street: " Calle 5 ",
-      exteriorNumber: " 22 ",
-      neighborhood: " Centro ",
-      city: " Puebla ",
-      state: " Puebla ",
-      postalCode: "72000",
-    });
-
-    expect(mockDbQuery).toHaveBeenCalledWith(
-      expect.stringContaining("INSERT INTO delivery_addresses"),
-      [8, "Calle 5", "22", null, "Centro", "Puebla", "Puebla", "72000", null]
-    );
-    expect(created.id).toBe(30);
   });
 });

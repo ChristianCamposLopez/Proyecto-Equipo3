@@ -33,6 +33,10 @@ export class PedidoService {
     return await PedidoDAO.getPendingOrders(restaurantId);
   }
 
+  async getPendingOrdersForChef(restaurantId: number) {
+    return await PedidoDAO.getPendingOrdersForChef(restaurantId);
+  }
+
   async confirmOrder(orderId: number): Promise<PedidoEntity> {
     const confirmedOrder = await PedidoDAO.confirmOrder(orderId);
     await StockDAO.decreaseStockForOrder(orderId);
@@ -44,6 +48,10 @@ export class PedidoService {
     return await PedidoDAO.updateOrderStatus(orderId, status);
   }
 
+  async updateStatus(orderId: number, status: string) {
+    return await this.updateOrderStatus(orderId, status);
+  }
+
   async getOrderById(orderId: number): Promise<PedidoWithItems | null> {
     return await PedidoDAO.getOrderWithItems(orderId);
   }
@@ -52,11 +60,22 @@ export class PedidoService {
     return await PedidoDAO.completarPedido(pedidoId);
   }
 
+  normalizeOrderNote(note: string): string {
+    if (!note) return "";
+    const trimmed = note.trim();
+    if (trimmed.length > 200) {
+      throw new Error("La nota no puede exceder 200 caracteres");
+    }
+    return trimmed;
+  }
+
   /**
    * US002 / US011: Proceso de checkout estandarizado
    * Convierte el carrito activo en la DB en un pedido real.
    */
   async checkout(customerId: number, note?: string, addressId?: number) {
+    const normalizedNote = this.normalizeOrderNote(note || "");
+
     const cart = await CarritoDAO.getActiveCart(customerId);
     if (!cart) throw new Error("No tienes un carrito activo");
 
@@ -93,7 +112,7 @@ export class PedidoService {
         `INSERT INTO orders (customer_id, restaurant_id, status, total_amount, note, delivery_address_json, created_at)
          VALUES ($1, $2, 'PENDING', $3, $4, $5, NOW())
          RETURNING id`,
-        [customerId, cart.restaurant_id, totalAmount, note || null, addressJson]
+        [customerId, cart.restaurant_id, totalAmount, normalizedNote || null, addressJson]
       );
       const orderId = orderRes.rows[0].id;
 

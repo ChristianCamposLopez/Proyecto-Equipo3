@@ -28,7 +28,7 @@ export class ReembolsoDAO {
       `UPDATE pedido_historial SET status = 'REFUNDED', refund_rejection_reason = NULL WHERE id = $1 AND status = 'CANCELLED' RETURNING id`,
       [orderId]
     );
-    if (result.rowCount === 0) throw new Error("PedidoEntity no encontrado");
+    if (result.rowCount === 0) throw new Error("PedidoEntity no encontrado o no está pendiente de reembolso");
     return result.rows[0];
   }
 
@@ -37,7 +37,7 @@ export class ReembolsoDAO {
       `UPDATE pedido_historial SET status = 'REFUND_REJECTED', refund_rejection_reason = $2 WHERE id = $1 AND status = 'CANCELLED' RETURNING id`,
       [orderId, reason]
     );
-    if (result.rowCount === 0) throw new Error("PedidoEntity no encontrado");
+    if (result.rowCount === 0) throw new Error("PedidoEntity no encontrado o no está pendiente de reembolso");
     return result.rows[0];
   }
 

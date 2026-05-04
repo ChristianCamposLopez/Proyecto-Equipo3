@@ -24,8 +24,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(result);
 
   } catch (err: any) {
-    console.error("GET /api/categorias error", err);
-
+    console.error("❌ GET /api/categorias error", {
+      message: err.message,
+      stack: err.stack
+    });
     return NextResponse.json(
       { error: err.message || "Internal server error" },
       { status: 500 }

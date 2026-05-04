@@ -1,102 +1,94 @@
 /**
- * Ver estado del pedido
- * Pruebas unitarias sobre consulta de pedidos y estados visibles.
+ * US013: Estado de Pedido (Cocina/Reparto)
+ * Pruebas sobre la actualización de estados de pedidos activos.
  */
 
-const mockDbQuery = jest.fn();
+import { PATCH } from "@/app/api/orders/[id]/status/route";
+import { PedidoService } from "@/services/PedidoService";
+import { db } from "@/config/db";
 
+// =========================================================
+// MOCKS GLOBALES
+// =========================================================
 jest.mock("@/config/db", () => ({
-  db: {
-    query: (...args: unknown[]) => mockDbQuery(...args),
-  },
+  db: { query: jest.fn() },
 }));
 
-jest.mock("next/server", () => ({
-  NextResponse: {
-    json: (body: unknown, init?: { status?: number }) => ({
-      status: init?.status ?? 200,
-      json: async () => body,
-    }),
-  },
-}));
+const mockQuery = db.query as jest.Mock;
 
-import { GET as getOrders } from "@/app/api/orders/route";
+describe("US013: Gestión de Estados de Pedido – Verificación Lógica", () => {
+  
+  beforeAll(() => {
+    console.log(">>> [LOGICA] Verificando US013: Actualización de Estados (Cocina/Reparto)...");
+  });
 
-describe("Ver estado del pedido", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("obtiene los pedidos del cliente con sus estados actuales", async () => {
-    mockDbQuery.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 1,
-          customer_id: 1,
-          restaurant_id: 8,
-          deliveryman_id: null,
-          status: "PENDING",
-          note: null,
-          total_amount: 150,
-          created_at: "2026-04-24T12:00:00.000Z",
-          estimated_delivery_at: "2026-04-24T12:45:00.000Z",
-          deliveryman_name: null,
-        },
-        {
-          id: 2,
-          customer_id: 1,
-          restaurant_id: 8,
-          deliveryman_id: 15,
-          status: "DELIVERY_ASSIGNED",
-          note: "Sin picante",
-          total_amount: 200,
-          created_at: "2026-04-24T12:10:00.000Z",
-          estimated_delivery_at: "2026-04-24T12:55:00.000Z",
-          deliveryman_name: "Ana Repartidora",
-        },
-        {
-          id: 3,
-          customer_id: 1,
-          restaurant_id: 8,
-          deliveryman_id: 15,
-          status: "COMPLETED",
-          note: null,
-          total_amount: 240,
-          created_at: "2026-04-24T11:00:00.000Z",
-          estimated_delivery_at: "2026-04-24T11:45:00.000Z",
-          deliveryman_name: "Ana Repartidora",
-        },
-      ],
+  it("✓ DEBE actualizar estado a 'READY' exitosamente (Camino Feliz)", async () => {
+    console.log("  -> Caso: Cambio de estado válido");
+    const mockUpdated = { id: 1, status: 'READY' };
+    const spy = jest.spyOn(PedidoService.prototype, 'updateOrderStatus').mockResolvedValue(mockUpdated as any);
+
+    const req = new Request("http://localhost/api/orders/1/status", {
+      method: "PATCH",
+      body: JSON.stringify({ status: "READY" })
     });
 
-    const response = await getOrders({
-      url: "http://localhost/api/orders?customerId=1",
-    } as Request);
+    const res = await PATCH(req as any, { params: { id: "1" } } as any);
+    const data = await res.json();
 
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body).toHaveLength(3);
-    expect(body.map((order: { status: string }) => order.status)).toEqual([
-      "PENDING",
-      "DELIVERY_ASSIGNED",
-      "COMPLETED",
-    ]);
+    expect(res.status).toBe(200);
+    expect(data.status).toBe("READY");
+    expect(spy).toHaveBeenCalledWith(1, "READY");
+    spy.mockRestore();
   });
 
-  it("mapea los estados del pedido a las etiquetas visibles para el cliente", () => {
-    const customerStatusMap: Record<string, string> = {
-      PENDING: "Preparando",
-      PREPARING: "Preparando",
-      READY: "Preparando",
-      DELIVERY_ASSIGNED: "En camino",
-      ON_DELIVERY: "En camino",
-      COMPLETED: "Entregado",
-      DELIVERED: "Entregado",
-    };
+  it("⚠ DEBE asignar repartidor si se provee deliverymanId", async () => {
+    console.log("  -> Caso: Asignación de repartidor + Cambio de estado");
+    jest.spyOn(PedidoService.prototype, 'updateOrderStatus').mockResolvedValue({ id: 1, status: 'ACCEPTED' } as any);
+    mockQuery.mockResolvedValueOnce({ rowCount: 1 }); // UPDATE deliveryman_id
 
-    expect(customerStatusMap.PENDING).toBe("Preparando");
-    expect(customerStatusMap.DELIVERY_ASSIGNED).toBe("En camino");
-    expect(customerStatusMap.COMPLETED).toBe("Entregado");
+    const req = new Request("http://localhost/api/orders/1/status", {
+      method: "PATCH",
+      body: JSON.stringify({ status: "ACCEPTED", deliverymanId: 5 })
+    });
+
+    const res = await PATCH(req as any, { params: { id: "1" } } as any);
+    
+    expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringMatching(/SET deliveryman_id = \$1/i),
+        [5, 1]
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("⚠ DEBE retornar 400 si el ID es inválido", async () => {
+    console.log("  -> Caso: ID no numérico ('abc')");
+    const req = new Request("http://localhost/api/orders/abc/status", {
+        method: "PATCH",
+        body: JSON.stringify({ status: "READY" })
+    });
+
+    const res = await PATCH(req as any, { params: { id: "abc" } } as any);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "ID inválido" });
+  });
+
+  it("✗ DEBE retornar 500 si falla la lógica de negocio (Transición inválida)", async () => {
+    console.log("  -> Caso: Error de negocio propagado (Status transition fail)");
+    jest.spyOn(PedidoService.prototype, 'updateOrderStatus').mockRejectedValue(new Error("Transición no permitida"));
+
+    const req = new Request("http://localhost/api/orders/1/status", {
+      method: "PATCH",
+      body: JSON.stringify({ status: "PENDING" }) // Retroceder a PENDING suele fallar
+    });
+
+    const res = await PATCH(req as any, { params: { id: "1" } } as any);
+    
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: "Transición no permitida" });
+    jest.restoreAllMocks();
   });
 });

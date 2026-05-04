@@ -169,6 +169,8 @@ export class ProductoDAO {
       p.name,
       p.base_price,
       p.is_active,
+      p.is_available,
+      p.descripcion,
       c.name AS category_name,
       COALESCE(
         (SELECT pi.image_path FROM product_images pi 
@@ -216,28 +218,18 @@ export class ProductoDAO {
 
     return result.rows[0] || null;
   }
-  /*
-  static async updateNombre(id: number, name: string): Promise<ProductoEntity> {
 
-    const result = await db.query(
-      `UPDATE products SET name = $1 WHERE id = $2 RETURNING *`,
-      [name, id]
-    );
-
-    return result.rows[0];
+  static async searchProducts(term: string, restaurantId?: number): Promise<any[]> {
+    const query = `
+      SELECT p.*, c.name as category_name
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE p.deleted_at IS NULL
+        AND (p.name ILIKE $1 OR p.descripcion ILIKE $1)
+        AND ($2::int IS NULL OR c.restaurant_id = $2)
+      ORDER BY p.name ASC
+    `;
+    const result = await db.query(query, [`%${term}%`, restaurantId || null]);
+    return result.rows;
   }
-
-  static async updateDescripcion(
-    id: number,
-    descripcion: string | null
-  ): Promise<ProductoEntity> {
-
-    const result = await db.query(
-      `UPDATE products SET descripcion = $1 WHERE id = $2 RETURNING *`,
-      [descripcion, id]
-    );
-
-    return result.rows[0];
-  }
-    */
 }

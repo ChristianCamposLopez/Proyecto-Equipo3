@@ -255,4 +255,16 @@ export class PedidoDAO {
   static async findActiveOrderById(id: number) {
     return this.getOrderById(id);
   }
+
+  static async getPendingOrdersForChef(restaurantId: number): Promise<any[]> {
+    const result = await db.query(
+      `SELECT * FROM orders WHERE restaurant_id = $1 AND status IN ('PENDING', 'PREPARING') ORDER BY created_at ASC`,
+      [restaurantId]
+    );
+    return result.rows;
+  }
+
+  static async updateStatus(orderId: number, status: string): Promise<any> {
+    return this.updateOrderStatus(orderId, status);
+  }
 }

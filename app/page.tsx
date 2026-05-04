@@ -7,10 +7,14 @@ import Link from "next/link"
 
 export default function RootMenu() {
   const [role, setRole] = useState<string>("client")
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setRole(sessionStorage.getItem("userRole") || "client")
+    setMounted(true)
   }, [])
+
+  if (!mounted) return null
 
   const modules = [
     { 
@@ -24,7 +28,7 @@ export default function RootMenu() {
       ]
     },
     { 
-      title: "Módulos de Operación", 
+      title: "Operación", 
       icon: "🍳",
       role: "chef",
       items: [
@@ -33,13 +37,13 @@ export default function RootMenu() {
       ]
     },
     { 
-      title: "Módulos de Administración", 
+      title: "Administración", 
       icon: "🏛️",
       role: "admin",
       items: [
         { name: "Dashboard de Ventas", path: "/admin/ventas", icon: "📈", desc: "Reportes, KPIs y exportación de datos financieros." },
-        { name: "Control de Inventario", path: "/menu", icon: "📦", desc: "Gestión global de productos y stock." },
-        { name: "Seguridad", path: "/register", icon: "🛡️", desc: "Registro de nuevos administradores y roles." },
+        { name: "Catálogo de Platos", path: "/admin/platos", icon: "📦", desc: "Gestión global de productos y stock." },
+        { name: "Configuración", path: "/admin/restaurante", icon: "🛡️", desc: "Ajustes globales del establecimiento." },
       ]
     },
     { 
@@ -53,53 +57,224 @@ export default function RootMenu() {
   ]
 
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-zinc-50 dark:bg-zinc-950 p-8">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-12 text-center md:text-left">
-          <h1 className="text-4xl font-bold font-serif text-zinc-900 dark:text-zinc-100 mb-2">
-            Isla de Navegación <span className="text-orange-600">EQ3</span>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: styles }} />
+      <div className="root-container">
+        <header className="hero-header">
+          <div className="label-top">Centro de Mando</div>
+          <h1 className="hero-title">
+            Isla de <em>Navegación</em>
           </h1>
-          <p className="text-zinc-500 dark:text-zinc-400">
-            Centro de mando unificado para la gestión integral del restaurante. 
-            Estás navegando como: <span className="font-bold text-orange-600 uppercase">{role}</span>
+          <p className="hero-subtitle">
+            Estás navegando como: <span className="role-badge">{role}</span>. 
+            Gestione el flujo operativo y logístico desde este portal unificado.
           </p>
         </header>
 
-        <div className="space-y-12">
+        <main className="content-main">
           {modules.map((section) => (
-            <section key={section.title} className={role !== 'admin' && section.role !== role ? 'opacity-40 grayscale pointer-events-none' : ''}>
-              <div className="flex items-center gap-3 mb-6">
-                <span className="text-2xl bg-white dark:bg-zinc-900 w-10 h-10 flex items-center justify-center rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800">
-                  {section.icon}
-                </span>
-                <h2 className="text-2xl font-bold font-serif">{section.title}</h2>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div 
+              key={section.title} 
+              className={`section-group ${(role !== 'admin' && role !== 'restaurant_admin') && section.role !== role ? 'disabled' : ''}`}
+            >
+              <h2 className="section-header">
+                {section.title} <span>╱ {section.role}</span>
+              </h2>
+              
+              <div className="grid-nav">
                 {section.items.map((item) => (
-                  <Link key={item.path} href={item.path} className="group">
-                    <Card className="h-full hover:border-orange-500 transition-colors cursor-pointer group-hover:shadow-lg">
-                      <div className="flex items-start gap-4">
-                        <div className="text-3xl p-3 bg-zinc-50 dark:bg-zinc-950 rounded-xl group-hover:scale-110 transition-transform">
-                          {item.icon}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-lg mb-1 group-hover:text-orange-600 transition-colors">{item.name}</h3>
-                          <p className="text-sm text-zinc-500 line-clamp-2">{item.desc}</p>
-                        </div>
+                  <Link key={item.path} href={item.path} className="nav-card">
+                    <div className="card-inner">
+                      <div className="card-icon">{item.icon}</div>
+                      <div className="card-info">
+                        <h3 className="card-title">{item.name}</h3>
+                        <p className="card-desc">{item.desc}</p>
                       </div>
-                    </Card>
+                    </div>
                   </Link>
                 ))}
               </div>
-            </section>
+            </div>
           ))}
-        </div>
+        </main>
 
-        <footer className="mt-20 border-t border-zinc-200 dark:border-zinc-800 pt-8 text-center text-xs text-zinc-400 uppercase tracking-widest">
-          Sistema Restaurante • Proyecto Equipo 3 • Arquitectura Multicapa
+        <footer className="root-footer">
+          <span>Sistema de Gestión EQ3</span>
+          <span>Arquitectura Multicapa & Estilo Elegante</span>
         </footer>
       </div>
-    </div>
+    </>
   )
 }
+
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;700&display=swap');
+
+  .root-container {
+    min-height: 100vh;
+    background: #111010;
+    color: #F2EDE4;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .hero-header {
+    padding: 72px 48px 48px;
+    border-bottom: 1px solid #2A2620;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 80% at 80% 50%, #3D1F0A22, transparent);
+    pointer-events: none;
+  }
+
+  .label-top {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: #C17A3A;
+    margin-bottom: 12px;
+  }
+
+  .hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .hero-title em {
+    font-style: italic;
+    font-weight: 400;
+    color: #C17A3A;
+  }
+
+  .hero-subtitle {
+    margin-top: 16px;
+    font-size: 14px;
+    color: #7A7268;
+    font-weight: 300;
+    max-width: 480px;
+    line-height: 1.6;
+  }
+
+  .role-badge {
+    color: #C17A3A;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .content-main {
+    padding: 32px 48px;
+  }
+
+  .section-group {
+    margin-bottom: 64px;
+  }
+
+  .section-group.disabled {
+    opacity: 0.25;
+    filter: grayscale(1);
+    pointer-events: none;
+  }
+
+  .section-header {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    letter-spacing: -0.02em;
+    border-bottom: 1px solid #2A2620;
+    padding-bottom: 12px;
+  }
+
+  .section-header span {
+    color: #C17A3A;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 16px;
+    margin-left: 8px;
+  }
+
+  .grid-nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+  }
+
+  .nav-card {
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #2A2620;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    background: #161412;
+  }
+
+  .nav-card:hover {
+    border-color: #C17A3A;
+    transform: translateY(-2px);
+    background: #1C1A17;
+  }
+
+  .card-inner {
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .card-icon {
+    font-size: 32px;
+    background: #111010;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    border: 1px solid #2A2620;
+  }
+
+  .nav-card:hover .card-icon {
+    border-color: #C17A3A;
+    color: #C17A3A;
+  }
+
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .card-desc {
+    font-size: 13px;
+    color: #7A7268;
+    line-height: 1.4;
+  }
+
+  .root-footer {
+    padding: 32px 48px;
+    border-top: 1px solid #1E1C19;
+    font-size: 11px;
+    color: #3A3630;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 768px) {
+    .hero-header { padding: 48px 24px; }
+    .content-main { padding: 24px; }
+    .grid-nav { grid-template-columns: 1fr; }
+    .root-footer { padding: 24px; flex-direction: column; gap: 8px; }
+  }
+`;

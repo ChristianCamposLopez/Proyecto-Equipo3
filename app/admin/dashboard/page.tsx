@@ -89,47 +89,45 @@ export default function AdminMenu() {
     <>
     <p>userId: {userId}</p>
     <p>userRole: {sessionStorage.getItem('userRole')}</p>
-      {/* Mantiene la referencia a los estilos definidos previamente */}
-      <style dangerouslySetInnerHTML={{ __html: styles }} />
-      <div className="menu-root">
-        <header className="menu-hero">
-          <div className="menu-topbar">
+      <style dangerouslySetInnerHTML={{ __html: adminStyles }} />
+      <div className="admin-root">
+        <header className="admin-hero">
+          <div className="hero-top">
             <div>
-              <p className="menu-label">Panel de Administración</p>
-              <h1 className="menu-title">Control <em>Central</em></h1>
-              <p className="menu-subtitle">
-                Bienvenido, Administrador. Gestione el flujo operativo, financiero y logístico desde este portal.
+              <p className="admin-label">Panel de Administración</p>
+              <h1 className="admin-title">Control <em>Central</em></h1>
+              <p className="admin-subtitle">
+                Bienvenido al núcleo operativo. Gestione pedidos, catálogo y finanzas con precisión y elegancia.
               </p>
             </div>
             
-            <div className="cart-chip">
-              <p className="cart-chip-label">Sesión Activa</p>
-              <div className="cart-chip-total">Admin</div>
-              <p className="cart-chip-meta">Acceso total autorizado</p>
+            <div className="status-chip">
+              <p className="status-label">SESIÓN ACTIVA</p>
+              <div className="status-value">Admin</div>
+              <p className="status-meta">Acceso total autorizado</p>
             </div>
           </div>
         </header>
 
-        <main className="menu-grid">
-          {routes.map((route) => (
-            <a key={route.path} href={route.path} className="product-card">
-              <div className="card-body">
-                <span className="card-category">{route.category}</span>
-                <div style={{ fontSize: '48px', margin: '12px 0' }}>{route.icon}</div>
-                <h2 className="card-name">{route.name}</h2>
-                
-                <div className="card-actions">
-                  <div className="add-btn" style={{ textAlign: 'center' }}>
-                    Gestionar Módulo
-                  </div>
+        <main className="admin-main">
+          <div className="admin-grid">
+            {routes.map((route) => (
+              <a key={route.path} href={route.path} className="admin-card">
+                <div className="card-top">
+                  <span className="card-tag">{route.category}</span>
+                  <span className="card-icon">{route.icon}</span>
                 </div>
-              </div>
-            </a>
-          ))}
+                <h2 className="card-name">{route.name}</h2>
+                <div className="card-footer">
+                  <span className="action-text">Gestionar Módulo ╱ Acceder →</span>
+                </div>
+              </a>
+            ))}
+          </div>
         </main>
 
-        <footer className="menu-footer">
-          <span>Consola de Administración - Proyecto Equipo 3</span>
+        <footer className="admin-footer">
+          <span>Consola de Administración EQ3</span>
           <span>© 2026 Restaurante Premium</span>
         </footer>
       </div>
@@ -137,39 +135,31 @@ export default function AdminMenu() {
   );
 }
 
-// Aquí va la constante 'styles' que ya tienes definida...
-
-// Los estilos se mantienen igual a como los proporcionaste
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;700&display=swap');
+const adminStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;700&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .menu-root {
+  .admin-root {
     min-height: 100vh;
-    background:
-      radial-gradient(circle at top right, rgba(193, 122, 58, 0.16), transparent 28%),
-      linear-gradient(180deg, #111010 0%, #171411 100%);
+    background: #111010;
     color: #F2EDE4;
     font-family: 'DM Sans', sans-serif;
   }
 
-  .menu-hero {
-    position: relative;
-    padding: 72px 48px 36px;
+  .admin-hero {
+    padding: 72px 48px 48px;
     border-bottom: 1px solid #2A2620;
-    overflow: hidden;
-    animation: fadeDown 0.7s ease both;
   }
 
-  .menu-topbar {
+  .hero-top {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 24px;
+    align-items: flex-end;
+    gap: 32px;
   }
 
-  .menu-label {
+  .admin-label {
     font-size: 10px;
     letter-spacing: 0.25em;
     text-transform: uppercase;
@@ -177,7 +167,7 @@ const styles = `
     margin-bottom: 12px;
   }
 
-  .menu-title {
+  .admin-title {
     font-family: 'Playfair Display', serif;
     font-size: clamp(40px, 6vw, 72px);
     font-weight: 700;
@@ -185,145 +175,138 @@ const styles = `
     letter-spacing: -0.02em;
   }
 
-  .menu-title em {
+  .admin-title em {
     font-style: italic;
-    font-weight: 600;
+    font-weight: 400;
     color: #C17A3A;
   }
 
-  .menu-subtitle {
+  .admin-subtitle {
     margin-top: 16px;
     font-size: 14px;
-    color: #A79D90;
+    color: #7A7268;
     font-weight: 300;
-    max-width: 480px;
-    line-height: 1.7;
+    max-width: 420px;
+    line-height: 1.6;
   }
 
-  .cart-chip {
-    min-width: 240px;
-    padding: 18px 20px;
-    border: 1px solid #3B2D21;
-    background: rgba(20, 17, 14, 0.92);
-    border-radius: 18px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  .status-chip {
+    border: 1px solid #2A2620;
+    padding: 24px 32px;
+    border-radius: 2px;
+    text-align: right;
+    background: #161412;
   }
 
-  .cart-chip-label {
-    font-size: 11px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+  .status-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
     color: #C17A3A;
+    margin-bottom: 4px;
   }
 
-  .cart-chip-total {
-    margin-top: 8px;
+  .status-value {
     font-family: 'Playfair Display', serif;
-    font-size: 34px;
-    color: #F2EDE4;
+    font-size: 32px;
+    font-weight: 700;
   }
 
-  .cart-chip-meta {
-    margin-top: 6px;
-    color: #A79D90;
-    font-size: 13px;
+  .status-meta {
+    font-size: 11px;
+    color: #3A3630;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
-  .menu-grid {
+  .admin-main {
+    padding: 32px 48px;
+  }
+
+  .admin-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1px;
-    background: #1E1C19;
-    padding: 0;
-    animation: fadeUp 0.6s 0.2s ease both;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
   }
 
-  .product-card {
-    background: #111010;
-    display: flex;
-    flex-direction: column;
-    transition: background 0.2s;
+  .admin-card {
     text-decoration: none;
     color: inherit;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .product-card:hover { background: #161411; }
-
-  .card-body {
+    border: 1px solid #2A2620;
+    background: #161412;
     padding: 32px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    flex: 1;
-    border: 1px solid transparent;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
+    border-radius: 2px;
   }
 
-  .product-card:hover .card-body {
+  .admin-card:hover {
     border-color: #C17A3A;
+    transform: translateY(-2px);
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .card-tag {
+    font-size: 10px;
+    color: #C17A3A;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .card-icon {
+    font-size: 24px;
+    opacity: 0.8;
   }
 
   .card-name {
     font-family: 'Playfair Display', serif;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 700;
-    line-height: 1.2;
-    color: #F2EDE4;
+    margin-bottom: 24px;
+    flex: 1;
   }
 
-  .card-category {
+  .card-footer {
+    border-top: 1px solid #2A2620;
+    padding-top: 16px;
+  }
+
+  .action-text {
     font-size: 11px;
-    letter-spacing: 0.12em;
+    color: #7A7268;
     text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: color 0.2s;
+  }
+
+  .admin-card:hover .action-text {
     color: #C17A3A;
   }
 
-  .card-actions {
-    margin-top: 24px;
-  }
-
-  .add-btn {
-    border: 0;
-    border-radius: 999px;
-    padding: 12px 16px;
-    background: #C17A3A;
-    color: #111010;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-  }
-
-  .menu-footer {
-    padding: 24px 48px;
+  .admin-footer {
+    padding: 48px;
     border-top: 1px solid #1E1C19;
     font-size: 11px;
-    color: #5D574F;
+    color: #3A3630;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     display: flex;
     justify-content: space-between;
-    gap: 12px;
   }
 
-  @keyframes fadeDown {
-    from { opacity: 0; transform: translateY(-12px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  @media (max-width: 760px) {
-    .menu-hero { padding: 48px 24px 32px; }
-    .menu-topbar { flex-direction: column; }
-    .cart-chip { width: 100%; min-width: 0; }
-    .menu-grid { grid-template-columns: 1fr; }
-    .menu-footer { padding: 20px 24px; flex-direction: column; }
+  @media (max-width: 768px) {
+    .admin-hero { padding: 48px 24px; }
+    .hero-top { flex-direction: column; align-items: flex-start; }
+    .status-chip { width: 100%; text-align: left; }
+    .admin-main { padding: 24px; }
+    .admin-grid { grid-template-columns: 1fr; }
+    .admin-footer { padding: 24px; flex-direction: column; gap: 8px; }
   }
 `;

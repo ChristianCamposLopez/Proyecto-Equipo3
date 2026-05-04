@@ -1,4 +1,4 @@
-// controllers/MenuService.ts
+// services/MenuService.ts
 import { ProductoDAO } from "../models/daos/ProductoDAO";
 
 export class MenuService {
@@ -144,4 +144,14 @@ export class MenuService {
     return updated;
   }
 
+  async searchCatalog(term: string, restaurantId?: number) {
+    if (!term || term.trim().length === 0) {
+      throw new Error("Término de búsqueda inválido");
+    }
+    if (term.trim().length < 2) {
+      throw new Error("Término de búsqueda demasiado corto");
+    }
+    const products = await ProductoDAO.searchProducts(term.trim(), restaurantId);
+    return { products };
+  }
 }

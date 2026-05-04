@@ -233,4 +233,12 @@ export class ProductoDAO {
     const result = await db.query(query, [`%${term}%`, restaurantId || null]);
     return result.rows;
   }
+
+  static async getRestaurantId(productId: number): Promise<number | null> {
+    const result = await db.query(
+      `SELECT c.restaurant_id FROM products p JOIN categories c ON p.category_id = c.id WHERE p.id = $1`,
+      [productId]
+    );
+    return result.rows[0]?.restaurant_id || null;
+  }
 }

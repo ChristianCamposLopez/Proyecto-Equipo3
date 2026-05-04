@@ -72,6 +72,15 @@ export class CarritoService {
       await CarritoDAO.updateItemQuantity(existing.id, newQty);
     } else {
       if (quantity > producto.stock) throw new Error("Stock insuficiente");
+      
+      // US002: Asociar el carrito al restaurante del primer producto si es null
+      if (!cart.restaurant_id) {
+        const restId = await ProductoDAO.getRestaurantId(productId);
+        if (restId) {
+          await CarritoDAO.updateRestaurant(cart.id, restId);
+        }
+      }
+      
       await CarritoDAO.addItem(cart.id, productId, quantity, producto.base_price);
     }
 

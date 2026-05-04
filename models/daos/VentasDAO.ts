@@ -23,7 +23,7 @@ export class VentasDAO {
     const { fechaInicio, fechaFin, restauranteId } = filtro;
     
     // Estados que se consideran "ventas concretadas"
-    const estadosExitosos = ['DELIVERY_ASSIGNED', 'COMPLETED'];
+    const estadosExitosos = ['DELIVERY_ASSIGNED', 'COMPLETED', 'DELIVERED'];
 
     let query = `
       SELECT DATE(created_at) AS fecha, 
@@ -52,6 +52,7 @@ export class VentasDAO {
     }
     
     query += ` GROUP BY fecha ORDER BY fecha`;
+    // console.log('DEBUG VENTAS:', { query, params });
     const result = await db.query(query, params);
     
     return result.rows.map(row => ({

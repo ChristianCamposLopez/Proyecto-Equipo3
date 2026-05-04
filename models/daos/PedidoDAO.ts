@@ -219,6 +219,16 @@ export class PedidoDAO {
   static async updateOrderStatus(orderId: number, newStatus: string): Promise<PedidoEntity> {
     const result = await db.query(`UPDATE orders SET status = $1 WHERE id = $2 RETURNING *`, [newStatus, orderId]);
     if (result.rowCount === 0) throw new Error("No se pudo actualizar el estado");
+    
+    // US027 / US025: Sincronizar con historial para que aparezca en reportes de ventas
+    let historyStatus = newStatus;
+    if (newStatus === 'DELIVERED') historyStatus = 'COMPLETED';
+    
+    const validHistoryStatuses = ['CANCELLED', 'COMPLETED', 'PENDING', 'REFUNDED', 'REFUND_REJECTED'];
+    if (validHistoryStatuses.includes(historyStatus)) {
+      await db.query(`UPDATE pedido_historial SET status = $1 WHERE id = $2`, [historyStatus, orderId]);
+    }
+
     return result.rows[0];
   }
 

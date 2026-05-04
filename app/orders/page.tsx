@@ -57,7 +57,7 @@ export default function UnifiedOrdersPage() {
   // Estados de Formulario Cliente
   const [addressForm, setAddressForm] = useState<AddressForm>(emptyAddressForm)
   const [isSavingAddress, setIsSavingAddress] = useState(false)
-  const [editingAddressId, setEditingAddressId] = useState<number | null>(null)
+  const [showAddressForm, setShowAddressForm] = useState(false)
   const [orderNote, setOrderNote] = useState("")
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false)
 
@@ -120,6 +120,29 @@ export default function UnifiedOrdersPage() {
       console.error(e)
     } finally {
       setUpdatingId(null)
+    }
+  }
+
+  const handleSaveAddress = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSavingAddress(true)
+    try {
+      const res = await fetch("/api/delivery-addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...addressForm, customerId })
+      })
+      if (res.ok) {
+        const newAddr = await res.json()
+        setAddresses(prev => [...prev, newAddr])
+        setSelectedAddressId(newAddr.id)
+        setAddressForm(emptyAddressForm)
+        setShowAddressForm(false)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsSavingAddress(false)
     }
   }
 
@@ -234,7 +257,10 @@ export default function UnifiedOrdersPage() {
                       </div>
                     ))}
                     <div className="flex justify-between items-center pt-4">
-                      <span className="text-zinc-500 font-bold uppercase text-xs">Total del Carrito</span>
+                      <div className="flex flex-col">
+                        <span className="text-zinc-500 font-bold uppercase text-xs">Total del Carrito</span>
+                        <span className="text-[10px] text-zinc-600 uppercase tracking-widest">{cart.total_quantity} artículos en total</span>
+                      </div>
                       <span className="text-3xl font-black text-white">${Number(cart.total_amount).toFixed(2)}</span>
                     </div>
                   </div>
@@ -265,19 +291,90 @@ export default function UnifiedOrdersPage() {
                 <h2 className="text-xl font-bold mb-6">Checkout</h2>
                 <div className="space-y-4 mb-8">
                   <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-2xl">
-                    <span className="text-[10px] font-black text-zinc-600 uppercase block mb-1">Dirección de Entrega</span>
-                    {addresses.length > 0 ? (
-                      <select 
-                        value={selectedAddressId || ""} 
-                        onChange={(e) => setSelectedAddressId(Number(e.target.value))}
-                        className="w-full bg-transparent text-sm focus:outline-none"
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-black text-zinc-600 uppercase block">Dirección de Entrega</span>
+                      <button 
+                        type="button"
+                        onClick={() => setShowAddressForm(!showAddressForm)}
+                        className="text-[9px] text-orange-500 uppercase font-bold hover:underline"
                       >
-                        {addresses.map(a => (
-                          <option key={a.id} value={a.id} className="bg-zinc-900 text-white">{a.street} #{a.exterior_number}</option>
-                        ))}
-                      </select>
+                        {showAddressForm ? 'Cancelar' : '+ Nueva'}
+                      </button>
+                    </div>
+
+                    {showAddressForm ? (
+                      <form onSubmit={handleSaveAddress} className="mt-3 space-y-2">
+                        <input 
+                          placeholder="Calle"
+                          className="w-full p-2 bg-zinc-900 border border-zinc-800 rounded text-xs"
+                          value={addressForm.street}
+                          onChange={e => setAddressForm({...addressForm, street: e.target.value})}
+                          required
+                        />
+                        <div className="flex gap-2">
+                          <input 
+                            placeholder="Ext"
+                            className="w-1/2 p-2 bg-zinc-900 border border-zinc-800 rounded text-xs"
+                            value={addressForm.exteriorNumber}
+                            onChange={e => setAddressForm({...addressForm, exteriorNumber: e.target.value})}
+                            required
+                          />
+                          <input 
+                            placeholder="CP (5 dig)"
+                            className="w-1/2 p-2 bg-zinc-900 border border-zinc-800 rounded text-xs"
+                            value={addressForm.postalCode}
+                            onChange={e => setAddressForm({...addressForm, postalCode: e.target.value})}
+                            required
+                            pattern="[0-9]{5}"
+                          />
+                        </div>
+                        <input 
+                          placeholder="Colonia"
+                          className="w-full p-2 bg-zinc-900 border border-zinc-800 rounded text-xs"
+                          value={addressForm.neighborhood}
+                          onChange={e => setAddressForm({...addressForm, neighborhood: e.target.value})}
+                          required
+                        />
+                        <div className="flex gap-2">
+                          <input 
+                            placeholder="Ciudad"
+                            className="w-1/2 p-2 bg-zinc-900 border border-zinc-800 rounded text-xs"
+                            value={addressForm.city}
+                            onChange={e => setAddressForm({...addressForm, city: e.target.value})}
+                            required
+                          />
+                          <input 
+                            placeholder="Estado"
+                            className="w-1/2 p-2 bg-zinc-900 border border-zinc-800 rounded text-xs"
+                            value={addressForm.state}
+                            onChange={e => setAddressForm({...addressForm, state: e.target.value})}
+                            required
+                          />
+                        </div>
+                        <button 
+                          disabled={isSavingAddress}
+                          type="submit" 
+                          className="w-full py-2 bg-orange-600 text-[10px] font-bold uppercase rounded hover:bg-orange-700 transition-colors"
+                        >
+                          {isSavingAddress ? 'Guardando...' : 'Guardar y Seleccionar'}
+                        </button>
+                      </form>
                     ) : (
-                      <p className="text-xs text-zinc-500 italic">No tienes direcciones guardadas.</p>
+                      <>
+                        {addresses.length > 0 ? (
+                          <select 
+                            value={selectedAddressId || ""} 
+                            onChange={(e) => setSelectedAddressId(Number(e.target.value))}
+                            className="w-full bg-transparent text-sm focus:outline-none"
+                          >
+                            {addresses.map(a => (
+                              <option key={a.id} value={a.id} className="bg-zinc-900 text-white">{a.street} #{a.exterior_number}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <p className="text-xs text-zinc-500 italic">No tienes direcciones guardadas.</p>
+                        )}
+                      </>
                     )}
                   </div>
                   

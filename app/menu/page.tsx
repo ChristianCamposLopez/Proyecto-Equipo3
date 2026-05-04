@@ -16,7 +16,7 @@ export default function MenuPage() {
   const [products, setProducts] = useState<ProductoEntity[]>([])
   const [activeCategory, setActiveCategory] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [cart, setCart] = useState<CartSummary>(() => ({ ...({} as CartSummary), total_amount: 0, items: [] }))
+  const [cart, setCart] = useState<CartSummary>(() => ({ ...({} as CartSummary), total_amount: 0, total_quantity: 0, items: [] }))
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [mounted, setMounted] = useState(false)
@@ -136,7 +136,7 @@ export default function MenuPage() {
             </div>
 
             <Link href="/orders" className="cart-summary-box">
-              <span className="cart-label">TOTAL CARRITO</span>
+              <span className="cart-label">CARRITO ╱ {cart.total_quantity || 0} ITEMS</span>
               <span className="cart-amount">${Number(cart.total_amount || 0).toFixed(2)}</span>
               <span className="cart-action">Finalizar Pedido ╱ Ver detalles</span>
             </Link>

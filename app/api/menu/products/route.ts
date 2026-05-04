@@ -15,8 +15,8 @@ export async function GET() {
         p.stock,
         p.is_available,
         p.image_url,
-        COALESCE(p.stock_quantity, 0)::int AS stock_quantity,
-        COALESCE(p.low_stock_threshold, 5)::int AS low_stock_threshold,
+        COALESCE(p.stock, 0)::int AS stock_quantity,
+        5 AS low_stock_threshold,
         c.name AS category_name
       FROM products p
       JOIN categories c ON p.category_id = c.id

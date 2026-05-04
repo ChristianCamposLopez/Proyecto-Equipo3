@@ -17,7 +17,16 @@ export async function GET(req: NextRequest) {
     }
 
     const alerts = await stockService.getStockAlerts(parseInt(restaurantId, 10));
-    return NextResponse.json(alerts);
+    
+    const mappedAlerts = alerts.map((p: any) => ({
+      product_id: p.id,
+      name: p.name,
+      current_stock: p.stock,
+      threshold: 5,
+      status: p.stock === 0 ? 'OUT_OF_STOCK' : 'LOW_STOCK'
+    }));
+
+    return NextResponse.json(mappedAlerts);
   } catch (error) {
     console.error('[GET /api/products/stock/alerts]', error);
     return NextResponse.json(

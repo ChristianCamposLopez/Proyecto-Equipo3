@@ -5,11 +5,12 @@ import { PedidoService } from '@/services/PedidoService';
 const pedidoService = new PedidoService();
 
 interface Context {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-async function handleStatusUpdate(req: NextRequest, { params }: Context) {
-  const orderId = parseInt(params.id, 10);
+async function handleStatusUpdate(req: NextRequest, context: Context) {
+  const { id } = await context.params;
+  const orderId = parseInt(id, 10);
   if (isNaN(orderId)) {
     return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   }

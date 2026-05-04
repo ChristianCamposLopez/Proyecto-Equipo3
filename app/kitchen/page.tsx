@@ -67,9 +67,7 @@ export default function KitchenPage() {
         body: JSON.stringify({ status: newStatus })
       })
       if (response.ok) {
-        // Actualizar localmente para feedback inmediato
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
-        // Recargar para limpiar la lista si ya no debería estar en cocina
         if (newStatus === "READY") {
           setTimeout(loadOrders, 1000)
         }
@@ -84,83 +82,336 @@ export default function KitchenPage() {
   if (!authorized) return null
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 p-8">
-      <header className="max-w-6xl mx-auto mb-12 flex justify-between items-end border-b border-zinc-800 pb-8">
-        <div>
-          <h1 className="text-4xl font-black tracking-tighter text-orange-500 uppercase">Monitor de Cocina</h1>
-          <p className="text-zinc-500 mt-2">Gestión de preparación en tiempo real (US007)</p>
-        </div>
-        <button 
-          onClick={loadOrders}
-          className="bg-zinc-800 hover:bg-zinc-700 px-6 py-2 rounded-full text-sm font-bold transition-all"
-        >
-          {loading ? "Sincronizando..." : "Refrescar"}
-        </button>
-      </header>
-
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {orders.length === 0 && !loading && (
-          <div className="col-span-full py-20 text-center border-2 border-dashed border-zinc-800 rounded-3xl text-zinc-600 font-medium">
-            No hay pedidos pendientes en cocina.
+    <>
+      <style dangerouslySetInnerHTML={{ __html: kitchenStyles }} />
+      <div className="kitchen-root">
+        <header className="kitchen-hero">
+          <div className="hero-top">
+            <div>
+              <p className="kitchen-label">Operaciones de Cocina</p>
+              <h1 className="kitchen-title">Monitor <em>En Vivo</em></h1>
+              <p className="kitchen-subtitle">
+                Gestione la preparación de platillos con precisión artesanal y eficiencia operativa.
+              </p>
+            </div>
+            
+            <button 
+              onClick={loadOrders}
+              disabled={loading}
+              className="refresh-btn"
+            >
+              {loading ? "SINCRONIZANDO..." : "REFRESCAR TABLERO"}
+            </button>
           </div>
-        )}
+        </header>
 
-        {orders.map((order) => (
-          <div key={order.id} className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-zinc-800 flex justify-between items-start">
-              <div>
-                <span className="text-xs font-mono text-zinc-500">ORDEN #{order.id}</span>
-                <h3 className="text-xl font-bold">{order.customer_name || "Cliente"}</h3>
+        <main className="kitchen-main">
+          <div className="orders-grid">
+            {orders.length === 0 && !loading && (
+              <div className="empty-state">
+                <p>No hay pedidos pendientes en la línea de producción.</p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-                order.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 
-                'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-              }`}>
-                {statusLabels[order.status] || order.status}
-              </span>
-            </div>
+            )}
 
-            <div className="p-6 flex-1">
-              <ul className="space-y-3">
-                {order.items.map((item, i) => (
-                  <li key={i} className="flex justify-between items-center text-zinc-300">
-                    <span className="font-medium">{item.product_name}</span>
-                    <span className="bg-zinc-800 px-2 py-0.5 rounded text-sm font-bold">x{item.quantity}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {order.note && (
-                <div className="mt-6 p-4 bg-orange-500/5 border border-orange-500/10 rounded-2xl">
-                  <span className="text-[10px] font-black text-orange-500 uppercase block mb-1">Nota del Cliente</span>
-                  <p className="text-sm italic text-zinc-400">"{order.note}"</p>
+            {orders.map((order) => (
+              <div key={order.id} className={`order-card ${order.status.toLowerCase()}`}>
+                <div className="card-header">
+                  <div className="order-id">ORDEN #{order.id}</div>
+                  <div className={`status-badge ${order.status.toLowerCase()}`}>
+                    {statusLabels[order.status] || order.status}
+                  </div>
                 </div>
-              )}
-            </div>
 
-            <div className="p-4 bg-zinc-900/50 border-t border-zinc-800 grid grid-cols-2 gap-3">
-              {order.status === 'PENDING' && (role === 'admin' || role === 'restaurant_admin' || role === 'chef') && (
-                <button 
-                  onClick={() => updateStatus(order.id, 'PREPARING')}
-                  disabled={updatingId === order.id}
-                  className="col-span-2 py-3 bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold text-sm transition-all"
-                >
-                  Empezar Preparación
-                </button>
-              )}
-              {order.status === 'PREPARING' && (
-                <button 
-                  onClick={() => updateStatus(order.id, 'READY')}
-                  disabled={updatingId === order.id}
-                  className="col-span-2 py-3 bg-green-600 hover:bg-green-500 rounded-2xl font-bold text-sm transition-all text-white"
-                >
-                  Marcar como Listo
-                </button>
-              )}
-            </div>
+                <div className="card-body">
+                  <h3 className="customer-name">{order.customer_name || "Cliente Premium"}</h3>
+                  <ul className="items-list">
+                    {order.items.map((item, i) => (
+                      <li key={i} className="item-row">
+                        <span className="item-qty">{item.quantity}x</span>
+                        <span className="item-name">{item.product_name}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {order.note && (
+                    <div className="note-box">
+                      <span className="note-label">REQUERIMIENTO ESPECIAL</span>
+                      <p className="note-text">"{order.note}"</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="card-footer">
+                  {order.status === 'PENDING' && (
+                    <button 
+                      onClick={() => updateStatus(order.id, 'PREPARING')}
+                      disabled={updatingId === order.id}
+                      className="action-btn primary"
+                    >
+                      {updatingId === order.id ? "PROCESANDO..." : "EMPEZAR PREPARACIÓN"}
+                    </button>
+                  )}
+                  {order.status === 'PREPARING' && (
+                    <button 
+                      onClick={() => updateStatus(order.id, 'READY')}
+                      disabled={updatingId === order.id}
+                      className="action-btn success"
+                    >
+                      {updatingId === order.id ? "PROCESANDO..." : "MARCAR COMO LISTO"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        </main>
+
+        <footer className="kitchen-footer">
+          <span>Consola de Producción EQ3</span>
+          <span>© 2026 Restaurante Premium</span>
+        </footer>
       </div>
-    </main>
+    </>
   )
 }
+
+const kitchenStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;700&display=swap');
+
+  .kitchen-root {
+    min-height: 100vh;
+    background: #111010;
+    color: #F2EDE4;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .kitchen-hero {
+    padding: 72px 48px 48px;
+    border-bottom: 1px solid #2A2620;
+  }
+
+  .hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 32px;
+  }
+
+  .kitchen-label {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: #C17A3A;
+    margin-bottom: 12px;
+  }
+
+  .kitchen-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .kitchen-title em {
+    font-style: italic;
+    font-weight: 400;
+    color: #C17A3A;
+  }
+
+  .kitchen-subtitle {
+    margin-top: 16px;
+    font-size: 14px;
+    color: #7A7268;
+    font-weight: 300;
+    max-width: 420px;
+    line-height: 1.6;
+  }
+
+  .refresh-btn {
+    background: transparent;
+    border: 1px solid #C17A3A;
+    color: #C17A3A;
+    padding: 12px 24px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 2px;
+  }
+
+  .refresh-btn:hover {
+    background: #C17A3A;
+    color: #111010;
+  }
+
+  .kitchen-main {
+    padding: 32px 48px;
+  }
+
+  .orders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 24px;
+  }
+
+  .order-card {
+    background: #161412;
+    border: 1px solid #2A2620;
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+  }
+
+  .order-card:hover {
+    border-color: #C17A3A;
+  }
+
+  .card-header {
+    padding: 24px;
+    border-bottom: 1px solid #2A2620;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .order-id {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: #7A7268;
+    font-weight: 700;
+  }
+
+  .status-badge {
+    font-size: 10px;
+    padding: 4px 12px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .status-badge.pending { background: rgba(193, 122, 58, 0.1); color: #C17A3A; border: 1px solid #C17A3A; }
+  .status-badge.preparing { background: rgba(58, 122, 193, 0.1); color: #3A7AC1; border: 1px solid #3A7AC1; }
+
+  .card-body {
+    padding: 24px;
+    flex: 1;
+  }
+
+  .customer-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  .items-list {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 24px;
+  }
+
+  .item-row {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #1E1C19;
+  }
+
+  .item-qty {
+    color: #C17A3A;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .item-name {
+    color: #F2EDE4;
+    font-size: 14px;
+  }
+
+  .note-box {
+    background: rgba(193, 122, 58, 0.05);
+    border-left: 2px solid #C17A3A;
+    padding: 16px;
+    margin-top: 16px;
+  }
+
+  .note-label {
+    display: block;
+    font-size: 9px;
+    color: #C17A3A;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .note-text {
+    font-size: 13px;
+    color: #7A7268;
+    font-style: italic;
+  }
+
+  .card-footer {
+    padding: 24px;
+    border-top: 1px solid #2A2620;
+  }
+
+  .action-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+    border: 1px solid transparent;
+  }
+
+  .action-btn.primary {
+    background: #C17A3A;
+    color: #111010;
+  }
+
+  .action-btn.primary:hover {
+    background: #D68F4A;
+  }
+
+  .action-btn.success {
+    background: #2E7D32;
+    color: #F2EDE4;
+  }
+
+  .action-btn.success:hover {
+    background: #388E3C;
+  }
+
+  .empty-state {
+    grid-column: 1 / -1;
+    padding: 80px 0;
+    text-align: center;
+    border: 1px dashed #2A2620;
+  }
+
+  .kitchen-footer {
+    padding: 48px;
+    border-top: 1px solid #1E1C19;
+    font-size: 11px;
+    color: #3A3630;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 768px) {
+    .kitchen-hero { padding: 48px 24px; }
+    .hero-top { flex-direction: column; align-items: flex-start; }
+    .kitchen-main { padding: 24px; }
+    .orders-grid { grid-template-columns: 1fr; }
+    .kitchen-footer { padding: 24px; flex-direction: column; gap: 8px; }
+  }
+`;
+

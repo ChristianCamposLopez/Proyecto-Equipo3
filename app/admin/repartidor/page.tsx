@@ -256,7 +256,7 @@ const assignStyles = `
 `
 
 
-export default function KitchenPage() {
+export default function DeliveryAssignmentPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [orders, setOrders] = useState<KitchenOrder[]>([])
@@ -285,8 +285,14 @@ export default function KitchenPage() {
   }
 
   useEffect(() => {
-    loadOrders()
-  }, [])
+    const role = sessionStorage.getItem('userRole');
+    if (role !== 'admin' && role !== 'restaurant_admin') {
+      router.replace('/login');
+    } else {
+      setAuthorized(true);
+      loadOrders();
+    }
+  }, [router]);
 
   const handleAssign = async (orderId: number) => {
     setAssigningOrderId(orderId)
@@ -300,7 +306,6 @@ export default function KitchenPage() {
       const data = await readJsonResponse(res)
       if (!res.ok) throw new Error(data?.error || 'Error al asignar repartidor')
       
-      // ✅ Actualizar estado local (status + nombre del repartidor)
       setOrders(prev =>
         prev.map(o =>
           o.id === orderId
@@ -318,103 +323,346 @@ export default function KitchenPage() {
       setAssigningOrderId(null)
     }
   }
-
-  useEffect(() => {
-      // 🛡️ Guardia de seguridad
-      const role = sessionStorage.getItem('userRole');
-      if (role !== 'admin' && role !== 'restaurant_admin') {
-        router.replace('/login');
-      } else {
-        setAuthorized(true);
-        // Aquí puedes disparar tus fetch iniciales
-      }
-    }, [router]);
   
-  if (!authorized) return null; // 👈 Evita el parpadeo de contenido
+  if (!authorized) return null;
 
   return (
     <>
-      <style>{pageStyles}</style>
-      <style>{assignStyles}</style>
-      <main className="kitchen-shell">
-        <div className="kitchen-wrap">
-          <header className="kitchen-header">
+      <style dangerouslySetInnerHTML={{ __html: pageStyles }} />
+      <div className="delivery-root">
+        <header className="delivery-hero">
+          <div className="hero-top">
             <div>
-              <div className="kitchen-eyebrow">Asignacion de repartidores</div>
-              <h1 className="kitchen-title">Pedidos activos</h1>
-              <p className="kitchen-copy">
-                Pedidos con sus productos y las notas especiales del cliente para ser asignados a un repartidor.
+              <p className="delivery-label">Logística y Distribución</p>
+              <h1 className="delivery-title">Control de <em>Repartidores</em></h1>
+              <p className="delivery-subtitle">
+                Asignación inteligente de personal para garantizar entregas en tiempo récord.
               </p>
             </div>
             <button className="refresh-btn" onClick={loadOrders} disabled={loading}>
-              {loading ? "Actualizando..." : "Actualizar"}
+              {loading ? "ACTUALIZANDO..." : "REFRESCAR LISTA"}
             </button>
-          </header>
+          </div>
+        </header>
 
-          {error && <div className="empty-kitchen">{error}</div>}
+        <main className="delivery-main">
+          {error && <div className="empty-state">{error}</div>}
 
           {!error && loading ? (
-            <div className="empty-kitchen">Cargando pedidos de cocina a repartidores...</div>
+            <div className="empty-state">Sincronizando órdenes con la flota de reparto...</div>
           ) : !error && orders.length === 0 ? (
-            <div className="empty-kitchen">No hay pedidos listos para asignar.</div>
+            <div className="empty-state">No hay órdenes preparadas pendientes de asignación.</div>
           ) : (
-            <section className="orders-grid">
+            <div className="orders-grid">
               {orders.map((order) => (
-                <article className="kitchen-ticket" key={order.id}>
-                  <div className="ticket-head">
+                <div className="order-card" key={order.id}>
+                  <div className="card-header">
                     <div>
-                      <div className="ticket-id">PedidoEntity #{order.id}</div>
-                      <div className="ticket-meta">
-                        {order.customer_name ?? "Cliente"} · ${Number(order.total_amount).toFixed(2)}
+                      <div className="order-id">ORDEN #{order.id}</div>
+                      <div className="customer-info">
+                        {order.customer_name ?? "Cliente Premium"} · ${Number(order.total_amount).toFixed(2)}
                       </div>
                     </div>
-                    <span className="status-pill">{statusLabels[order.status] ?? order.status}</span>
+                    <span className={`status-badge ${order.status.toLowerCase()}`}>
+                      {statusLabels[order.status] ?? order.status}
+                    </span>
                   </div>
 
-                  <ul className="items-list">
-                    {order.items.length === 0 ? (
-                      <li className="ticket-meta">Sin detalle de productos registrado.</li>
-                    ) : (
-                      order.items.map((item, index) => (
-                        <li className="item-row" key={`${order.id}-${item.product_name}-${index}`}>
-                          <span>{item.product_name}</span>
-                          <strong>x{item.quantity}</strong>
+                  <div className="card-body">
+                    <ul className="items-list">
+                      {order.items.map((item, index) => (
+                        <li className="item-row" key={index}>
+                          <span className="item-qty">{item.quantity}x</span>
+                          <span className="item-name">{item.product_name}</span>
                         </li>
-                      ))
-                    )}
-                  </ul>
+                      ))}
+                    </ul>
 
-                  <div className="note-box">
-                    <span className="note-label">Nota especial</span>
-                    <p className="note-text">{order.note || "Sin notas especiales"}</p>
+                    {order.note && (
+                      <div className="note-box">
+                        <span className="note-label">INDICACIONES DE ENTREGA</span>
+                        <p className="note-text">{order.note}</p>
+                      </div>
+                    )}
+
+                    {order.deliveryman_name && (
+                      <div className="assigned-box">
+                        <span className="assigned-label">REPARTIDOR ASIGNADO</span>
+                        <p className="assigned-name">{order.deliveryman_name}</p>
+                      </div>
+                    )}
                   </div>
 
-                  {/* ✅ Mostrar repartidor si ya está asignado */}
-                  {order.deliveryman_name && (
-                    <div className="deliveryman-info">
-                      RepartidorEntity: {order.deliveryman_name}
-                    </div>
-                  )}
-
-                  {/* Botón de asignación automática US012 */}
-                  {order.status === 'READY' && (
-                    <div className="ticket-actions">
+                  <div className="card-footer">
+                    {order.status === 'READY' && (
                       <button
                         className="assign-btn"
                         onClick={() => handleAssign(order.id)}
                         disabled={assigningOrderId === order.id}
                       >
-                        {assigningOrderId === order.id ? 'Asignando...' : 'Asignar repartidor'}
+                        {assigningOrderId === order.id ? 'ASIGNANDO...' : 'ASIGNAR REPARTIDOR'}
                       </button>
-                      {assignError && <p className="assign-error">{assignError}</p>}
-                    </div>
-                  )}
-                </article>
+                    )}
+                    {assignError && <p className="assign-error">{assignError}</p>}
+                  </div>
+                </div>
               ))}
-            </section>
+            </div>
           )}
-        </div>
-      </main>
+        </main>
+
+        <footer className="delivery-footer">
+          <span>Consola Logística EQ3</span>
+          <span>© 2026 Restaurante Premium</span>
+        </footer>
+      </div>
     </>
   )
 }
+
+const pageStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;700&display=swap');
+
+  .delivery-root {
+    min-height: 100vh;
+    background: #111010;
+    color: #F2EDE4;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .delivery-hero {
+    padding: 72px 48px 48px;
+    border-bottom: 1px solid #2A2620;
+  }
+
+  .hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 32px;
+  }
+
+  .delivery-label {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: #C17A3A;
+    margin-bottom: 12px;
+  }
+
+  .delivery-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .delivery-title em {
+    font-style: italic;
+    font-weight: 400;
+    color: #C17A3A;
+  }
+
+  .delivery-subtitle {
+    margin-top: 16px;
+    font-size: 14px;
+    color: #7A7268;
+    font-weight: 300;
+    max-width: 420px;
+    line-height: 1.6;
+  }
+
+  .refresh-btn {
+    background: transparent;
+    border: 1px solid #C17A3A;
+    color: #C17A3A;
+    padding: 12px 24px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 2px;
+  }
+
+  .refresh-btn:hover {
+    background: #C17A3A;
+    color: #111010;
+  }
+
+  .delivery-main {
+    padding: 32px 48px;
+  }
+
+  .orders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 24px;
+  }
+
+  .order-card {
+    background: #161412;
+    border: 1px solid #2A2620;
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+  }
+
+  .order-card:hover {
+    border-color: #C17A3A;
+  }
+
+  .card-header {
+    padding: 24px;
+    border-bottom: 1px solid #2A2620;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .order-id {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: #7A7268;
+    font-weight: 700;
+  }
+
+  .customer-info {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    margin-top: 4px;
+  }
+
+  .status-badge {
+    font-size: 10px;
+    padding: 4px 12px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    border: 1px solid transparent;
+  }
+
+  .status-badge.ready { background: rgba(46, 125, 50, 0.1); color: #2E7D32; border-color: #2E7D32; }
+  .status-badge.delivery_assigned { background: rgba(58, 122, 193, 0.1); color: #3A7AC1; border-color: #3A7AC1; }
+
+  .card-body {
+    padding: 24px;
+    flex: 1;
+  }
+
+  .items-list {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 24px;
+  }
+
+  .item-row {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #1E1C19;
+  }
+
+  .item-qty {
+    color: #C17A3A;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .item-name {
+    color: #F2EDE4;
+    font-size: 14px;
+  }
+
+  .note-box {
+    background: rgba(193, 122, 58, 0.05);
+    border-left: 2px solid #C17A3A;
+    padding: 16px;
+    margin-top: 16px;
+  }
+
+  .note-label {
+    display: block;
+    font-size: 9px;
+    color: #C17A3A;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .note-text {
+    font-size: 13px;
+    color: #7A7268;
+    font-style: italic;
+  }
+
+  .assigned-box {
+    margin-top: 16px;
+    padding: 16px;
+    background: rgba(58, 122, 193, 0.05);
+    border-left: 2px solid #3A7AC1;
+  }
+
+  .assigned-label {
+    display: block;
+    font-size: 9px;
+    color: #3A7AC1;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .assigned-name {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .card-footer {
+    padding: 24px;
+    border-top: 1px solid #2A2620;
+  }
+
+  .assign-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+    background: #C17A3A;
+    color: #111010;
+    border: none;
+  }
+
+  .assign-btn:hover {
+    background: #D68F4A;
+  }
+
+  .assign-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .empty-state {
+    padding: 80px 0;
+    text-align: center;
+    border: 1px dashed #2A2620;
+    color: #7A7268;
+  }
+
+  .delivery-footer {
+    padding: 48px;
+    border-top: 1px solid #1E1C19;
+    font-size: 11px;
+    color: #3A3630;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+  }
+`;
+

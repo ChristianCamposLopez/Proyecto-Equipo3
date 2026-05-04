@@ -46,7 +46,10 @@ export default function MenuPage() {
   const loadProducts = useCallback(async () => {
     setLoading(true)
     try {
+      const isAdmin = role === 'admin' || role === 'restaurant_admin' || role === 'chef'
       let url = `/api/platos?restaurantId=${RESTAURANT_ID}`
+      if (isAdmin) url += `&includeInactive=true`
+      
       if (searchTerm) {
         url += `&search=${encodeURIComponent(searchTerm)}`
       } else if (activeCategory) {
@@ -55,7 +58,7 @@ export default function MenuPage() {
       
       const [prodRes, cartRes] = await Promise.all([
         fetch(url),
-        fetch(`/api/cart?customerId=${userId}`)
+        fetch(`/api/cart?customerId=${userId || '1'}`)
       ])
       
       const prodData = await prodRes.json()
@@ -216,15 +219,17 @@ export default function MenuPage() {
                   </p>
 
                   <div className="product-actions">
-                    {(role === 'admin' || role === 'restaurant_admin' || role === 'chef') ? (
-                      <button 
-                        onClick={() => toggleAvailability(product.id, !!product.is_available)}
-                        disabled={updatingId === product.id}
-                        className={`action-btn-admin ${product.is_available ? 'deactivate' : 'activate'}`}
-                      >
-                        {product.is_available ? "Marcar Agotado" : "Habilitar Stock"}
-                      </button>
-                    ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {(role === 'admin' || role === 'restaurant_admin' || role === 'chef') && (
+                        <button 
+                          onClick={() => toggleAvailability(product.id, !!product.is_available)}
+                          disabled={updatingId === product.id}
+                          className={`action-btn-admin ${product.is_available ? 'deactivate' : 'activate'}`}
+                        >
+                          {product.is_available ? "Marcar Agotado" : "Habilitar Stock"}
+                        </button>
+                      )}
+                      
                       <button 
                         onClick={() => addToCart(product.id)}
                         disabled={!product.is_available || !product.is_active || updatingId === product.id}
@@ -232,7 +237,7 @@ export default function MenuPage() {
                       >
                         {updatingId === product.id ? "PROCESANDO..." : product.is_available ? "AGREGAR AL PEDIDO" : "TEMPORALMENTE AGOTADO"}
                       </button>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>

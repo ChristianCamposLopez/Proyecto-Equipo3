@@ -44,3 +44,19 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = parseInt(searchParams.get("id") || "");
+
+    if (!id) {
+      return NextResponse.json({ error: "ID de dirección requerido" }, { status: 400 });
+    }
+
+    await direccionService.eliminarDireccion(id);
+    return NextResponse.json({ message: "Dirección eliminada" });
+  } catch (error) {
+    console.error("[DELETE /api/delivery-addresses]", error);
+    return NextResponse.json({ error: "No se pudo eliminar la dirección" }, { status: 500 });
+  }
+}

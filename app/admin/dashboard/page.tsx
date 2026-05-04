@@ -49,6 +49,12 @@ export default function AdminMenu() {
       category: 'Configuración' 
     },
     { 
+      name: 'Gestión de Stock', 
+      path: '/admin/stock', 
+      icon: '📦', 
+      category: 'Inventario' 
+    },
+    { 
       name: 'Cambiar sesión', 
       path: '/login', 
       icon: '🔐', 

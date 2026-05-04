@@ -84,7 +84,14 @@ SELECT r.id, 'Tacos', 'Tacos de diversos guisos' FROM restaurants r WHERE r.name
 UNION ALL
 SELECT r.id, 'Bebidas', 'Refrescos, aguas frescas' FROM restaurants r WHERE r.name = 'Tacos El Buen Sabor'
 UNION ALL
-SELECT r.id, 'Postres', 'Postres caseros' FROM restaurants r WHERE r.name = 'Tacos El Buen Sabor';
+SELECT r.id, 'Postres', 'Postres caseros' FROM restaurants r WHERE r.name = 'Tacos El Buen Sabor'
+UNION ALL
+SELECT r.id, 'Entradas', 'Para empezar el banquete' FROM restaurants r WHERE r.name = 'Tacos El Buen Sabor'
+UNION ALL
+SELECT r.id, 'Especialidades', 'Gringas, volcanes y más' FROM restaurants r WHERE r.name = 'Tacos El Buen Sabor'
+UNION ALL
+SELECT r.id, 'Combos', 'Paquetes completos' FROM restaurants r WHERE r.name = 'Tacos El Buen Sabor'
+ON CONFLICT (restaurant_id, name) DO NOTHING;
 
 -- 8. PRODUCTOS (con NULL::timestamp para coincidir con NOW())
 WITH cats AS (
@@ -98,8 +105,23 @@ UNION ALL
 SELECT c.id, 'Taco de bistec con cebolla', 'Taco de bistec', 20.00, true, true, 30, NULL::timestamp
 FROM cats c WHERE c.name = 'Tacos' AND c.rest_name = 'Tacos El Buen Sabor'
 UNION ALL
-SELECT c.id, 'Agua de horchata', 'Horchata', 25.00, true, true, 100, NULL::timestamp
+SELECT c.id, 'Agua de horchata artesanal', 'Horchata', 25.00, true, true, 100, NULL::timestamp
 FROM cats c WHERE c.name = 'Bebidas' AND c.rest_name = 'Tacos El Buen Sabor'
+UNION ALL
+-- Entradas
+SELECT c.id, 'Guacamole fresco con totopos', 'Guacamole', 65.00, true, true, 20, NULL::timestamp
+FROM cats c WHERE c.name = 'Entradas' AND c.rest_name = 'Tacos El Buen Sabor'
+UNION ALL
+SELECT c.id, 'Chicharrón de queso crujiente', 'Chicharrón de Queso', 45.00, true, true, 15, NULL::timestamp
+FROM cats c WHERE c.name = 'Entradas' AND c.rest_name = 'Tacos El Buen Sabor'
+UNION ALL
+-- Especialidades
+SELECT c.id, 'Tortilla de harina con queso y pastor', 'Gringa de Pastor', 55.00, true, true, 30, NULL::timestamp
+FROM cats c WHERE c.name = 'Especialidades' AND c.rest_name = 'Tacos El Buen Sabor'
+UNION ALL
+-- Combos
+SELECT c.id, '5 Tacos al pastor + 1 Horchata', 'Combo Individual', 99.00, true, true, 20, NULL::timestamp
+FROM cats c WHERE c.name = 'Combos' AND c.rest_name = 'Tacos El Buen Sabor'
 UNION ALL
 -- Producto agotado (stock=0) -> is_available false
 SELECT c.id, 'Taco de carnitas (agotado)', 'Carnitas', 22.00, false, true, 0, NULL::timestamp
@@ -110,7 +132,7 @@ SELECT c.id, 'Taco de lengua (descontinuado)', 'Lengua', 25.00, false, false, 0,
 FROM cats c WHERE c.name = 'Tacos' AND c.rest_name = 'Tacos El Buen Sabor'
 UNION ALL
 -- Postre
-SELECT c.id, 'Flan napolitano', 'Flan', 35.00, true, true, 20, NULL::timestamp
+SELECT c.id, 'Flan napolitano artesanal', 'Flan', 35.00, true, true, 20, NULL::timestamp
 FROM cats c WHERE c.name = 'Postres' AND c.rest_name = 'Tacos El Buen Sabor';
 
 -- 9. DISPONIBILIDAD DE PRODUCTOS (CON CASTING)
@@ -128,17 +150,23 @@ INSERT INTO option_groups (restaurant_id, name, min_selection, max_selection)
 SELECT id, 'Tamaño de taco', 1, 1 FROM rest_tacos
 UNION ALL
 SELECT id, 'Salsas extra', 0, 3 FROM rest_tacos
+UNION ALL
+SELECT id, 'Extras Guisado', 0, 2 FROM rest_tacos
 ON CONFLICT DO NOTHING;
 
 -- Asociar grupos a productos
 WITH 
-    taco AS (SELECT id FROM products WHERE name = 'Taco al pastor'),
+    taco AS (SELECT id FROM products WHERE name IN ('Taco al pastor', 'Taco de bistec')),
+    gringa AS (SELECT id FROM products WHERE name = 'Gringa de Pastor'),
     grupo_tamano AS (SELECT og.id FROM option_groups og JOIN restaurants r ON og.restaurant_id = r.id WHERE r.name = 'Tacos El Buen Sabor' AND og.name = 'Tamaño de taco'),
-    grupo_salsas AS (SELECT og.id FROM option_groups og JOIN restaurants r ON og.restaurant_id = r.id WHERE r.name = 'Tacos El Buen Sabor' AND og.name = 'Salsas extra')
+    grupo_salsas AS (SELECT og.id FROM option_groups og JOIN restaurants r ON og.restaurant_id = r.id WHERE r.name = 'Tacos El Buen Sabor' AND og.name = 'Salsas extra'),
+    grupo_extras AS (SELECT og.id FROM option_groups og JOIN restaurants r ON og.restaurant_id = r.id WHERE r.name = 'Tacos El Buen Sabor' AND og.name = 'Extras Guisado')
 INSERT INTO product_option_groups (product_id, option_group_id)
 SELECT t.id, gt.id FROM taco t, grupo_tamano gt
 UNION ALL
 SELECT t.id, gs.id FROM taco t, grupo_salsas gs
+UNION ALL
+SELECT g.id, ge.id FROM gringa g, grupo_extras ge
 ON CONFLICT DO NOTHING;
 
 -- Opciones concretas
@@ -149,11 +177,15 @@ SELECT og.id, 'Grande', 5.00 FROM option_groups og WHERE og.name = 'Tamaño de t
 UNION ALL
 SELECT og.id, 'Mega', 10.00 FROM option_groups og WHERE og.name = 'Tamaño de taco'
 UNION ALL
-SELECT og.id, 'Salsa roja', 3.00 FROM option_groups og WHERE og.name = 'Salsas extra'
+SELECT og.id, 'Salsa roja', 0.00 FROM option_groups og WHERE og.name = 'Salsas extra'
 UNION ALL
-SELECT og.id, 'Salsa verde', 3.00 FROM option_groups og WHERE og.name = 'Salsas extra'
+SELECT og.id, 'Salsa verde', 0.00 FROM option_groups og WHERE og.name = 'Salsas extra'
 UNION ALL
 SELECT og.id, 'Salsa de aguacate', 5.00 FROM option_groups og WHERE og.name = 'Salsas extra'
+UNION ALL
+SELECT og.id, 'Queso Extra', 12.00 FROM option_groups og WHERE og.name = 'Extras Guisado'
+UNION ALL
+SELECT og.id, 'Aguacate Extra', 15.00 FROM option_groups og WHERE og.name = 'Extras Guisado'
 ON CONFLICT DO NOTHING;
 
 -- 11. CARRITOS
@@ -234,6 +266,30 @@ SELECT c.id, r.id,
        rep.id, 'DELIVERY_ASSIGNED', 'Entregar en departamento 3B', 220.00
 FROM cliente_inactivo c, rest_taco r, repartidor2 rep, dir_inactivo d;
 
+-- Pedido 5: PENDING (Prueba de Combo)
+WITH cliente1 AS (SELECT id FROM users WHERE email = 'cliente1@test.com'),
+     rest_taco AS (SELECT id FROM restaurants WHERE name = 'Tacos El Buen Sabor'),
+     dir_cliente1 AS (SELECT street, exterior_number, neighborhood, city, state, postal_code, delivery_references 
+                      FROM delivery_addresses WHERE customer_id = (SELECT id FROM users WHERE email = 'cliente1@test.com') LIMIT 1)
+INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, deliveryman_id, status, total_amount)
+SELECT c.id, r.id, 
+       jsonb_build_object('street', d.street, 'ext_num', d.exterior_number, 'neighborhood', d.neighborhood, 
+                          'city', d.city, 'state', d.state, 'postal_code', d.postal_code, 'references', d.delivery_references),
+       NULL, 'PENDING', 99.00
+FROM cliente1 c, rest_taco r, dir_cliente1 d;
+
+-- Pedido 6: READY (Listo para asignar repartidor)
+WITH cliente2 AS (SELECT id FROM users WHERE email = 'cliente2@test.com'),
+     rest_taco AS (SELECT id FROM restaurants WHERE name = 'Tacos El Buen Sabor'),
+     dir_cliente2 AS (SELECT street, exterior_number, neighborhood, city, state, postal_code, delivery_references 
+                      FROM delivery_addresses WHERE customer_id = (SELECT id FROM users WHERE email = 'cliente2@test.com') LIMIT 1)
+INSERT INTO orders (customer_id, restaurant_id, delivery_address_json, deliveryman_id, status, total_amount)
+SELECT c.id, r.id, 
+       jsonb_build_object('street', d.street, 'ext_num', d.exterior_number, 'neighborhood', d.neighborhood, 
+                          'city', d.city, 'state', d.state, 'postal_code', d.postal_code, 'references', d.delivery_references),
+       NULL, 'READY', 45.00
+FROM cliente2 c, rest_taco r, dir_cliente2 d;
+
 -- 14. DETALLES DE PEDIDOS (order_items) y opciones
 -- Pedido 1: 2 tacos al pastor, 1 horchata
 WITH pedido1 AS (SELECT id FROM orders WHERE status = 'PENDING' AND total_amount = 79.00),
@@ -278,6 +334,18 @@ WITH item_bistec AS (
 )
 INSERT INTO order_item_options (order_item_id, option_id, price_at_purchase)
 SELECT order_item_id, option_id, price_modifier FROM item_bistec;
+
+-- Items para Pedido 5 (Combo Individual)
+WITH pedido5 AS (SELECT id FROM orders WHERE status = 'PENDING' AND total_amount = 99.00),
+     prod_combo AS (SELECT id, base_price FROM products WHERE name = 'Combo Individual')
+INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase)
+SELECT p.id, pc.id, 1, pc.base_price FROM pedido5 p, prod_combo pc;
+
+-- Items para Pedido 6 (Chicharrón de Queso)
+WITH pedido6 AS (SELECT id FROM orders WHERE status = 'READY' AND total_amount = 45.00),
+     prod_chicharron AS (SELECT id, base_price FROM products WHERE name = 'Chicharrón de Queso')
+INSERT INTO order_items (order_id, product_id, quantity, unit_price_at_purchase)
+SELECT p.id, pc.id, 1, pc.base_price FROM pedido6 p, prod_chicharron pc;
 
 -- 15. PAGOS Y REEMBOLSOS
 -- Pago exitoso para pedido 1
@@ -330,6 +398,22 @@ SELECT u.id, r.id,
 FROM users u, restaurants r
 WHERE u.email = 'cliente1@test.com' AND r.name = 'Tacos El Buen Sabor';
 
+-- Registro 5: COMPLETED (Cena familiar)
+INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at)
+SELECT u.id, r.id, 
+       jsonb_build_object('street', 'Av. Revolucion 45', 'city', 'CDMX'),
+       'COMPLETED', 850.00, NOW() - INTERVAL '1 day'
+FROM users u, restaurants r
+WHERE u.email = 'cliente2@test.com' AND r.name = 'Tacos El Buen Sabor';
+
+-- Registro 6: CANCELLED (Error en dirección)
+INSERT INTO pedido_historial (customer_id, restaurant_id, delivery_address_json, status, total_amount, created_at, refund_rejection_reason)
+SELECT u.id, r.id, 
+       jsonb_build_object('street', 'Calle Incorrecta 0', 'city', 'Edomex'),
+       'CANCELLED', 150.00, NOW() - INTERVAL '2 days', 'Dirección fuera de cobertura'
+FROM users u, restaurants r
+WHERE u.email = 'cliente1@test.com' AND r.name = 'Tacos El Buen Sabor';
+
 -- Items para el pedido cancelado
 WITH hist_cancelado AS (SELECT id FROM pedido_historial WHERE status = 'CANCELLED' LIMIT 1),
      prod_pastor AS (SELECT id, base_price FROM products WHERE name = 'Taco al pastor')
@@ -356,3 +440,18 @@ WITH hist_rejected AS (SELECT id FROM pedido_historial WHERE status = 'REFUND_RE
      prod_carnitas AS (SELECT id, base_price FROM products WHERE name = 'Carnitas')
 INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
 SELECT h.id, p.id, 1, p.base_price FROM hist_rejected h, prod_carnitas p;
+
+-- Items para Registro 5 (Cena Familiar)
+WITH hist_completado_2 AS (SELECT id FROM pedido_historial WHERE total_amount = 850.00 LIMIT 1),
+     prod_gringa AS (SELECT id, base_price FROM products WHERE name = 'Gringa de Pastor'),
+     prod_guacamole AS (SELECT id, base_price FROM products WHERE name = 'Guacamole')
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+SELECT h.id, p.id, 10, p.base_price FROM hist_completado_2 h, prod_gringa p
+UNION ALL
+SELECT h.id, pg.id, 4, pg.base_price FROM hist_completado_2 h, prod_guacamole pg;
+
+-- Items para Registro 6 (Cancelado)
+WITH hist_cancelado_2 AS (SELECT id FROM pedido_historial WHERE total_amount = 150.00 LIMIT 1),
+     prod_flan AS (SELECT id, base_price FROM products WHERE name = 'Flan')
+INSERT INTO pedido_items_historial (order_id, product_id, quantity, unit_price_at_purchase)
+SELECT h.id, p.id, 4, p.base_price FROM hist_cancelado_2 h, prod_flan p;

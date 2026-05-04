@@ -181,8 +181,7 @@ export class ProductoDAO {
     JOIN categories c ON p.category_id = c.id
     WHERE
       p.deleted_at IS NULL
-      AND p.is_available = TRUE
-      AND ($2::boolean = TRUE OR p.is_active = TRUE)
+      AND ($2::boolean = TRUE OR (p.is_available = TRUE AND p.is_active = TRUE))
       AND ($1::int IS NULL OR c.restaurant_id = $1)
       AND ($3::int IS NULL OR p.category_id = $3)
 
@@ -190,14 +189,16 @@ export class ProductoDAO {
       AND (
         $2::boolean = TRUE -- 1. Si es admin, mostrar todo
         OR 
-        NOT EXISTS (SELECT 1 FROM product_availability WHERE product_id = p.id) -- 2. Si NO tiene reglas, mostrar todo
-        OR 
-        EXISTS ( -- 3. Si TIENE reglas, validar día y hora actual
-            SELECT 1 
-            FROM product_availability pa 
-            WHERE pa.product_id = p.id
-              AND pa.day_of_week = EXTRACT(DOW FROM CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City')::int
-              AND (CURRENT_TIME AT TIME ZONE 'America/Mexico_City') BETWEEN pa.start_time AND pa.end_time
+        (
+          NOT EXISTS (SELECT 1 FROM product_availability WHERE product_id = p.id) -- 2. Si NO tiene reglas, mostrar todo
+          OR 
+          EXISTS ( -- 3. Si TIENE reglas, validar día y hora actual
+              SELECT 1 
+              FROM product_availability pa 
+              WHERE pa.product_id = p.id
+                AND pa.day_of_week = EXTRACT(DOW FROM CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City')::int
+                AND (CURRENT_TIME AT TIME ZONE 'America/Mexico_City') BETWEEN pa.start_time AND pa.end_time
+          )
         )
       )
 

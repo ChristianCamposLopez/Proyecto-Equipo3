@@ -42,7 +42,8 @@ export default function RootMenu() {
       role: "admin",
       items: [
         { name: "Dashboard de Ventas", path: "/admin/ventas", icon: "📈", desc: "Reportes, KPIs y exportación de datos financieros." },
-        { name: "Catálogo de Platos", path: "/admin/platos", icon: "📦", desc: "Gestión global de productos y stock." },
+        { name: "Control de Inventario", path: "/admin/stock", icon: "📦", desc: "Gestión global de existencias y alertas de stock." },
+        { name: "Catálogo de Platos", path: "/admin/platos", icon: "🍽️", desc: "Gestión de productos y categorías." },
         { name: "Configuración", path: "/admin/restaurante", icon: "🛡️", desc: "Ajustes globales del establecimiento." },
       ]
     },

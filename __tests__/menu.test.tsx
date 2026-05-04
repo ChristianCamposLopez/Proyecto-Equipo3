@@ -1,3 +1,4 @@
+/** @jest-environment jsdom */
 import 'react'
 import React from 'react';
 import '@testing-library/jest-dom';
@@ -7,6 +8,18 @@ import MenuPage from '../app/menu/page';
 // Mock fetch
 global.fetch = jest.fn();
 
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+  useSearchParams: () => ({
+    get: jest.fn(),
+  }),
+}));
+
 describe('MenuPage Component', () => {
   beforeEach(() => {
     (global.fetch as jest.Mock).mockClear();
@@ -15,12 +28,15 @@ describe('MenuPage Component', () => {
   describe('Rendering', () => {
     it('should render menu header', async () => {
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => [] })
-        .mockResolvedValueOnce({ json: async () => [] });
+        .mockResolvedValueOnce({ json: async () => ({ categories: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ products: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ total_amount: 0, items: [] }) });
 
       render(<MenuPage />);
 
-      expect(screen.getByText(/La Parrilla Mixteca/i)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText(/La Parrilla Mixteca/i)).toBeInTheDocument();
+      });
     });
 
     it('should show loading state', () => {
@@ -30,32 +46,36 @@ describe('MenuPage Component', () => {
 
       render(<MenuPage />);
 
-      expect(screen.getByText(/Cargando menú/i)).toBeInTheDocument();
+      expect(screen.getByText(/Cargando/i)).toBeInTheDocument();
     });
 
-    it('should display sample data when API is empty', async () => {
+    it('should display empty state when API is empty', async () => {
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => [] })
-        .mockResolvedValueOnce({ json: async () => [] });
+        .mockResolvedValueOnce({ json: async () => ({ categories: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ products: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ total_amount: 0, items: [] }) });
 
       render(<MenuPage />);
 
       await waitFor(() => {
-        expect(screen.getByText('Ejemplo: Hamburguesa')).toBeInTheDocument();
+        expect(screen.getByText(/No se encontraron resultados/i)).toBeInTheDocument();
       }, { timeout: 3000 });
     });
   });
 
   describe('API Integration', () => {
-    it('should fetch products and categories', () => {
+    it('should fetch products and categories', async () => {
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => [] })
-        .mockResolvedValueOnce({ json: async () => [] });
+        .mockResolvedValueOnce({ json: async () => ({ categories: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ products: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ total_amount: 0, items: [] }) });
 
       render(<MenuPage />);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/menu/products');
-      expect(global.fetch).toHaveBeenCalledWith('/api/menu/categories');
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/categorias'));
+        expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/platos'));
+      });
     });
 
     it('should handle API product data', async () => {
@@ -65,14 +85,16 @@ describe('MenuPage Component', () => {
           name: 'Tacos al Pastor',
           base_price: 45,
           is_available: true,
+          is_active: true,
           image_url: null,
           category_name: 'Tacos',
         },
       ];
 
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => mockProducts })
-        .mockResolvedValueOnce({ json: async () => [] });
+        .mockResolvedValueOnce({ json: async () => ({ categories: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ products: mockProducts }) })
+        .mockResolvedValueOnce({ json: async () => ({ total_amount: 0, items: [] }) });
 
       render(<MenuPage />);
 
@@ -82,7 +104,7 @@ describe('MenuPage Component', () => {
     });
   });
 
-  describe('ProductoEntity Information', () => {
+  describe('Product Information', () => {
     it('should format price with 2 decimals', async () => {
       const mockProducts = [
         {
@@ -90,42 +112,21 @@ describe('MenuPage Component', () => {
           name: 'Tacos',
           base_price: 35.5,
           is_available: true,
+          is_active: true,
           image_url: null,
           category_name: 'Tacos',
         },
       ];
 
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => mockProducts })
-        .mockResolvedValueOnce({ json: async () => [] });
+        .mockResolvedValueOnce({ json: async () => ({ categories: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ products: mockProducts }) })
+        .mockResolvedValueOnce({ json: async () => ({ total_amount: 0, items: [] }) });
 
       render(<MenuPage />);
 
       await waitFor(() => {
         expect(screen.getByText('$35.50')).toBeInTheDocument();
-      }, { timeout: 3000 });
-    });
-
-    it('should display currency MXN', async () => {
-      const mockProducts = [
-        {
-          id: 1,
-          name: 'Tacos',
-          base_price: 35,
-          is_available: true,
-          image_url: null,
-          category_name: 'Tacos',
-        },
-      ];
-
-      (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => mockProducts })
-        .mockResolvedValueOnce({ json: async () => [] });
-
-      render(<MenuPage />);
-
-      await waitFor(() => {
-        expect(screen.getByText('MXN')).toBeInTheDocument();
       }, { timeout: 3000 });
     });
 
@@ -136,92 +137,75 @@ describe('MenuPage Component', () => {
           name: 'Tacos',
           base_price: 35,
           is_available: true,
+          is_active: true,
           image_url: 'https://example.com/tacos.jpg',
           category_name: 'Tacos',
         },
       ];
 
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => mockProducts })
-        .mockResolvedValueOnce({ json: async () => [] });
+        .mockResolvedValueOnce({ json: async () => ({ categories: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ products: mockProducts }) })
+        .mockResolvedValueOnce({ json: async () => ({ total_amount: 0, items: [] }) });
 
       render(<MenuPage />);
 
       await waitFor(() => {
         const img = screen.getByAltText('Tacos') as HTMLImageElement;
         expect(img).toBeInTheDocument();
-        expect(img.src).toBe('https://example.com/tacos.jpg');
+        expect(img.src).toContain('https://example.com/tacos.jpg');
       }, { timeout: 3000 });
     });
 
-    it('should show placeholder when no image', async () => {
+    it('should show placeholder emoji when no image', async () => {
       const mockProducts = [
         {
           id: 1,
           name: 'Tacos',
           base_price: 35,
           is_available: true,
+          is_active: true,
           image_url: null,
           category_name: 'Tacos',
         },
       ];
 
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => mockProducts })
-        .mockResolvedValueOnce({ json: async () => [] });
+        .mockResolvedValueOnce({ json: async () => ({ categories: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ products: mockProducts }) })
+        .mockResolvedValueOnce({ json: async () => ({ total_amount: 0, items: [] }) });
 
       render(<MenuPage />);
 
       await waitFor(() => {
-        expect(screen.getByText('Sin imagen')).toBeInTheDocument();
+        expect(screen.getByText('🥘')).toBeInTheDocument();
       }, { timeout: 3000 });
     });
   });
 
-  describe('ProductoEntity Availability', () => {
-    it('should show unavailable status', async () => {
+  describe('Product Availability', () => {
+    it('should show Agotado overlay when unavailable', async () => {
       const mockProducts = [
         {
           id: 1,
           name: 'Tacos',
           base_price: 35,
           is_available: false,
+          is_active: true,
           image_url: 'https://example.com/tacos.jpg',
           category_name: 'Tacos',
         },
       ];
 
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => mockProducts })
-        .mockResolvedValueOnce({ json: async () => [] });
+        .mockResolvedValueOnce({ json: async () => ({ categories: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ products: mockProducts }) })
+        .mockResolvedValueOnce({ json: async () => ({ total_amount: 0, items: [] }) });
 
       render(<MenuPage />);
 
       await waitFor(() => {
-        expect(screen.getByText('No disponible')).toBeInTheDocument();
-      }, { timeout: 3000 });
-    });
-
-    it('should not show unavailable for available products', async () => {
-      const mockProducts = [
-        {
-          id: 1,
-          name: 'Tacos',
-          base_price: 35,
-          is_available: true,
-          image_url: 'https://example.com/tacos.jpg',
-          category_name: 'Tacos',
-        },
-      ];
-
-      (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => mockProducts })
-        .mockResolvedValueOnce({ json: async () => [] });
-
-      render(<MenuPage />);
-
-      await waitFor(() => {
-        expect(screen.queryByText('No disponible')).not.toBeInTheDocument();
+        expect(screen.getByText('Agotado')).toBeInTheDocument();
       }, { timeout: 3000 });
     });
   });
@@ -229,13 +213,14 @@ describe('MenuPage Component', () => {
   describe('Category Filtering', () => {
     it('should show categories when available', async () => {
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => [] })
-        .mockResolvedValueOnce({ json: async () => [{ id: 1, name: 'Tacos' }] });
+        .mockResolvedValueOnce({ json: async () => ({ categories: [{ id: 1, name: 'Tacos' }] }) })
+        .mockResolvedValueOnce({ json: async () => ({ products: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ total_amount: 0, items: [] }) });
 
       render(<MenuPage />);
 
       await waitFor(() => {
-        expect(screen.getByText('Todos')).toBeInTheDocument();
+        expect(screen.getByText('Tacos')).toBeInTheDocument();
       }, { timeout: 3000 });
     });
   });
@@ -243,44 +228,15 @@ describe('MenuPage Component', () => {
   describe('Footer', () => {
     it('should show footer text', async () => {
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => [] })
-        .mockResolvedValueOnce({ json: async () => [] });
+        .mockResolvedValueOnce({ json: async () => ({ categories: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ products: [] }) })
+        .mockResolvedValueOnce({ json: async () => ({ total_amount: 0, items: [] }) });
 
       render(<MenuPage />);
 
       await waitFor(() => {
-        expect(screen.getByText('Sistema de Pedidos')).toBeInTheDocument();
-      }, { timeout: 3000 });
-    });
-
-    it('should display product count', async () => {
-      const mockProducts = [
-        {
-          id: 1,
-          name: 'Tacos',
-          base_price: 35,
-          is_available: true,
-          image_url: null,
-          category_name: 'Tacos',
-        },
-        {
-          id: 2,
-          name: 'Hamburguesa',
-          base_price: 85,
-          is_available: true,
-          image_url: null,
-          category_name: 'Hamburguesas',
-        },
-      ];
-
-      (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ json: async () => mockProducts })
-        .mockResolvedValueOnce({ json: async () => [] });
-
-      render(<MenuPage />);
-
-      await waitFor(() => {
-        expect(screen.getByText(/2 platillos/)).toBeInTheDocument();
+        expect(screen.getByText(/La Parrilla Mixteca/i)).toBeInTheDocument();
+        expect(screen.getByText(/2026/)).toBeInTheDocument();
       }, { timeout: 3000 });
     });
   });

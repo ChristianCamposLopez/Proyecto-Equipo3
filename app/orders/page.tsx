@@ -20,6 +20,47 @@ const statusLabels: Record<string, string> = {
   CONFIRMED: "Confirmado",
 }
 
+const getStatusLabel = (status: string): string => {
+  switch (status) {
+    case 'COMPLETED':
+      return 'COMPLETADO';
+    case 'DELIVERED':
+      return 'ENTREGADO';
+    case 'CANCELLED':
+      return 'CANCELADO (reembolso pendiente)';
+    case 'REFUNDED':
+      return 'REEMBOLSADO';
+    case 'REFUND_REJECTED':
+      return 'REEMBOLSO RECHAZADO';
+    default:
+      return statusLabels[status] || 'PENDIENTE';
+  }
+};
+
+const getStatusColor = (status: string): string => {
+  switch (status) {
+    case 'COMPLETED':
+    case 'DELIVERED':
+      return '#047857'; // green
+    case 'CANCELLED':
+      return '#7f1d1d'; // red
+    case 'REFUNDED':
+      return '#047857'; // green
+    case 'REFUND_REJECTED':
+      return '#991b1b'; // darker red
+    default:
+      return '#18181b'; // zinc
+  }
+};
+
+const readJsonResponse = async (response: Response) => {
+  try {
+    return await response.json();
+  } catch (e) {
+    return null;
+  }
+};
+
 const emptyAddressForm: AddressForm = {
   street: "",
   exteriorNumber: "",
@@ -46,7 +87,7 @@ export default function UnifiedOrdersPage() {
   const router = useRouter()
   const [role, setRole] = useState<string>("client")
   const [customerId, setCustomerId] = useState<string | null>(null)
-  const [orders, setOrders] = useState<any[]>([])
+  const [orders, setOrders] = useState<Array<any & { status?: string; refund_rejection_reason?: string | null; total_amount?: number | string; created_at?: string }>>([])
   const [cart, setCart] = useState<CartSummary>(emptyCart)
   const [addresses, setAddresses] = useState<DeliveryAddress[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
@@ -60,6 +101,7 @@ export default function UnifiedOrdersPage() {
   const [showAddressForm, setShowAddressForm] = useState(false)
   const [orderNote, setOrderNote] = useState("")
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
     const savedRole = sessionStorage.getItem("userRole") || "client"
@@ -76,7 +118,7 @@ export default function UnifiedOrdersPage() {
       const endpoints = role === 'repartidor' 
         ? [`/api/orders?deliverymanId=${customerId}`]
         : [
-            `/api/orders?customerId=${customerId}`,
+            `/api/pedidos?customerId=${customerId}`,
             `/api/cart?customerId=${customerId}`,
             `/api/delivery-addresses?customerId=${customerId}`
           ]
@@ -87,11 +129,35 @@ export default function UnifiedOrdersPage() {
       if (role === 'repartidor') {
         setOrders(data[0])
       } else {
-        setOrders(data[0])
-        setCart(data[1] || emptyCart)
-        setAddresses(data[2] || [])
-        if (data[2]?.length > 0 && !selectedAddressId) {
-          setSelectedAddressId(data[2][0].id)
+        // /api/pedidos devuelve { pedidos: [...] }, extract the array
+        const [activeRes, historyRes, cartRes, addrRes] = await Promise.all([
+          fetch(`/api/orders?customerId=${customerId}`),
+          fetch(`/api/pedidos?customerId=${customerId}`),
+          fetch(`/api/cart?customerId=${customerId}`),
+          fetch(`/api/delivery-addresses?customerId=${customerId}`)
+        ]);
+
+        const activeData = await activeRes.json();
+        const historyData = await historyRes.json();
+        const cartData = await cartRes.json();
+        const addressesData = await addrRes.json();
+
+        const activeOrders = activeData.orders || activeData || [];
+        const historyOrders = historyData.pedidos || historyData || [];
+
+        // Fusionar sin duplicar por id
+        const mergedOrders = [...activeOrders];
+        historyOrders.forEach((h: any) => {
+          if (!mergedOrders.find((o: any) => o.id === h.id)) {
+            mergedOrders.push(h);
+          }
+        });
+
+        setOrders(mergedOrders);
+        setCart(cartData || emptyCart);
+        setAddresses(addressesData || []);
+        if (addressesData?.length > 0 && !selectedAddressId) {
+          setSelectedAddressId(addressesData[0].id);
         }
       }
     } catch (e) {
@@ -147,24 +213,121 @@ export default function UnifiedOrdersPage() {
   }
 
   const submitOrder = async () => {
-    setIsSubmittingOrder(true)
+    if (!cart || cart.item_count === 0 || isSubmittingOrder) return;
+    if (!selectedAddressId) {
+      setMessage({ type: "error", text: "Selecciona o registra una dirección de entrega antes de confirmar" });
+      return;
+    }
+
+    setIsSubmittingOrder(true);
+    setMessage(null);
     try {
-      const res = await fetch("/api/orders", {
+      // 1. Crear pedido activo (descuenta stock, inserta en orders/order_items)
+      const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerId,
+          customerId: customerId,
           note: orderNote,
-          deliveryAddressId: selectedAddressId
-        })
+          deliveryAddressId: selectedAddressId,
+        }),
+      });
+
+      const data = await readJsonResponse(response);
+      if (!response.ok) throw new Error(data?.error || "No se pudo confirmar el pedido");
+
+      const newOrderId = data.id; // ID del pedido recién creado
+
+      // 2. Registrar el pedido en el historial (sin modificar stock ni active tables)
+      //    Necesitamos los items del carrito y el restaurant_id.
+      //    Asumiendo que el cart contiene los items con product_id y quantity.
+      const itemsForHistory = cart.items.map(item => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+      }));
+
+      const historyRes = await fetch(`/api/pedidos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: newOrderId,
+          customerId: customerId,
+          restaurant_id: 1,  // Asegúrate de tener restaurant_id en cart
+          items: itemsForHistory,
+        }),
+      });
+
+      if (!historyRes.ok) {
+        // Solo loguear error, no fallar el pedido principal
+        try {
+          const errorText = await historyRes.text();
+          console.warn(`Advertencia al registrar historial (${historyRes.status}):`, errorText || "Sin detalles");
+        } catch (e) {
+          console.warn(`No se pudo registrar el historial (${historyRes.status})`);
+        }
+      }
+      // Mostrar mensaje de éxito incluso si el historial tiene problemas
+      setMessage({ type: "success", text: `Pedido #${newOrderId} confirmado y enviado a cocina` });
+
+      setOrderNote("");
+      await loadData(); // recargar pedidos y carrito
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "No se pudo confirmar el pedido";
+      setMessage({ type: "error", text });
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  }
+
+  const handleCancelOrder = async (orderId: number) => {
+    setUpdatingId(orderId)
+    try {
+      const res = await fetch(`/api/pedidos/${orderId}/cancel`, {
+        method: "PUT",
       })
+
       if (res.ok) {
-        router.push("/confirmacion")
+        // Actualizar estado local: cambiar status a CANCELLED
+        setOrders(prev =>
+          prev.map(order =>
+            order.id === orderId
+              ? { ...order, status: 'CANCELLED', refund_rejection_reason: null }
+              : order
+          )
+        );
+      } else {
+        console.error("Error al cancelar pedido")
       }
     } catch (e) {
       console.error(e)
     } finally {
-      setIsSubmittingOrder(false)
+      setUpdatingId(null)
+    }
+  }
+
+  const handleCompleteOrder = async (orderId: number) => {
+    setUpdatingId(orderId)
+    try {
+      const res = await fetch(`/api/pedidos/${orderId}/complete`, {
+        method: "PUT",
+      })
+
+      if (res.ok) {
+        // Actualizar estado local: cambiar status a COMPLETED
+        setOrders(prev =>
+          prev.map(order =>
+            order.id === orderId
+              ? { ...order, status: 'COMPLETED', is_active: false, active_status: null }
+              : order
+          )
+        );
+      } else {
+        console.error("Error al completar pedido")
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setUpdatingId(null)
     }
   }
 
@@ -181,6 +344,15 @@ export default function UnifiedOrdersPage() {
             <p className="text-zinc-500 mt-2">
               {role === 'repartidor' ? "Panel de logística y control de repartidores." : "Gestiona tus compras y sigue tus envíos."}
             </p>
+            {message && (
+              <div className={`mt-4 p-4 rounded-lg text-sm ${
+                message.type === 'success' 
+                  ? 'bg-green-900/30 border border-green-700 text-green-300' 
+                  : 'bg-red-900/30 border border-red-700 text-red-300'
+              }`}>
+                {message.text}
+              </div>
+            )}
           </div>
           <div className="text-right">
             <span className="text-xs text-zinc-600 block uppercase font-mono">Sesión activa como</span>
@@ -269,18 +441,82 @@ export default function UnifiedOrdersPage() {
 
               <section className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
                 <h2 className="text-2xl font-bold mb-6">Historial de Pedidos</h2>
+
                 <div className="space-y-4">
-                  {orders.map(order => (
-                    <div key={order.id} className="p-4 bg-zinc-950 border border-zinc-800 rounded-2xl flex justify-between items-center">
-                      <div>
-                        <span className="text-xs text-zinc-600 block">PEDIDO #{order.id}</span>
-                        <span className="text-sm font-medium">{new Date(order.created_at).toLocaleDateString()}</span>
-                      </div>
-                      <span className={`text-xs font-bold uppercase ${order.status === 'COMPLETED' || order.status === 'DELIVERED' ? 'text-green-500' : 'text-orange-500'}`}>
-                        {statusLabels[order.status] || order.status}
-                      </span>
+                  {orders.length === 0 ? (
+                    <div className="text-center py-10 text-zinc-600 border border-dashed border-zinc-800 rounded-2xl">
+                      Aún no tienes pedidos.
                     </div>
-                  ))}
+                  ) : (
+                    orders.map(order => (
+                      <div
+                        key={order.id}
+                        className="p-4 bg-zinc-950 border border-zinc-800 rounded-2xl"
+                        style={{ borderColor: getStatusColor(order.status) }}
+                      >
+                        {/* INFO */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-bold">
+                              PEDIDO #{order.id}
+                            </span>
+                            <span
+                              className="text-xs font-bold uppercase px-3 py-1 rounded-full white"
+                              style={{ 
+                                background: getStatusColor(order.status),
+                                color: '#ffffff'
+                              }}
+                            >
+                              {getStatusLabel(order.status)}
+                            </span>
+                          </div>
+                          <span className="text-xs text-zinc-500 block">
+                            {new Date(order.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        {/* INFORMACIÓN DE REEMBOLSO */}
+                        {order.status === 'REFUND_REJECTED' && order.refund_rejection_reason && (
+                          <div className="mt-3 p-3 rounded bg-red-900/30 border border-red-700/50">
+                            <p className="text-xs text-red-300 font-medium">Motivo del rechazo:</p>
+                            <p className="text-xs text-red-200">{order.refund_rejection_reason}</p>
+                          </div>
+                        )}
+                        {order.status === 'CANCELLED' && (
+                          <div className="mt-3 p-3 rounded bg-orange-900/30 border border-orange-700/50">
+                            <p className="text-xs text-orange-300">Tu solicitud de reembolso está pendiente. El administrador la procesará pronto.</p>
+                          </div>
+                        )}
+
+                        {/* TOTAL */}
+                        <div className="mt-3 flex justify-between items-center">
+                          <span className="text-lg font-bold text-white">${Number(order.total_amount || 0).toFixed(2)} MXN</span>
+                          
+                          {/* ACCIONES */}
+                          <div className="flex items-center gap-2">
+                            {order.status === "PENDING" && (
+                              <Button
+                                onClick={() => handleCancelOrder(order.id)}
+                                disabled={updatingId === order.id}
+                                className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1"
+                              >
+                                {updatingId === order.id ? "Cancelando..." : "Cancelar"}
+                              </Button>
+                            )}
+                            {(order.status === "DELIVERED") && (
+                              <Button
+                                onClick={() => handleCompleteOrder(order.id)}
+                                disabled={updatingId === order.id}
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1"
+                              >
+                                {updatingId === order.id ? "Completando..." : "Marcar Completado"}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </section>
             </div>

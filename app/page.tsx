@@ -42,6 +42,8 @@ export default function RootMenu() {
       role: "admin",
       items: [
         { name: "Dashboard de Ventas", path: "/admin/ventas", icon: "📈", desc: "Reportes, KPIs y exportación de datos financieros." },
+        { name: "Dashboard de ranking", path: "/admin/ranking", icon: "📈", desc: "Reportes de renking top 5." },
+        { name: "Reembolsos", path: "/admin/reembolsos", icon: "💰", desc: "Gestión de solicitudes y aprobaciones de reembolsos." },
         { name: "Control de Inventario", path: "/admin/stock", icon: "📦", desc: "Gestión global de existencias y alertas de stock." },
         { name: "Catálogo de Platos", path: "/admin/platos", icon: "🍽️", desc: "Gestión de productos y categorías." },
         { name: "Configuración", path: "/admin/restaurante", icon: "🛡️", desc: "Ajustes globales del establecimiento." },

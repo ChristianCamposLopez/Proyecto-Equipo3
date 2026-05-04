@@ -3,6 +3,7 @@
  * Pruebas unitarias sobre normalización y guardado de notas.
  */
 
+
 const mockDbQuery = jest.fn();
 const mockConnect = jest.fn();
 const mockGetDeliveryAddressSnapshot = jest.fn();

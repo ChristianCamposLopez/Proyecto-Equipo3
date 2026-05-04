@@ -583,7 +583,7 @@ export default function RankingPage() {
       totalProducts: ranking.length
     };
 
-    ExportService.export(dataToExport, metadata, format);
+    ExportService.exportRanking(dataToExport, metadata, format);
   };
 
   return (

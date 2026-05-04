@@ -35,8 +35,9 @@ export async function POST(
 
     const body = await request.json();
     const { dayOfWeek, startTime, endTime } = body;
+    console.log('Received data:', { dayOfWeek, startTime, endTime }); 
     // --- AGREGA ESTA VALIDACIÓN ---
-    if (!dayOfWeek || !startTime || !endTime) {
+    if (dayOfWeek == null || startTime == null || endTime == null) {
       return NextResponse.json(
         { error: 'Faltan campos obligatorios: dayOfWeek, startTime y endTime' }, 
         { status: 400 }

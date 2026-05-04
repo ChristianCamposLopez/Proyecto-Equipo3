@@ -18,8 +18,10 @@ export default function MenuPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [cart, setCart] = useState<CartSummary>(() => ({ ...({} as CartSummary), total_amount: 0, total_quantity: 0, items: [] }))
   const [loading, setLoading] = useState(true)
+  const [loadingRecs, setLoadingRecs] = useState(true)
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [recommendations, setRecommendations] = useState<any[]>([])
 
   useEffect(() => {
     setMounted(true)
@@ -82,6 +84,27 @@ export default function MenuPage() {
     }
   }, [loadProducts, userId, mounted, searchTerm])
 
+  const loadRecommendations = useCallback(async () => {
+    if (!userId) return
+    setLoadingRecs(true)
+    try {
+      const res = await fetch(`/api/recommendations?restaurantId=${RESTAURANT_ID}&customerId=${userId}`)
+      const data = await res.json()
+      setRecommendations(data.recommendations || [])
+    } catch (e) {
+      console.error('Error loading recommendations:', e)
+      setRecommendations([])
+    } finally {
+      setLoadingRecs(false)
+    }
+  }, [RESTAURANT_ID,userId])
+
+  useEffect(() => {
+    if (userId && mounted) {
+      loadRecommendations()
+    }
+  }, [userId, mounted])
+
   const addToCart = async (productId: number) => {
     setUpdatingId(productId)
     try {
@@ -121,6 +144,8 @@ export default function MenuPage() {
 
   return (
     <>
+     <p>user: {userId}</p>
+     <p>restaurant: {RESTAURANT_ID}</p>
       <style dangerouslySetInnerHTML={{ __html: menuStyles }} />
       <div className="menu-container">
         <header className="menu-header">
@@ -144,6 +169,55 @@ export default function MenuPage() {
         </header>
 
         <main className="menu-content">
+          {recommendations.length > 0 && (
+            <section className="recommendations-section">
+              <h2 className="section-title">🔥 Recomendado para ti</h2>
+              <div className="recommendations-grid">
+                {recommendations.map(rec => (
+                  <div 
+                    key={`rec-${rec.id}`} 
+                    className="product-entry"
+                  >
+                    <div className="product-image-container">
+                      {rec.image_display ? (
+                        <Image 
+                          src={rec.image_display} 
+                          alt={rec.name} 
+                          fill 
+                          className="product-img" 
+                        />
+                      ) : (
+                        <div className="img-placeholder">🌟</div>
+                      )}
+                      <div className="rec-badge">Recomendado</div>
+                    </div>
+
+                    <div className="product-details">
+                      <div className="details-header">
+                        <div className="cat-label">⭐ Favorito</div>
+                        <div className="price-tag">${Number(rec.base_price).toFixed(2)}</div>
+                      </div>
+                      <h3 className="product-name">{rec.name}</h3>
+                      <p className="product-desc">
+                        {rec.descripcion || "Una de nuestras especialidades, elegida especialmente para ti."}
+                      </p>
+
+                      <div className="product-actions">
+                        <button 
+                          onClick={() => addToCart(rec.id)}
+                          disabled={updatingId === rec.id}
+                          className="action-btn-client"
+                        >
+                          {updatingId === rec.id ? "PROCESANDO..." : "AGREGAR AL PEDIDO"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <div className="filter-bar">
             <div className="search-box">
               <input 
@@ -581,7 +655,138 @@ const menuStyles = `
   }
 
   .unavailable {
+    opacity: 0.6;
+  }
+
+  .unavailable .action-btn-client {
     opacity: 0.5;
+  }
+
+  .recommendations-section {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid #2A2620;
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: #C17A3A;
+  }
+
+  .recommendations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  .recommendation-card {
+    border: 1px solid rgba(193, 122, 58, 0.3);
+    background: #161412;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .recommendation-card:hover {
+    border-color: #C17A3A;
+    background: #1F1C18;
+  }
+
+  .rec-image-container {
+    height: 200px;
+    position: relative;
+    background: #111010;
+    overflow: hidden;
+  }
+
+  .rec-img {
+    object-fit: cover;
+    transition: transform 0.6s ease;
+  }
+
+  .recommendation-card:hover .rec-img {
+    transform: scale(1.08);
+  }
+
+  .rec-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: #C17A3A;
+    color: #111010;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+  }
+
+  .rec-details {
+    padding: 20px;
+  }
+
+  .rec-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .rec-price {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #C17A3A;
+    margin-bottom: 16px;
+  }
+
+  .rec-actions {
+    display: flex;
+    gap: 8px;
+    flex-direction: column;
+  }
+
+  .rec-add-btn {
+    width: 100%;
+    background: #C17A3A;
+    color: #111010;
+    border: none;
+    padding: 10px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .rec-add-btn:hover:not(:disabled) {
+    background: #D68A48;
+  }
+
+  .rec-add-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .rec-details-btn {
+    text-decoration: none;
+    color: #C17A3A;
+    border: 1px solid #C17A3A;
+    padding: 10px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: center;
+    transition: all 0.2s;
+  }
+
+  .rec-details-btn:hover {
+    background: rgba(193, 122, 58, 0.1);
   }
 
   .menu-footer {

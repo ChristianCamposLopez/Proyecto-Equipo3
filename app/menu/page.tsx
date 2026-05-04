@@ -159,12 +159,13 @@ export default function MenuPage() {
                 La Parrilla Mixteca — Sabores que trascienden el tiempo y el espacio.
               </p>
             </div>
-
+            {(role !== 'admin' && role !== 'restaurant_admin' && role !== 'chef') && (
             <Link href="/orders" className="cart-summary-box">
               <span className="cart-label">CARRITO ╱ {cart.total_quantity || 0} ITEMS</span>
               <span className="cart-amount">${Number(cart.total_amount || 0).toFixed(2)}</span>
               <span className="cart-action">Finalizar Pedido ╱ Ver detalles</span>
             </Link>
+            )}
           </div>
         </header>
 
@@ -203,6 +204,7 @@ export default function MenuPage() {
                       </p>
 
                       <div className="product-actions">
+                        {(role !== 'admin' && role !== 'restaurant_admin' && role !== 'chef') && (
                         <button 
                           onClick={() => addToCart(rec.id)}
                           disabled={updatingId === rec.id}
@@ -210,6 +212,7 @@ export default function MenuPage() {
                         >
                           {updatingId === rec.id ? "PROCESANDO..." : "AGREGAR AL PEDIDO"}
                         </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -303,7 +306,7 @@ export default function MenuPage() {
                           {product.is_available ? "Marcar Agotado" : "Habilitar Stock"}
                         </button>
                       )}
-                      
+                       {(role !== 'admin' && role !== 'restaurant_admin' && role !== 'chef') && (
                       <button 
                         onClick={() => addToCart(product.id)}
                         disabled={!product.is_available || !product.is_active || updatingId === product.id}
@@ -311,6 +314,7 @@ export default function MenuPage() {
                       >
                         {updatingId === product.id ? "PROCESANDO..." : product.is_available ? "AGREGAR AL PEDIDO" : "TEMPORALMENTE AGOTADO"}
                       </button>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -64,7 +64,7 @@ export class RecomendacionDAO {
             FROM product_availability pa 
             WHERE pa.product_id = p.id
               AND pa.day_of_week = EXTRACT(DOW FROM CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City')::int
-              AND (CURRENT_TIME AT TIME ZONE 'America/Mexico_City') BETWEEN pa.start_time AND pa.end_time
+              AND (CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City')::time BETWEEN pa.start_time AND pa.end_time
           )
         )
             

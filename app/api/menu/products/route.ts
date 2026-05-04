@@ -15,6 +15,7 @@ export async function GET() {
         p.stock,
         p.is_available,
         p.image_url,
+        p.deleted_at,
         COALESCE(p.stock, 0)::int AS stock_quantity,
         5 AS low_stock_threshold,
         c.name AS category_name

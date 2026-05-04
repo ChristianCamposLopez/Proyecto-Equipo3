@@ -130,6 +130,7 @@ type ProductoEntity = {
   stock_quantity: number
   is_available: boolean
   low_stock_threshold: number
+  deleted_at?: string | null  // <-- agrega esta línea
 }
 
 type Alert = {
@@ -168,8 +169,11 @@ export default function AdminStockPage() {
       ])
 
       if (productsRes.ok) {
-        const data = await productsRes.json()
-        setProducts(Array.isArray(data) ? data : [])
+        const data = await productsRes.json();
+        const activeProducts = Array.isArray(data)
+          ? data.filter((p: any) => !p.deleted_at)
+          : [];
+        setProducts(activeProducts);
       }
 
       if (alertsRes.ok) {
@@ -181,6 +185,7 @@ export default function AdminStockPage() {
         const data = await summaryRes.json()
         setSummary(data)
       }
+
     } catch (e) {
       console.error('Error fetching data:', e)
     } finally {
